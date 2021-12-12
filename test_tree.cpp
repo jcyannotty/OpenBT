@@ -48,6 +48,7 @@ int main()
    cout << "** print out a null tree\n";
    t.pr();
 
+   /*
    t.birth(1,0,50,-1.0,1.0);
    cout << "** print out a tree with one split\n";
    t.pr();
@@ -82,5 +83,6 @@ int main()
 
    cout << "** collapsed supertree:\n";
    st.pr();
+   */
    return 0;
 }
