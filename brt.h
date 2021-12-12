@@ -189,6 +189,20 @@ public:
                                                                            //Instead, uses the path from nx that it constructs.
    bool rot(tree::tree_p tnew, tree& x, rn& gen);  //uses subsuff
    void adapt();
+
+   //--------------------------------------------------
+   //--------------------------------------------------
+   //Methods for vector parameters and model mixing
+   //Save Tree -- revist this
+   //Load Tree -- revist this
+   //draw theta vector -- used for vector parameter
+   void drawthetavec(rn& gen);
+
+   //Birth and Death for model mixing
+   void bd_mix(rn& gen);    
+
+
+
 protected:
    //--------------------
    //model information
@@ -262,6 +276,13 @@ protected:
    virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
    void mpi_resetrn(rn& gen);
    void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
+
+
+   //-------------------------------------------
+   //Protected Model Mixing functions 
+   virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
+   virtual void local_setf_mix(diterator& diter);
+   virtual void local_setr_mix(diterator& diter);
 };
 
 #endif
