@@ -25,6 +25,7 @@
 #include <string>
 #include <map>
 #include "tree.h"
+#include "Eigen/Dense"
 
 //--------------------
 // node id
@@ -495,7 +496,8 @@ void tree::tonull()
       }
       ts = treesize(); //make invariant true
    }
-   theta=0.0;
+   k = 1;
+   theta=0.0; thetavec = vxd::Zero(k);
    v=0;c=0;
    p=0;l=0;r=0;
 }
@@ -619,4 +621,156 @@ void tree::deathp(tree_p nb, double theta)
    nb->v=0;
    nb->c=0;
    nb->theta=theta;
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+//Functions to accomodate for vector parameters
+//Tree-to-vector: Override the original one by changing the datatype from double to vxd
+void tree::treetovec(int* oid, int* ov, int* oc, vxd* othetavec)
+{
+   tree::cnpv nds;
+   this->getnodes(nds);
+   for(size_t i=0;i<nds.size();i++) {
+      oid[i]=(int)nds[i]->nid();
+      ov[i]=(int)nds[i]->getv();
+      oc[i]=(int)nds[i]->getc();
+      othetavec[i]=nds[i]->getthetavec(); //Store the theta vector and MAYBE cast as an array 
+   }
+}
+
+//---------------------------------------------------------------------
+//Vector-to-tree: Override the original one by changing the datatype from double to vxd (nn is number of nodes)
+void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, vxd* ithetavec)
+{
+   size_t itid,ipid;                     //itid: id of current node, ipid: parent's id
+   std::map<size_t,tree::tree_p> pts;  //pointers to nodes indexed by node id
+
+   this->tonull(); // obliterate old tree (if there)
+
+   //first node has to be the top one
+   pts[1] = this; //careful! this is not the first pts, it is pointer of id 1.
+   this->setv((size_t)iv[0]); this->setc((size_t)ic[0]); this->setthetavec(ithetavec[0]);
+   this->p=0;
+
+   //now loop through the rest of the nodes knowing parent is already there.
+   for(size_t i=1;i!=inn;i++) {
+      tree::tree_p np = new tree;
+      np->v = (size_t)iv[i]; np->c=(size_t)ic[i]; np->thetavec=ithetavec[i];
+      itid = (size_t)iid[i];
+      pts[itid] = np;
+      ipid = itid/2;
+      // set pointers
+      if(itid % 2 == 0) { //left child has even id
+         pts[ipid]->l = np;
+      } else {
+         pts[ipid]->r = np;
+      }
+      np->p = pts[ipid];
+   }
+}
+
+//---------------------------------------------------------------------
+//Birth: add children to  bot node nid -- Another override
+bool tree::birth(size_t nid,size_t v, size_t c, vxd thetavecl, vxd thetavecr)
+{
+   tree_p np = getptr(nid);
+   if(np==0) {
+      std::cout << "error in birth: bottom node not found\n";
+      return false; //did not find note with that nid
+   }
+   if(np->l!=0) {
+      std::cout << "error in birth: found node has children\n";
+      return false; //node is not a bottom node
+   }
+
+   //add children to bottom node np
+   tree_p l = new tree;
+   l->thetavec=thetavecl;
+   tree_p r = new tree;
+   r->thetavec=thetavecr;
+   np->l=l;
+   np->r=r;
+   np->v = v; np->c=c;
+   l->p = np;
+   r->p = np;
+
+   return true;
+}
+
+//---------------------------------------------------------------------
+//Death: kill children of  nog node nid -- another override
+bool tree::death(size_t nid, vxd thetavec)
+{
+   tree_p nb = getptr(nid);
+   if(nb==0) {
+      std::cout << "error in death, nid invalid\n";
+      return false;
+   }
+   if(nb->isnog()) {
+      delete nb->l;
+      delete nb->r;
+      nb->l=0;
+      nb->r=0;
+      nb->v=0;
+      nb->c=0;
+      nb->thetavec=thetavec;
+      return true;
+   } else {
+      std::cout << "error in death, node is not a nog node\n";
+      return false;
+   }
+}
+
+//---------------------------------------------------------------------
+//Copy tree with vector parameters: new function defined for tree with vecotor parameters copy tree tree o to tree n 
+void tree::cpvec(tree_p n, tree_cp o)
+//assume n has no children (so we don't have to kill them)
+//recursion down
+{
+   if(n->l) {
+      std::cout << "cp:error node has children\n";
+      return;
+   }
+
+   n->thetavec = o->thetavec;
+   n->v = o->v;
+   n->c = o->c;
+
+   if(o->l) { //if o has children
+      n->l = new tree;
+      (n->l)->p = n;
+      cpvec(n->l,o->l);
+      n->r = new tree;
+      (n->r)->p = n;
+      cpvec(n->r,o->r);
+   }
+}
+
+//---------------------------------------------------------------------
+//Birthp: add children to bot node *np -- another override 
+void tree::birthp(tree_p np,size_t v, size_t c, vxd thetavecl, vxd thetavecr)
+{
+   tree_p l = new tree;
+   l->thetavec=thetavecl;
+   tree_p r = new tree;
+   r->thetavec=thetavecr;
+   np->l=l;
+   np->r=r;
+   np->v = v; np->c=c;
+   l->p = np;
+   r->p = np;
+}
+
+//---------------------------------------------------------------------
+//deathp: kill children of  nog node *nb -- another override
+void tree::deathp(tree_p nb, vxd thetavec)
+{
+   delete nb->l;
+   delete nb->r;
+   nb->l=0;
+   nb->r=0;
+   nb->v=0;
+   nb->c=0;
+   nb->thetavec=thetavec;
 }

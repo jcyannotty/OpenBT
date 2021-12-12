@@ -30,6 +30,7 @@
 #include <cmath>
 #include <cstddef>
 #include <vector>
+#include "Eigen/Dense"
 
 #include "rn.h"
 
@@ -45,7 +46,8 @@ struct node_info {
    std::size_t id; //node id
    std::size_t v;  //variable
    std::size_t c;  //cut point
-   double theta;   //theta
+   double theta;   //univariate theta
+   Eigen::VectorXd thetavec;   //multivariate theta
 };
 
 //--------------------------------------------------
@@ -58,16 +60,22 @@ public:
    typedef const tree* tree_cp;
    typedef std::vector<tree_p> npv; 
    typedef std::vector<tree_cp> cnpv;
+   typedef Eigen::VectorXd vxd; //used for eigen vectors with unfixed dimension
    
    //prior
    //contructors,destructors--------------------
-   tree(): theta(0.0),v(0),c(0),p(0),l(0),r(0) {}
-   tree(const tree& n): theta(0.0),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
-   tree(double itheta): theta(itheta),v(0),c(0),p(0),l(0),r(0) {}
+   //---include initialization of thetavec
+   tree(): theta(0.0),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0){}
+   tree(const tree& n): theta(0.0),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
+   tree(double itheta): theta(itheta),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0) {}
+   tree(vxd itheta): theta(0.0),k(1),thetavec(itheta),v(0),c(0),p(0),l(0),r(0) {} //constructor for multivariate parameter
+
    void tonull(); //like a "clear", null tree has just one node
    ~tree() {tonull();}
+   
    //operators----------
    tree& operator=(const tree&);
+   
    //interface--------------------
    // Vectorized nput/output methods to support saving/loading to R.
    void treetovec(int* id, int* v, int* c, double* theta);
@@ -120,13 +128,29 @@ public:
    bool isright() const;
    //these are in public right now so brt::rot compiles
    double theta; //univariate double parameter
-   
+   vxd thetavec; //multivariate double parameter -- using Eigen VectorXd
+   size_t k; //Dimension of thetavec == number of models to be fixed
+
    size_t v;
    size_t c;
    //tree structure
    tree_p p; //parent
    tree_p l; //left child
    tree_p r; //right child
+
+   //Tree functions when using vector parameters-------------------
+   // Vectorized nput/output methods to support saving/loading to R.
+   void treetovec(int* id, int* v, int* c, vxd* thetavec);
+   void vectotree(size_t inn, int* id, int* v, int* c, vxd* thetavec);
+   //set and get
+   void setthetavec(vxd thetavec) {this->thetavec=thetavec;}
+   vxd getthetavec() const {return thetavec;}
+   //Tree functions--birth and death (these are not renamed right now, the override with different datatype should work here)
+   bool birth(size_t nid, size_t v, size_t c, vxd thetavecl, vxd thetavecr);
+   bool death(size_t nid, vxd thetavec);
+   void birthp(tree_p np,size_t v, size_t c, vxd thetavecl, vxd thetavecr);
+   void deathp(tree_p nb, vxd thetavec);
+
 private:
    //double theta; //univariate double parameter
    //rule: left if x[v] < xinfo[v][c]
@@ -138,6 +162,7 @@ private:
    // tree_p r; //right child
    //utiity functions
    void cp(tree_p n,  tree_cp o); //copy tree
+   void cpvec(tree_p n,  tree_cp o); //copy tree with vector parameters
 };
 std::istream& operator>>(std::istream&, tree&);
 std::ostream& operator<<(std::ostream&, const tree&);
