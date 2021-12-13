@@ -1267,6 +1267,175 @@ void mpislave_bd(rn& gen)
 
 
 }
+
+//--------------------------------------------------
+//--------------------------------------------------
+//Model Mixing functions for brt.cpp
+
+void brt::drawthetavec(rn& gen)
+{
+   tree::npv bnv;
+//   std::vector<sinfo> siv;
+   std::vector<sinfo*>& siv = newsinfovec();
+
+  allsuff(bnv,siv);
+#ifdef _OPENMPI
+  mpi_resetrn(gen);
+#endif
+   for(size_t i=0;i<bnv.size();i++) {
+      bnv[i]->setthetavec(drawnodethetavec(*(siv[i]),gen));
+      delete siv[i]; //set it, then forget it!
+   }
+   delete &siv;  //and then delete the vector of pointers.
+}
+//--------------------------------------------------
+//draw theta for a single bottom node for the brt model
+Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
+{
+//   return 1.0;
+   Eigen::VectorXd sin_vec(1);
+   sin_vec << si.n;
+   return sin_vec;
+}
+
+//--------------------------------------------------
+//bd_mix: birth/death for model mixing
+//*********Need to specify K in dinfo before going any further
+void brt::bd_mix(rn& gen)
+{
+//   cout << "--------------->>into bd" << endl;
+   tree::npv goodbots;  //nodes we could birth at (split on)
+   double PBx = getpb(t,*xi,mi.pb,goodbots); //prob of a birth at x
+
+   if(gen.uniform() < PBx) { //do birth or death
+      mi.bproposal++;
+      //--------------------------------------------------
+      //draw proposal
+      tree::tree_p nx; //bottom node
+      size_t v,c; //variable and cutpoint
+      double pr; //part of metropolis ratio from proposal and prior
+      bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);
+
+      //--------------------------------------------------
+      //compute sufficient statistics
+      sinfo& sil = *newsinfo();
+      sinfo& sir = *newsinfo();
+      sinfo& sit = *newsinfo();
+
+      getsuff(nx,v,c,sil,sir);
+      // sit = sil + sir; NO! The + operator cannot be overloaded, so instead we do this:
+      sit += sil;
+      sit += sir;
+
+      //--------------------------------------------------
+      //compute alpha
+      bool hardreject=true;
+      double lalpha=0.0;
+      double lml, lmr, lmt;  // lm is the log marginal left,right,total
+      if((sil.n>=mi.minperbot) && (sir.n>=mi.minperbot)) { 
+         lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
+         hardreject=false;
+         lalpha = log(pr) + (lml+lmr-lmt);
+         lalpha = std::min(0.0,lalpha);
+      }
+      //--------------------------------------------------
+      //try metrop
+      Eigen::VectorXd thetavecl,thetavecr; //parameters for new bottom nodes, left and right
+      double uu = gen.uniform();
+#ifdef _OPENMPI
+      MPI_Request *request = new MPI_Request[tc];
+#endif
+      if( !hardreject && (log(uu) < lalpha) ) {
+         thetavecl = Eigen::VectorXd:: Zero(1); //*****NEED TO SPECIFY K************
+         thetavecr = Eigen::VectorXd:: Zero(1); //*****NEED TO SPECIFY K************
+         t.birthp(nx,v,c,thetavecl,thetavecr);
+         mi.baccept++;
+#ifdef _OPENMPI
+//        cout << "accept birth " << lalpha << endl;
+         const int tag=MPI_TAG_BD_BIRTH_VC_ACCEPT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+      else { //transmit reject over MPI
+//        cout << "reject birth " << lalpha << endl;
+         const int tag=MPI_TAG_BD_BIRTH_VC_REJECT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+#else
+      }
+#endif
+      delete &sil;
+      delete &sir;
+      delete &sit;
+#ifdef _OPENMPI
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+      delete[] request;
+#endif
+   } else {
+      mi.dproposal++;
+      //--------------------------------------------------
+      //draw proposal
+      double pr;  //part of metropolis ratio from proposal and prior
+      tree::tree_p nx; //nog node to death at
+      dprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,pr,gen);
+
+      //--------------------------------------------------
+      //compute sufficient statistics
+      //sinfo sil,sir,sit;
+      sinfo& sil = *newsinfo();
+      sinfo& sir = *newsinfo();
+      sinfo& sit = *newsinfo();
+      getsuff(nx->getl(),nx->getr(),sil,sir);
+      // sit = sil + sir; NO! The + operator cannot be overloaded, so instead we do this:
+      sit += sil;
+      sit += sir;
+
+      //--------------------------------------------------
+      //compute alpha
+      double lml, lmr, lmt;  // lm is the log marginal left,right,total
+      lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
+      double lalpha = log(pr) + (lmt - lml - lmr);
+      lalpha = std::min(0.0,lalpha);
+
+      //--------------------------------------------------
+      //try metrop
+      Eigen::VectorXd thetavec;
+#ifdef _OPENMPI
+      MPI_Request *request = new MPI_Request[tc];
+#endif
+      if(log(gen.uniform()) < lalpha) {
+         thetavec = Eigen::VectorXd::Zero(1); //*****NEED TO SPECIFY K************
+         t.deathp(nx,thetavec);
+         mi.daccept++;
+#ifdef _OPENMPI
+//        cout << "accept death " << lalpha << endl;
+         const int tag=MPI_TAG_BD_DEATH_LR_ACCEPT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+      else { //transmit reject over MPI
+//        cout << "reject death " << lalpha << endl;
+         const int tag=MPI_TAG_BD_DEATH_LR_REJECT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+#else
+      }
+#endif
+      delete &sil;
+      delete &sir;
+      delete &sit;
+#ifdef _OPENMPI
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+      delete[] request;
+#endif
+   }
+}
 /*
 //--------------------------------------------------
 //peturb proposal for internal node cut points.
