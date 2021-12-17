@@ -61,14 +61,17 @@ public:
    typedef std::vector<tree_p> npv; 
    typedef std::vector<tree_cp> cnpv;
    typedef Eigen::VectorXd vxd; //used for eigen vectors with unfixed dimension
+   typedef Eigen::MatrixXd mxd; //used for eigen matricies with unfixed dimension
    
    //prior
    //contructors,destructors--------------------
    //---include initialization of thetavec
-   tree(): theta(0.0),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0){}
-   tree(const tree& n): theta(0.0),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
-   tree(double itheta): theta(itheta),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0) {}
-   tree(vxd itheta): theta(0.0),k(1),thetavec(itheta),v(0),c(0),p(0),l(0),r(0) {} //constructor for multivariate parameter
+   //tree(): theta(0.0),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0){}
+   tree(): theta(0.0),k(2),thetavec(vxd::Zero(2,1)),v(0),c(0),p(0),l(0),r(0){}
+   
+   tree(const tree& n): theta(0.0),k(1),thetavec(vxd::Zero(1)),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
+   tree(double itheta): theta(itheta),k(1),thetavec(vxd::Zero(1)),v(0),c(0),p(0),l(0),r(0) {}
+   tree(vxd itheta): theta(0.0),k(itheta.cols()),thetavec(itheta),v(0),c(0),p(0),l(0),r(0) {} //constructor for multivariate parameter
 
    void tonull(); //like a "clear", null tree has just one node
    ~tree() {tonull();}
@@ -150,6 +153,8 @@ public:
    bool death(size_t nid, vxd thetavec);
    void birthp(tree_p np,size_t v, size_t c, vxd thetavecl, vxd thetavecr);
    void deathp(tree_p nb, vxd thetavec);
+   //print functions
+   void pr_vec(bool pc=true); //to screen, pc is "print children"
 
 private:
    //double theta; //univariate double parameter

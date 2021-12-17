@@ -38,17 +38,17 @@ using std::endl;
 
 int main()
 {
+   /*
    cout << "*****into test for tree\n";
 
    crn gen;
 
    //--------------------------------------------------
    //make a simple tree
-   /*
+
    tree t;
    cout << "** print out a null tree\n";
    t.pr();
-
       
    t.birth(1,0,50,-1.0,1.0);
    cout << "** print out a tree with one split\n";
@@ -85,5 +85,24 @@ int main()
    cout << "** collapsed supertree:\n";
    st.pr();
    */
+
+   //**************************************
+   //Test out the model mixing tree functions
+   //**************************************
+   
+   //Make simple null tree and print 
+   tree tv1;
+   cout << "Simple Tree with Vector Parameters:" << endl;
+   tv1.pr_vec();
+
+   //Assign left and right vectors for terminal nodes in birth step
+   Eigen::VectorXd thetavecl, thetavecr;
+   thetavecl = Eigen::VectorXd::Random(tv1.k);
+   thetavecr = Eigen::VectorXd::Random(tv1.k);
+
+   tv1.birth(1,0,50,thetavecl,thetavecr);
+   cout << "** print out a tree with one split\n";
+   tv1.pr_vec();
+
    return 0;
 }

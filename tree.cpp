@@ -774,3 +774,35 @@ void tree::deathp(tree_p nb, vxd thetavec)
    nb->c=0;
    nb->thetavec=thetavec;
 }
+
+//---------------------------------------------------------------------
+//print tree with vector parameters
+//print out tree(pc=true) or node(pc=false) information
+void tree::pr_vec(bool pc) 
+{
+   size_t d = depth();
+   size_t id = nid();
+
+   size_t pid;
+   if(!p) pid=0; //parent of top node
+   else pid = p->nid();
+
+   std::string pad(2*d,' ');
+   std::string sp(", ");
+   if(pc && (ntype()=='t')) {
+      std::cout << "tree size: " << treesize() << std::endl;
+   }
+   std::cout << pad << "(id,parent): " << id << sp << pid;
+   std::cout << sp << "(v,c): " << v << sp << c;
+   std::cout << sp << "thetavec: " << thetavec.transpose();
+   std::cout << sp << "type: " << ntype();
+   std::cout << sp << "depth: " << depth();
+   std::cout << sp << "pointer: " << this << std::endl;
+
+   if(pc) {
+      if(l) {
+         l->pr_vec(pc);
+         r->pr_vec(pc);
+      }
+   }
+}
