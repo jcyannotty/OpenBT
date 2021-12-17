@@ -199,7 +199,7 @@ public:
    void drawthetavec(rn& gen);
 
    //Birth and Death for model mixing
-   void bd_mix(rn& gen);    
+   void bd_mix(rn& gen, dinfo_mx dim);    
 
 
 

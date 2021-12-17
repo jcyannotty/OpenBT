@@ -301,6 +301,7 @@ public:
 
 //dinfo class for model mixing
 class dinfo_mx : public dinfo{
+   public:
    dinfo_mx(): dinfo(), f(0), k(1){} //Update generic constructor
    dinfo_mx(const dinfo& d, size_t k0, double* f0) : dinfo(d), k(k0), f(f0) {} //Make dinfo_mx using previously defined dinfo
    dinfo_mx(const dinfo_mx& d) : p(d.p),n(d.n),k(d.k),x(d.x),y(d.y),f(d.f),tc(d.tc) {} //Constructor using mixing info

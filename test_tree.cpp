@@ -44,15 +44,16 @@ int main()
 
    //--------------------------------------------------
    //make a simple tree
+   /*
    tree t;
    cout << "** print out a null tree\n";
    t.pr();
 
-   /*
+      
    t.birth(1,0,50,-1.0,1.0);
    cout << "** print out a tree with one split\n";
    t.pr();
-
+   
    t.birth(2,0,25,-1.5,-0.5);
    cout << "** print out a tree with two splits\n";
    t.pr();

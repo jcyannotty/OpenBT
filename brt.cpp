@@ -1301,7 +1301,7 @@ Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
 //--------------------------------------------------
 //bd_mix: birth/death for model mixing
 //*********Need to specify K in dinfo before going any further
-void brt::bd_mix(rn& gen)
+void brt::bd_mix(rn& gen, dinfo_mx dim)
 {
 //   cout << "--------------->>into bd" << endl;
    tree::npv goodbots;  //nodes we could birth at (split on)
@@ -1346,8 +1346,8 @@ void brt::bd_mix(rn& gen)
       MPI_Request *request = new MPI_Request[tc];
 #endif
       if( !hardreject && (log(uu) < lalpha) ) {
-         thetavecl = Eigen::VectorXd:: Zero(1); //*****NEED TO SPECIFY K************
-         thetavecr = Eigen::VectorXd:: Zero(1); //*****NEED TO SPECIFY K************
+         thetavecl = Eigen::VectorXd:: Zero(dim.k); //*****NEED TO SPECIFY K************
+         thetavecr = Eigen::VectorXd:: Zero(dim.k); //*****NEED TO SPECIFY K************
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
 #ifdef _OPENMPI
