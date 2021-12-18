@@ -1300,7 +1300,6 @@ Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
 
 //--------------------------------------------------
 //bd_mix: birth/death for model mixing
-//*********Need to specify K in dinfo before going any further
 void brt::bd_mix(rn& gen, dinfo_mx dim)
 {
 //   cout << "--------------->>into bd" << endl;
@@ -1346,8 +1345,8 @@ void brt::bd_mix(rn& gen, dinfo_mx dim)
       MPI_Request *request = new MPI_Request[tc];
 #endif
       if( !hardreject && (log(uu) < lalpha) ) {
-         thetavecl = Eigen::VectorXd:: Zero(dim.k); //*****NEED TO SPECIFY K************
-         thetavecr = Eigen::VectorXd:: Zero(dim.k); //*****NEED TO SPECIFY K************
+         thetavecl = Eigen::VectorXd:: Zero(dim.k); 
+         thetavecr = Eigen::VectorXd:: Zero(dim.k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
 #ifdef _OPENMPI
@@ -1436,6 +1435,7 @@ void brt::bd_mix(rn& gen, dinfo_mx dim)
 #endif
    }
 }
+
 /*
 //--------------------------------------------------
 //peturb proposal for internal node cut points.

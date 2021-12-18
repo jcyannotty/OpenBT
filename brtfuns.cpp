@@ -549,6 +549,57 @@ void collapsetree(tree& st, tree::tree_p t, tree::tree_p tprime)
             tbots[j]->settheta(tbots[j]->gettheta()+theta);
       }
 }
+
+//--------------------------------------------------
+//Analogue of collapsetree function for vector valued parameters
+void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
+{
+      tree::npv tlefts, trights, tbots;
+      tree::tree_cp tempt;
+
+      double theta=t->gettheta();
+
+      //simple case, tprime is terminal, t is (always) terminal
+      if(!tprime->l) {
+         t->settheta(tprime->gettheta()+theta);
+      }
+      else if(!t->p)  //simple case 2: t is a terminal root node
+      {
+         st.tonull();
+         st=(*tprime); //copy
+         st.getbots(tbots);// all terminal nodes below t.
+         for(size_t j=0;j<tbots.size();j++)
+            tbots[j]->settheta(tbots[j]->gettheta()+theta);
+      }
+      else { //general case, t is (always) terminal, tprime is not.
+         tempt=tprime;
+         tree::tree_p tpar=t->p;
+         if(t->isleft()) {
+            t->p=0;
+            delete t;
+            tpar->l=new tree(*tempt);
+            tpar->l->p=tpar;
+            tpar->l->getpathtorootlr(tlefts,trights);
+            //collapse redundancies in tprime
+            splitall(tpar->l,tlefts,trights);
+            tpar->l->getbots(tbots);// all terminal nodes below t.
+         }
+         else { //isright
+            t->p=0;
+            delete t;
+            tpar->r=new tree(*tempt);
+            tpar->r->p=tpar;
+            tpar->r->getpathtorootlr(tlefts,trights);
+            //collapse redundancies in tprime
+            splitall(tpar->r,tlefts,trights);
+            tpar->r->getbots(tbots);// all terminal nodes below t.
+         }
+
+         for(size_t j=0;j<tbots.size();j++)
+            tbots[j]->settheta(tbots[j]->gettheta()+theta);
+      }
+}
+
 //--------------------------------------------------
 //split tree along a sequence of variable, cutpoint pairs
 //retains only the part of the tree that remains.
@@ -655,6 +706,7 @@ bool merge(tree::tree_p tl, tree::tree_p tr, tree::tree_p t, size_t v, size_t c,
          t->v=tl->v;
          t->c=tl->c;
          t->theta=tl->theta;  //doesn't matter actually it will be overwritten.
+         t->thetavec=tl->thetavec;  //doesn't matter actually it will be overwritten.
          t->l=0;
          t->r=0;
       }

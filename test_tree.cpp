@@ -100,7 +100,13 @@ int main()
    thetavecl = Eigen::VectorXd::Random(tv1.k);
    thetavecr = Eigen::VectorXd::Random(tv1.k);
 
+   //Performa a birth step on the root node
    tv1.birth(1,0,50,thetavecl,thetavecr);
+   cout << "** print out a tree with one split\n";
+   tv1.pr_vec();
+
+   //Performa a second birth step 
+   tv1.birth(2,0,25,thetavecl*2,thetavecr*1.5);
    cout << "** print out a tree with one split\n";
    tv1.pr_vec();
 

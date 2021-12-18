@@ -108,8 +108,8 @@ bool mergecount(tree::tree_p tl, tree::tree_p tr, size_t v, size_t c, int* nways
 // Functions to support collapsing BART ensemble into single supertree
 //--------------------------------------------------
 void collapsetree(tree& st, tree::tree_p t, tree::tree_p tprime);
+void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime); //Use for vector parameter theta
 void splitall(tree::tree_p t, tree::npv& tlefts, tree::npv& trights);
-
 
 //--------------------------------------------------
 // Functions to support calculation of Sobol indices for BART
@@ -133,5 +133,6 @@ double probxall_termkl_rect(size_t k, size_t l, std::vector<std::vector<double> 
 
 std::vector<size_t> find_pareto_front(size_t start, size_t end, std::list<std::vector<double> > theta);
 bool not_dominated(size_t index, std::vector<size_t> R, std::list<std::vector<double> > theta);
+
 
 #endif
