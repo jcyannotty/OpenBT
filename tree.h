@@ -66,12 +66,10 @@ public:
    //prior
    //contructors,destructors--------------------
    //---include initialization of thetavec
-   //tree(): theta(0.0),k(1),thetavec(vxd::Zero(k)),v(0),c(0),p(0),l(0),r(0){}
-   tree(): theta(0.0),k(2),thetavec(vxd::Zero(2,1)),v(0),c(0),p(0),l(0),r(0){}
-   
-   tree(const tree& n): theta(0.0),k(1),thetavec(vxd::Zero(1)),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
-   tree(double itheta): theta(itheta),k(1),thetavec(vxd::Zero(1)),v(0),c(0),p(0),l(0),r(0) {}
-   tree(vxd itheta): theta(0.0),k(itheta.cols()),thetavec(itheta),v(0),c(0),p(0),l(0),r(0) {} //constructor for multivariate parameter
+   tree(): theta(0.0),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0){}
+   tree(const tree& n): theta(0.0),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
+   tree(double itheta): theta(itheta),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0) {}
+   tree(vxd itheta): theta(0.0),k(itheta.rows()),thetavec(itheta),v(0),c(0),p(0),l(0),r(0) {} //constructor for multivariate parameter
 
    void tonull(); //like a "clear", null tree has just one node
    ~tree() {tonull();}

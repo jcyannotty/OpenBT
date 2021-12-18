@@ -108,7 +108,7 @@ bool mergecount(tree::tree_p tl, tree::tree_p tr, size_t v, size_t c, int* nways
 // Functions to support collapsing BART ensemble into single supertree
 //--------------------------------------------------
 void collapsetree(tree& st, tree::tree_p t, tree::tree_p tprime);
-void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime); //Use for vector parameter theta
+void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime); //collapse tree for vector parameter theta
 void splitall(tree::tree_p t, tree::npv& tlefts, tree::npv& trights);
 
 //--------------------------------------------------

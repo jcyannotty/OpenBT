@@ -39,6 +39,9 @@ using std::endl;
 int main()
 {
    /*
+   //--------------------------------------------------
+   // Test the tree for univariate theta
+   //--------------------------------------------------
    cout << "*****into test for tree\n";
 
    crn gen;
@@ -58,12 +61,15 @@ int main()
    cout << "** print out a tree with two splits\n";
    t.pr();
 
-
    tree t2;
    t2.birth(1,0,33,-3,3);
    cout << "** tree 2\n";
    t2.pr();
-
+   
+   //make another tree - intialized by theta
+   tree t3(0.5);
+   t3.pr();
+   
    tree::npv bots;
    tree st;
 
@@ -86,14 +92,15 @@ int main()
    st.pr();
    */
 
-   //**************************************
+   //--------------------------------------------------
    //Test out the model mixing tree functions
-   //**************************************
+   //--------------------------------------------------
    
    //Make simple null tree and print 
    tree tv1;
-   cout << "Simple Tree with Vector Parameters:" << endl;
+   cout << "~~~ Simple Tree with Vector Parameters: ~~~" << endl;
    tv1.pr_vec();
+   cout << "***************************************" << endl;
 
    //Assign left and right vectors for terminal nodes in birth step
    Eigen::VectorXd thetavecl, thetavecr;
@@ -102,13 +109,42 @@ int main()
 
    //Performa a birth step on the root node
    tv1.birth(1,0,50,thetavecl,thetavecr);
-   cout << "** print out a tree with one split\n";
+   cout << "~~~ print out a tree with one split ~~~\n";
    tv1.pr_vec();
-
-   //Performa a second birth step 
+   cout << "***************************************" << endl;
+   
+   //Perform a second birth step 
    tv1.birth(2,0,25,thetavecl*2,thetavecr*1.5);
-   cout << "** print out a tree with one split\n";
+   cout << "~~~ print out a tree with two splits ~~~\n";
    tv1.pr_vec();
+   cout << "***************************************" << endl;
+
+   //Perform a death and insert new value of theta to collapsed node
+   Eigen::VectorXd dtheta(2);
+   dtheta << 0.2, 1.1;
+   cout << "~~~ Perform a death at node 2 ~~~\n";
+   tv1.death(2, dtheta);
+   tv1.pr_vec();
+   cout << "***************************************" << endl;
+
+   //Reset tree to the root node with defaukt parameters via a destructor
+   cout << "~~~ Destruct the tree -- revert to root node ~~~\n";
+   tv1.tonull();
+   tv1.pr_vec();
+   cout << "***************************************" << endl;
+
+   //Test other constructors
+   tree tv2(tv1); //Initialize new tree using existing tree
+   cout << "~~~ New tree based on old tree ~~~\n";
+   tv2.pr_vec();
+   cout << "***************************************" << endl;
+
+   Eigen::VectorXd itheta(3);
+   itheta << 1.2, 0.8, 0.1; //populate a theta vector 
+   tree tv3(itheta); //Initialize new tree with theta vector
+   cout << "~~~ New tree initialized by itheta ~~~\n";
+   tv3.pr_vec();
+   cout << "***************************************" << endl;
 
    return 0;
 }
