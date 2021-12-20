@@ -513,6 +513,7 @@ void tree::cp(tree_p n, tree_cp o)
    }
 
    n->theta = o->theta;
+   n->thetavec = o->thetavec;
    n->v = o->v;
    n->c = o->c;
 

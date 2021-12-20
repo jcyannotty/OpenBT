@@ -146,5 +146,18 @@ int main()
    tv3.pr_vec();
    cout << "***************************************" << endl;
 
+   tree tv3_copy;
+   tv3_copy = tv3;
+   cout << "~~~ Copy Tree ~~~\n";
+   tv3_copy.pr_vec();
+   cout << "***************************************" << endl;
+
+   Eigen::VectorXd itheta2(3);
+   itheta2 << 2, 1, 0.5; //populate a theta vector
+   cout << "~~~ Set Theta and Get Theta ~~~\n";
+   tv3.setthetavec(itheta2);
+   cout << "Updated theta vector: \n" << tv3.getthetavec() << endl;
+   cout << "***************************************" << endl;
+
    return 0;
 }
