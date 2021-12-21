@@ -194,21 +194,26 @@ public:
    //Methods for vector parameters and model mixing
    //--------------------------------------------------
    //draw theta vector -- used for vector parameter
+   void drawvec(rn& gen);
+   void drawvec_mpislave(rn& gen);
    void drawthetavec(rn& gen);
 
-   //Birth and Death for model mixing
-   void bd_mix(rn& gen);
+   //Birth and Death for vector parameters
+   void bd_vec(rn& gen);
 
    //Set the data, the vector of predicted values, and residuals
    void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix(); }
    void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k;} //sets the pointer for the f matrix and k as members of brt 
    void setf_mix();
    void setr_mix(); 
-   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x   
+   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x  
+
+   //Print brt object with vector parameters
+   void pr_vec(); 
 
    //Save and load the tree
    //Save Tree -- revist this
-   //Load Tree -- revist this
+   //Load Tree -- revist this 
 
 protected:
    //--------------------
@@ -291,15 +296,18 @@ protected:
    dinfo_mx *dimx; //dinfo for model mixing...maybe remove in favor of a setdata_mx function  
    finfo *fi; //pointer to the f matrix  
    size_t k;
+   
+   
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
    virtual void local_setf_mix(diterator& diter);
    virtual void local_setr_mix(diterator& diter);
    virtual void local_predict_mix(diterator& diter, finfo& fipred);
+   
    // #ifdef _OPENMP
-   //void local_ompgetsuff_mix(tree::tree_p nx, size_t v, size_t c, dinfo_mx dimx, sinfo& sil, sinfo& sir);
-   //void local_ompgetsuff_mix(tree::tree_p l, tree::tree_p r, dinfo_mx dimx, sinfo& sil, sinfo& sir);
-   //void local_ompallsuff_mix(dinfo_mx dimx, tree::npv bnv,std::vector<sinfo*>& siv);
-   //void local_ompsubsuff_mix(dinfo_mx dimx, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv);
+   //void local_ompgetsuff_mix(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir);
+   //void local_ompgetsuff_mix(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir);
+   //void local_ompallsuff_mix(dinfo di, tree::npv bnv,std::vector<sinfo*>& siv);
+   //void local_ompsubsuff_mix(dinfo di, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv);
    void local_ompsetf_mix(dinfo di);
    void local_ompsetr_mix(dinfo di);
    void local_omppredict_mix(dinfo dipred, finfo fipred);
