@@ -30,31 +30,51 @@ int main(){
     std::vector<double> x;
     double xtemp;
     size_t n,p;
-    p=2;
+    p=1;
 
-    std::ifstream xf("f.txt");
+    std::ifstream xf("x.txt");
     while(xf >> xtemp){
         x.push_back(xtemp);
     }
-    cout << x.size() << endl;
+    
     n = x.size()/p;
     if(x.size() != n*p) {
         cout << "error: input x file has wrong number of values\n";
         return 1;
     }
     cout << "n,p: " << n << ", " << p << endl;
+
+    //--------------------------------------------------
+    //read in f
+    std::vector<double> f;
+    double ftemp;
+    size_t k; //number of columns in f
+    k=2;
+
+    std::ifstream ff("f.txt");
+    while(ff >> ftemp){
+        f.push_back(ftemp);
+    }
+    
+    if(f.size() != n*k) {
+        cout << "error: input f file has wrong number of values\n";
+        return 1;
+    }
+    cout << "n,k: " << n << ", " << k << endl;
     
     //--------------------------------------------------
-    //Make dinfo -- (want to test vector parameter functions here. Test model mixing later with dinfo_mx)
+    //Make dinfo and diterator
     dinfo di;
     di.n=n;di.p=p,di.x = &x[1];di.tc=tc;
 
     diterator diter(&di);
+    /*
     cout << "Output of first diter: \n" << "X = " << diter.getx() << " i = " << diter.geti() <<  " *diter = "  << *diter << endl;
 
     for(;diter<diter.until();diter++){
         cout << diter.getx() << "-------" << *diter << endl;
     }
+    */
 
     //--------------------------------------------------
     //make xinfo
@@ -66,18 +86,91 @@ int main(){
     //--------------------------------------------------
     //make finfo -- need to read in and store f formally, just using same x from above for now
     finfo fi;
-    size_t k;
-    k = 2;
-    //n = x.size()/k;
-    makefinfo(k, n, &x[0], fi);
-
+    makefinfo(k, n, &f[0], fi);
     cout << fi << endl;
 
     //--------------------------------------------------
-    //make a tree and print out results from bottom nodes function
-    tree t;
-    t.birth(1, 0, 10, 1.0, 2.0);
-    //t.pr();
+    // read in the initial change of variable rank correlation matrix
+    std::vector<std::vector<double> > chgv;
+    std::vector<double> cvvtemp;
+    double cvtemp;
+    std::ifstream chgvf("chgv.txt");
+    for(size_t i=0;i<di.p;i++) {
+        cvvtemp.clear();
+        for(size_t j=0;j<di.p;j++) {
+            chgvf >> cvtemp;
+            cvvtemp.push_back(cvtemp);
+        }
+        chgv.push_back(cvvtemp);
+    }
+    cout << "change of variable rank correlation matrix loaded:" << endl;
+    for(size_t i=0;i<di.p;i++) {
+        for(size_t j=0;j<di.p;j++)
+            cout << "(" << i << "," << j << ")" << chgv[i][j] << "  ";
+        cout << endl;
+    }
+
+    //--------------------------------------------------
+    //brt Example 1:
+    cout << "\n******************************************" << endl;
+    cout << "\n#####EX1: make a brt object and print it out\n";
+    brt bm;
+    cout << "\nbefore init:\n";
+    bm.pr_vec();
+    //cutpoints
+    bm.setxi(&xi);    //set the cutpoints for this model object
+    //set fi
+    bm.setfi(&fi,k); //set the function values 
+    //data objects
+    bm.setdata_mix(&di);  //set the data...not sure if we need to used setdata_mix() since this should only be used at the start of mcmc
+    //thread count
+    bm.settc(tc);      //set the number of threads when using OpenMP, etc.
+    //tree prior
+    bm.settp(0.95, //the alpha parameter in the tree depth penalty prior
+            1.0     //the beta parameter in the tree depth penalty prior
+            );
+
+    //MCMC info
+    bm.setmi(0.7,  //probability of birth/death
+         0.5,  //probability of birth
+         5,    //minimum number of observations in a bottom node
+         true, //do perturb/change variable proposal?
+         0.2,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
+         0.2,  //probability of doing a change of variable proposal.  perturb prob=1-this.
+         &chgv  //initialize the change of variable correlation matrix.
+         );
+    cout << "\nafter init:\n";
+    bm.pr_vec();
+    
+
+    //--------------------------------------------------
+    //brt Example 2:
+    cout << "\n******************************************" << endl;
+    cout << "\n#####EX2: try some draws of brt and print it out\n";
+    cout << "\n1 draw:\n";
+    bm.drawvec(gen);
+    bm.pr_vec();
+    
+    size_t nd=10;
+    cout << "\n" << nd << " draws:\n";
+    for(size_t i=0;i<nd;i++){
+        bm.drawvec(gen);
+        bm.pr_vec();
+    } 
+
+    //--------------------------------------------------
+    //Example 3: Test the setf_mix & setr_mix and compare to setf & setr
+    cout << "\n******************************************" << endl;
+    cout << "Before setf_mix ... " << bm.f(2) << endl;
+    bm.setf_mix();
+    cout << "After setf_mix ... " << bm.f(2) << endl;
+
+    cout << "Before setr_mix ... " << bm.r(2) << endl;
+    bm.setr_mix();
+    cout << "After setr_mix ... " << bm.r(2) << endl;
+    
+    //--------------------------------------------------
+    //Extra 
 
     //cout << x[44] << endl;
 
