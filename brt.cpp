@@ -1300,7 +1300,7 @@ Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
 
 //--------------------------------------------------
 //bd_mix: birth/death for model mixing
-void brt::bd_mix(rn& gen, dinfo_mx dim)
+void brt::bd_mix(rn& gen)
 {
 //   cout << "--------------->>into bd" << endl;
    tree::npv goodbots;  //nodes we could birth at (split on)
@@ -1345,8 +1345,8 @@ void brt::bd_mix(rn& gen, dinfo_mx dim)
       MPI_Request *request = new MPI_Request[tc];
 #endif
       if( !hardreject && (log(uu) < lalpha) ) {
-         thetavecl = Eigen::VectorXd:: Zero(dim.k); 
-         thetavecr = Eigen::VectorXd:: Zero(dim.k); 
+         thetavecl = Eigen::VectorXd:: Zero(k); 
+         thetavecr = Eigen::VectorXd:: Zero(k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
 #ifdef _OPENMPI
@@ -1401,12 +1401,12 @@ void brt::bd_mix(rn& gen, dinfo_mx dim)
 
       //--------------------------------------------------
       //try metrop
-      Eigen::VectorXd thetavec;
+      Eigen::VectorXd thetavec(k);
 #ifdef _OPENMPI
       MPI_Request *request = new MPI_Request[tc];
 #endif
       if(log(gen.uniform()) < lalpha) {
-         thetavec = Eigen::VectorXd::Zero(1); //*****NEED TO SPECIFY K************
+         thetavec = Eigen::VectorXd::Zero(k); 
          t.deathp(nx,thetavec);
          mi.daccept++;
 #ifdef _OPENMPI
@@ -1435,6 +1435,121 @@ void brt::bd_mix(rn& gen, dinfo_mx dim)
 #endif
    }
 }
+
+//--------------------------------------------------
+//Model Mixing - set residuals and fitted values
+//--------------------------------------------------
+//set the vector of predicted values
+void brt::setf_mix() {
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompsetf(*di); //faster if pass dinfo by value.
+   #else
+         diterator diter(di);
+         local_setf_mix(diter);
+   #endif
+}
+void brt::local_ompsetf_mix(dinfo di)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = di.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&di,beg,end);
+   local_setf_mix(diter);
+#endif
+}
+void brt::local_setf_mix(diterator& diter)
+{
+   tree::tree_p bn;
+   vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
+   
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec(); 
+      yhat[*diter] = (*fi).row(*diter)*thetavec_temp; 
+   }
+}
+
+
+//--------------------------------------------------
+//set the vector of residual values
+void brt::setr_mix() {
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompsetr(*di); //faster if pass dinfo by value.
+   #else
+         diterator diter(di);
+         local_setr_mix(diter);
+   #endif
+}
+void brt::local_ompsetr_mix(dinfo di)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = di.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&di,beg,end);
+   local_setr_mix(diter);
+#endif
+}
+void brt::local_setr_mix(diterator& diter)
+{
+   tree::tree_p bn;
+   vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
+
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      //resid[*diter] = 0.0 - bn->gettheta();
+      resid[*diter] = (di->y[*diter]) - (*fi).row(*diter)*thetavec_temp;
+   }
+}
+//--------------------------------------------------
+//predict the response at the (npred x p) input matrix *x
+//Note: the result appears in *dipred.y.
+void brt::predict_mix(dinfo* dipred, finfo* fipred) {
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_omppredict_mix(*dipred, *fipred); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_predict_mix(diter, *fipred);
+   #endif
+}
+void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = dipred.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&dipred,beg,end);
+   local_predict_mix(diter, fipred);
+#endif
+}
+void brt::local_predict_mix(diterator& diter, finfo& fipred)
+{
+   tree::tree_p bn;
+
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      diter.sety(bn->gettheta());
+   }
+}
+
 
 /*
 //--------------------------------------------------
