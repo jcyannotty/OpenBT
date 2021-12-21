@@ -64,11 +64,22 @@ int main(){
 
     //prxi(xi);
     //--------------------------------------------------
+    //make finfo -- need to read in and store f formally, just using same x from above for now
+    finfo fi;
+    size_t k;
+    k = 2;
+    //n = x.size()/k;
+    makefinfo(k, n, &x[0], fi);
+
+    cout << fi << endl;
+
+    //--------------------------------------------------
     //make a tree and print out results from bottom nodes function
     tree t;
     t.birth(1, 0, 10, 1.0, 2.0);
     //t.pr();
 
+    //cout << x[44] << endl;
 
     /*
     //Important Eigen storage example. Shows ways to work with eigen pointers/references
@@ -80,13 +91,26 @@ int main(){
     cout << A << endl;
     cout << &A << endl; //Address of the matrix
     cout << A.data() << endl; //Address of the first element
-    cout << *(A.data() + 1) << endl; //Address of the 2nd row 1st column element
-    cout << *(A.data() + 2) << endl; //Address of the 1st row 2nd column element
-    cout << *(A.data() + 3) << endl; //Address of the 2nd row 2nd column element
+    cout << *(A.data() + 1) << endl; //Dereference the 2nd row 1st column element -- prints 1
+    cout << *(A.data() + 2) << endl; //Dereference the 1st row 2nd column element -- prints 4
+    cout << *(A.data() + 3) << endl; //Dereference the 2nd row 2nd column element -- prints 3
 
     cout << "print B:" << endl;
     cout << *B << endl; //Prints a dereferenced B -- same output as A
     cout << ((*B).data()) << endl; //Prints the same as A.data()
     cout << (*B).row(1) << endl; //Print the 2nd row of dereferenced B.
     */
+
+   /*
+   //Two ways to convert a vector to a matrix -- used to make finfo
+   Eigen::VectorXd v(6);
+   v << 10,20,30,40, 50, 60;
+   Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), 2,3);
+   cout << M.transpose() << endl;
+   
+   mxd M2 = Eigen::Map<Eigen::Matrix<double, 3,2, Eigen::RowMajor>>(v.data());
+   cout << M2 << endl;
+   */
+
+
 }

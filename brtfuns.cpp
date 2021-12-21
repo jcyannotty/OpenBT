@@ -601,6 +601,23 @@ void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
 }
 
 //--------------------------------------------------
+//Make finfo for model mixing -- changes fi using pass by reference
+
+void makefinfo(size_t k, int n, double *f, finfo &fi){
+   vxd v(n*k); //used to store the contents (as a vector) to be passed into finfo 
+   //Populate vxd using f
+   for(int i = 0; i < n*k; i++){
+      v(i) = f[i];
+   }
+   //Shape into a Matrix of kxn and populated by column
+   Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), k,n);
+
+   //Reshape to get nxk and store into fi
+   fi = M.transpose();  
+}
+
+
+//--------------------------------------------------
 //split tree along a sequence of variable, cutpoint pairs
 //retains only the part of the tree that remains.
 //Note this generates both the left and right subtree branches
