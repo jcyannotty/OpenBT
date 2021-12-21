@@ -41,6 +41,12 @@ typedef std::vector<double> vec_d; //double vector
 typedef std::vector<vec_d> xinfo; //vector of vectors, will be split rules
 
 //--------------------------------------------------
+//Defined for model mixing
+typedef Eigen::VectorXd vxd; //used for eigen vectors with unfixed dimension
+typedef Eigen::MatrixXd mxd; //used for eigen matricies with unfixed dimension 
+typedef mxd finfo; //defined to be consistent with xinfo naming convention
+
+//--------------------------------------------------
 //info contained in a node, used by input operator
 struct node_info {
    std::size_t id; //node id
@@ -60,8 +66,6 @@ public:
    typedef const tree* tree_cp;
    typedef std::vector<tree_p> npv; 
    typedef std::vector<tree_cp> cnpv;
-   typedef Eigen::VectorXd vxd; //used for eigen vectors with unfixed dimension
-   typedef Eigen::MatrixXd mxd; //used for eigen matricies with unfixed dimension
    
    //prior
    //contructors,destructors--------------------

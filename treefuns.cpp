@@ -228,12 +228,16 @@ void getinternalvars(tree::tree_p n, xinfo& xi,  std::vector<size_t>& goodvars)
       if(U>=L) goodvars.push_back(v);
    }
 }
+//--------------------------------------------------
+// End of rotate helper functions
+//--------------------------------------------------
+
 
 //--------------------------------------------------
 //Add helper functions for model mixing
 //--------------------------------------------------
 //--------------------------------------------------
-//gmr_vec -- evaluate evalute tree tr on grid given by xgrid and write to os. use vector parameter thetavec
+//gmr_vec -- evaluate tree tr on grid given by xgrid and write to os. use vector parameter thetavec
 //-----xgrid is a vector of vectors for cutpoints and values 
 void grm_vec(tree& tr, xinfo& xgrid, std::ostream& os)
 {
@@ -267,7 +271,4 @@ void fit_mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv)
    }
 }
 
-//--------------------------------------------------
-// End of rotate helper functions
-//--------------------------------------------------
 
