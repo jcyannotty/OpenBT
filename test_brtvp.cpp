@@ -113,7 +113,7 @@ int main(){
     //--------------------------------------------------
     //brt Example 1:
     cout << "\n******************************************" << endl;
-    cout << "\n#####EX1: make a brt object and print it out\n";
+    cout << "\n Make a brt object and print it out\n";
     brt bm;
     cout << "\nbefore init:\n";
     bm.pr_vec();
@@ -146,17 +146,18 @@ int main(){
     //--------------------------------------------------
     //brt Example 2:
     cout << "\n******************************************" << endl;
-    cout << "\n#####EX2: try some draws of brt and print it out\n";
+    cout << "\nTry some draws of brt and print it out\n";
     cout << "\n1 draw:\n";
     bm.drawvec(gen);
     bm.pr_vec();
     
-    size_t nd=10;
+    size_t nd=1000;
     cout << "\n" << nd << " draws:\n";
     for(size_t i=0;i<nd;i++){
         bm.drawvec(gen);
-        bm.pr_vec();
+        //bm.pr_vec();
     } 
+    bm.pr_vec();
 
     //--------------------------------------------------
     //Example 3: Test the setf_mix & setr_mix and compare to setf & setr
@@ -170,8 +171,80 @@ int main(){
     cout << "After setr_mix ... " << bm.r(2) << endl;
     
     //--------------------------------------------------
-    //Extra 
+    //Example 4: Work with sinfo
+    cout << "\n******************************************" << endl;
+    std::vector<sinfo> siv(2);
+    std::cout << "testing vectors of sinfos\n";
+    std::cout << siv[0].n << ", " << siv[1].n << std::endl;
 
+    siv.clear();
+    siv.resize(2);
+    std::cout << siv[0].n << ", " << siv[1].n << std::endl;
+
+    //--------------------------------------------------
+    //Example 5: Work towards constructing a full mcmc
+    cout << "\n******************************************" << endl;
+    size_t tuneevery=250;
+    size_t tune=5000;
+    size_t burn=5000;
+    size_t draws=5000;
+    brt b;
+
+    b.setxi(&xi);
+    b.setfi(&fi, k);
+    b.setdata_mix(&di);
+    b.settc(tc);
+    //Setmi -- pbd,pb,minperbot,dopert,pertalpha,pchgv,chgv
+    b.setmi(0.8,0.5,5,true,0.1,0.2,&chgv);
+
+    // tune the sampler   
+    for(size_t i=0;i<tune;i++){
+        b.drawvec(gen);
+        if((i+1)%tuneevery==0){
+            b.adapt();
+        }
+    }
+
+    b.t.pr_vec();
+    // run some burn-in, tuning is fixed now
+    for(size_t i=0;i<burn;i++){
+        b.drawvec(gen);
+    }
+
+    // draw from the posterior
+    // After burn-in, turn on statistics if we want them:
+    cout << "Collecting statistics" << endl;
+    b.setstats(true);
+    // then do the draws
+    for(size_t i=0;i<draws;i++){
+        b.drawvec(gen);
+    }
+
+    // summary statistics
+    unsigned int varcount[p];
+    unsigned int totvarcount=0;
+    for(size_t i=0;i<p;i++) varcount[i]=0;
+    unsigned int tmaxd=0;
+    unsigned int tmind=0;
+    double tavgd=0.0;
+
+    b.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
+    for(size_t i=0;i<p;i++) totvarcount+=varcount[i];
+    tavgd/=(double)(draws);
+
+    cout << "Average tree depth: " << tavgd << endl;
+    cout << "Maximum tree depth: " << tmaxd << endl;
+    cout << "Minimum tree depth: " << tmind << endl;
+    cout << "Variable perctg:    ";
+    for(size_t i=0;i<p;i++) cout << "  " << i+1 << "  ";
+    cout << endl;
+    cout << "                    ";
+    for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
+    cout << endl;
+    
+    //--------------------------------------------------
+    //--------------------------------------------------
+    //Extra 
     //cout << x[44] << endl;
 
     /*
