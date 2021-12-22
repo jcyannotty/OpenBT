@@ -86,5 +86,14 @@ void getinternalvars(tree::tree_p n, xinfo& xi,  std::vector<size_t>& goodvars);
 // End of rotate helper functions
 //--------------------------------------------------
 
+//--------------------------------------------------
+// Vector Parameter/Model Mixing Functions
+//--------------------------------------------------
+//evaluate tree tr on grid xgrid, write to os
+void grm_vec(tree& tr, xinfo& xgrid, std::ostream& os);
+
+//fit tree at matrix of x, matrix is stacked columns x[i,j] is *(x+p*i+j) -- used for model mixing 
+void fit_mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv);
+
 
 #endif
