@@ -557,11 +557,11 @@ void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
       tree::npv tlefts, trights, tbots;
       tree::tree_cp tempt;
 
-      double theta=t->gettheta();
+      vxd thetavec=t->getthetavec();
 
       //simple case, tprime is terminal, t is (always) terminal
       if(!tprime->l) {
-         t->settheta(tprime->gettheta()+theta);
+         t->setthetavec(tprime->getthetavec()+thetavec);
       }
       else if(!t->p)  //simple case 2: t is a terminal root node
       {
@@ -569,7 +569,7 @@ void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
          st=(*tprime); //copy
          st.getbots(tbots);// all terminal nodes below t.
          for(size_t j=0;j<tbots.size();j++)
-            tbots[j]->settheta(tbots[j]->gettheta()+theta);
+            tbots[j]->setthetavec(tbots[j]->getthetavec()+thetavec);
       }
       else { //general case, t is (always) terminal, tprime is not.
          tempt=tprime;
@@ -596,7 +596,7 @@ void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
          }
 
          for(size_t j=0;j<tbots.size();j++)
-            tbots[j]->settheta(tbots[j]->gettheta()+theta);
+            tbots[j]->setthetavec(tbots[j]->getthetavec()+thetavec);
       }
 }
 
