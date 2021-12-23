@@ -9,19 +9,22 @@
 //Include the Eigen header files
 #include "Eigen/Dense"
 
+//typedef defined in tree class --- mxd = Eigen::MatrixXd and vxd = Eigen::VectorXd
+
 //Define the mxinfo class -- inherits from sinfo
 class mxsinfo : public sinfo{
     public:
         //Constructors:
-        mxsinfo():sinfo(),k(2),sumffw(Eigen::MatrixXd::Zero(2,2)), sumfyw(Eigen::VectorXd::Zero(2)) {} //Initialize mxinfo with default settings
-        mxsinfo(sinfo& is, int k0, Eigen::MatrixXd sff, Eigen::VectorXd sfy):sinfo(is), k(k0), sumffw(sff), sumfyw(sfy) {} //Construct mxinfo instance with values -- need to use references
-        mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw){} //Input object of mxinfro (is) and instantiate new mxinfo 
+        mxsinfo():sinfo(),k(2),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(2)), sumyyw(0.0) {} //Initialize mxinfo with default settings
+        mxsinfo(sinfo& is, int k0, mxd sff, vxd sfy, double syy):sinfo(is), k(k0), sumffw(sff), sumfyw(sfy), sumyyw(syy) {} //Construct mxinfo instance with values -- need to use references
+        mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw){} //Input object of mxinfro (is) and instantiate new mxinfo 
 
-        virtual ~mxsinfo() {} //free memory -- need to figure out how this works -- can't use the first constructor in int main 
+        virtual ~mxsinfo() {} 
 
         //Initialize sufficient stats
-        Eigen::MatrixXd sumffw; //Computes F^t*F by summing over fi*fi^t for the observations in each tnode (fi = vector of dimension K)
-        Eigen::VectorXd sumfyw; //Computes F^t*Y by summing over fi*yi for observations in each tnode (fi = vector and yi = scalar) 
+        Eigen::MatrixXd sumffw; //Computes F^t*F/sig2 by summing over fi*fi^t for the observations in each tnode (fi = vector of dimension K)
+        Eigen::VectorXd sumfyw; //Computes F^t*Y/sig2 by summing over fi*yi for observations in each tnode (fi = vector and yi = scalar) 
+        double sumyyw; //computes Y^t*Y/sig2 by summing over yi*yi for observations in each tnode
         int k; //number of models, so equal to number of columns in sumffw. This is needed in order to initialize Zero matrix/vector in eigen
 
         //Define Operators -- override from sinfo class
@@ -31,6 +34,7 @@ class mxsinfo : public sinfo{
             const mxsinfo& mrhs = static_cast<const mxsinfo&>(rhs); //Cast rhs as an mxinfo instance.  
             sumffw += mrhs.sumffw;
             sumfyw += mrhs.sumfyw;
+            sumyyw += mrhs.sumyyw;
             return *this; //returning *this should indicate that we return updated sumffw and sumfyw while also using a pointer
         }
 
@@ -41,6 +45,7 @@ class mxsinfo : public sinfo{
                 const mxsinfo& mrhs=static_cast<const mxsinfo&>(rhs);
                 this->sumffw = mrhs.sumffw; 
                 this->sumfyw = mrhs.sumfyw;
+                this->sumyyw = mrhs.sumyyw;
                 this->k = mrhs.k; //May not need this assignment
                 return *this; 
             }
@@ -59,6 +64,7 @@ class mxsinfo : public sinfo{
             std::cout << "**************************************" << std::endl; 
             std::cout << "sumffw = \n" << sumffw << std::endl;
             std::cout << "sumfyw = \n" << sumfyw << std::endl;
+            std::cout << "sumyyw = \n" << sumyyw << std::endl;
             std::cout << "K = " << k << std::endl;
         }
 };
@@ -66,47 +72,50 @@ class mxsinfo : public sinfo{
 
 class mxbrt : public brt{
 public:
-   //--------------------
-   //classes
-   // tprior and mcmcinfo are same as in brt
-    class cinfo{
-    public:
-        cinfo():beta0(1.0), tau(1.0), sigma(0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
-        double beta0, tau;
-        double* sigma; //use pointer since this will be changed as mcmc iterates
-    };
-   //--------------------
-   //constructors/destructors
-   mxbrt():brt() {}
-   //--------------------
-   //methods
-   void drawvec(rn& gen);
-   void drawvec_mpislave(rn& gen);
-   void setci(double tau, double beta0 ,double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; }
-   virtual vxd drawnodethetavec(sinfo& si, rn& gen);
-   virtual double lm(sinfo& si);
-   virtual void add_observation_to_suff(diterator& diter, sinfo& si);
-   virtual sinfo* newsinfo() { return new mxsinfo; }
-   virtual std::vector<sinfo*>& newsinfovec() { std::vector<sinfo*>* si= new std::vector<sinfo*>; return *si; }
-   virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mxsinfo); return *si; }
-   virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
-   virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
-   void pr_vec();
+    //--------------------
+    //classes
+    // tprior and mcmcinfo are same as in brt
+        class cinfo{
+        public:
+            cinfo():beta0(1.0), tau(1.0), sigma(0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
+            double beta0, tau;
+            double* sigma; //use pointer since this will be changed as mcmc iterates
+        };
+    //--------------------
+    //constructors/destructors
+    mxbrt():brt() {}
+    //--------------------
+    //methods
+    void drawvec(rn& gen);
+    void drawvec_mpislave(rn& gen);
+    void setci(double tau, double beta0 ,double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; }
+    virtual vxd drawnodethetavec(sinfo& si, rn& gen);
+    virtual double lm(sinfo& si);
+    virtual void add_observation_to_suff(diterator& diter, sinfo& si);
+    virtual sinfo* newsinfo() { return new mxsinfo; }
+    virtual std::vector<sinfo*>& newsinfovec() { std::vector<sinfo*>* si= new std::vector<sinfo*>; return *si; }
+    virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mxsinfo); return *si; }
+    virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
+    virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
+    void pr_vec();
 
-   //--------------------
-   //data
-   //--------------------------------------------------
-   //stuff that maybe should be protected
-protected:
-   //--------------------
-   //model information
-   cinfo ci; //conditioning info (e.g. other parameters and prior and end node models)
-   //--------------------
-   //data
-   //--------------------
-   //mcmc info
-   //--------------------
-   //methods
+
+    //Consider adding covariance inversion to local_subsuff-----******
+
+    //--------------------
+    //data
+    //--------------------------------------------------
+    //stuff that maybe should be protected
+    protected:
+    //--------------------
+    //model information
+    cinfo ci; //conditioning info (e.g. other parameters and prior and end node models)
+    //--------------------
+    //data
+    //--------------------
+    //mcmc info
+    //--------------------
+    //methods
 };
 
 #endif

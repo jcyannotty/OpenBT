@@ -83,21 +83,31 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
 //lm: log of integrated likelihood, depends on prior and suff stats
 double mxbrt::lm(sinfo& si){
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
-    mxd Sig_inv(k,k), I(k,k); 
+    mxd Sig_inv(k,k), Sig(k,k), I(k,k);
+    vxd beta(k); 
     double t2 = ci.tau*ci.tau;
-    double suml;
+    double suml; //sum of log determinent 
+    double sumq; //sum of quadratic term
 
     I = mxd::Identity(k,k); //Set identity matrix
+    beta = ci.beta0*vxd::Ones(k);
 
-    //Get Log determinant of covariance matrix
+    //Get covariance matrix
     Sig_inv = mxsi.sumffw + I/t2; //get sig_inv matrix
-    mxd L(Sig_inv.llt().matrixL()); //Cholesky decomp and store the L matrix
-    suml = (L.diagonal().array().log().sum())*2; //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
+    Sig = Sig_inv.llt().solve(I); //Get Sigma
+    
+    //Compute Log determinent
+    mxd L(Sig.llt().matrixL()); //Cholesky decomp and store the L matrix
+    suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
 
     //Now work on the exponential terms
+    sumq = mxsi.sumyyw - (mxsi.sumfyw + beta/t2).transpose()*Sig*(mxsi.sumfyw + beta/t2);
+
+    //print the mxinfo
+    mxsi.print_mx();
+    return 0.5*(suml - sumq);
+
     
-    //double t2 =ci.tau*ci.tau;
-    //double k = mxsi.sumw*t2+1;
 
     //cout << "msi.sumw=" << msi.sumw << " msi.sumwy=" << msi.sumwy << endl;
     //return -.5*log(k)+.5*msi.sumwy*msi.sumwy*t2/k;
