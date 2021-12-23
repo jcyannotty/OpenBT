@@ -9,6 +9,7 @@
 
 //Include the Eigen header files
 #include "Eigen/Dense"
+#include <Eigen/StdVector>
 
 //--------------------------------------------------
 //a single iteration of the MCMC for brt model
@@ -113,79 +114,251 @@ double mxbrt::lm(sinfo& si){
     //return -.5*log(k)+.5*msi.sumwy*msi.sumwy*t2/k;
 }
 
-/*
-//Define the mxbrt class -- inherits from brt
-class mxbrt : public brt{
-    public:
-        //classes: cinfo, tprior, and mcmcinfo. Only the cinfo is different from the brt class
-        //cinfo = paramters for the end node model
-        class cinfo{
-            public:
-                cinfo():beta0(1.0), tau(1.0), sigma(0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
-                double beta0, tau;
-                double* sigma; //use pointer since this will be changed as mcmc iterates
-        };
+//--------------------------------------------------
+//Add in an observation, this has to be changed for every model.
+//Note that this may well depend on information in brt with our leading example
+//being double *sigma in cinfo for the case of e~N(0,sigma_i^2).
+// Note that we are using the training data and the brt object knows the training data
+//     so all we need to specify is the row of the data (argument size_t i).
+void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
+    //Declare variables 
+    mxsinfo& mxsi=static_cast<mxsinfo&>(si);
+    double w, yy;
+    mxd ff(k,k);
+    vxd fy(k);
+    
+    //Assign values
+    w=1.0/(ci.sigma[*diter]*ci.sigma[*diter]);
+    ff = (*fi).row(*diter).transpose()*(*fi).row(*diter);
+    fy = (*fi).row(*diter).transpose()*diter.gety();
+    yy = diter.gety()*diter.gety();
 
-        //constructors & destructors
-        mxbrt():brt(){} 
+    //Update sufficient stats for nodes
+    mxsi.n+=1;
+    mxsi.sumffw+=w*ff;
+    mxsi.sumfyw+=w*fy;
+    mxsi.sumyyw+=w*yy;
 
-        //methods
-        //draw -- run a single iteration of the mcmc
-        void draw(rn& gen){
-            //Call the draw function from brt -- updates the tree and envokes function to draw new parameters for the mcmc iteration
-            brt::draw(gen);
+    //Print to check
+    mxsi.print_mx();
+}
 
-            //Update the in-sample predicted vector
-            setf();
+//--------------------------------------------------
+// MPI virtualized part for sending/receiving left,right suffs
+void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
+#ifdef _OPENMPI
+   mxsinfo& msil=static_cast<mxsinfo&>(sil);
+   mxsinfo& msir=static_cast<msxinfo&>(sir);
+   if(rank==0) { // MPI receive all the answers from the slaves
+      MPI_Status status;
+      mxsinfo& tsil = (mxsinfo&) *newsinfo();
+      mxsinfo& tsir = (mxsinfo&) *newsinfo();
+      char buffer[SIZE_UINT6];
+      int position=0;
+      unsigned int ln,rn;
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         position=0;
+         MPI_Recv(buffer,SIZE_UINT6,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumffw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumffw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumfyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumfyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
-            //Update the in-sample residual vector
-            setr();
+         tsil.n=(size_t)ln;
+         tsir.n=(size_t)rn;
+         msil+=tsil;
+         msir+=tsir;
+      }
+      delete &tsil;
+      delete &tsir;
+   }
+   else // MPI send all the answers to root
+   {
+      char buffer[SIZE_UINT6];
+      int position=0;  
+      unsigned int ln,rn;
+      ln=(unsigned int)msil.n;
+      rn=(unsigned int)msir.n;
+      MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&msil.sumffw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&msir.sumffw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&msil.sumfyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&msir.sumfyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
 
+      MPI_Send(buffer,SIZE_UINT6,MPI_PACKED,0,0,MPI_COMM_WORLD);
+   }
+#endif   
+}
+
+//--------------------------------------------------
+//allsuff(2) -- the MPI communication part of local_mpiallsuff.  This is model-specific.
+void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
+#ifdef _OPENMPI
+    //Construct containers for suff stats
+    unsigned int nvec[siv.size()];
+    double sumyywvec[siv.size()];
+    std::vector<mxd, Eigen::aligned_allocator<mxd>> sumffwvec(siv.size());
+    std::vector<vxd, Eigen::aligned_allocator<vxd>> sumfywvec(siv.size());
+    
+    
+    for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
+        mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+        nvec[i]=(unsigned int)mxsi->n;    // cast to int
+        sumyywvec[i]=mxsi->sumyyw;
+        sumfywvec[i]=mxsi->sumfyw;
+        sumffwvec[i]=mxsi->sumffw;
+    }
+    // cout << "pre:" << siv[0]->n << " " << siv[1]->n << endl;
+
+    // MPI sum
+    // MPI_Allreduce(MPI_IN_PLACE,&nvec,siv.size(),MPI_UNSIGNED,MPI_SUM,MPI_COMM_WORLD);
+    // MPI_Allreduce(MPI_IN_PLACE,&sumwvec,siv.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+    // MPI_Allreduce(MPI_IN_PLACE,&sumwyvec,siv.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
+
+    if(rank==0) {
+        MPI_Status status;
+        unsigned int tempnvec[siv.size()];
+        double tempsumyywvec[siv.size()];
+        std::vector<mxd, Eigen::aligned_allocator<mxd>> tempsumffwvec(siv.size());
+        std::vector<vxd, Eigen::aligned_allocator<vxd>> tempsumfywvec(siv.size());
+
+        // receive nvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempnvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++)
+                nvec[j]+=tempnvec[j];
         }
-
-        //draw_mpislave
-
-        //setci -- set the terminal node parameters (beta0, tau, and sigma in model mixing bart)
-        void setci(double beta0, double tau, double* sigma){
-            ci.beta0 = beta0;
-            ci.tau = tau;
-            ci.sigma = sigma;
+        MPI_Request *request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&nvec,siv.size(),MPI_UNSIGNED,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
-
-        //drawtheta -- this is an override that does not occur in mbrt. This is done because we need to return a vector rather than a scalar in drawnodetheta
-        void drawtheta(sinfo& si, rn& gen){
-            //Initialize a bottom node vector and a vector of type sinfo
-            tree::npv bnv; 
-            std::vector<sinfo*>& siv = newsinfovec(); //newsinfovec() returns new sinfo -- this initializes a new sinfo vector
-
-            //Get all sufficient stats assigned to bnv..(?)
-            allsuff(bnv, siv);
-            
-            //Check MPI
-            #ifdef _OPENMPI
-                mpi_resetrn(gen);
-            #endif
-            
-            //Loop through bottom node vector and draw a parameter vector(!!)
-            for(size_t i = 0; i<bnv.size(); i++){
-                bnv[i]->setthetavec(drawnodethetavec(*(siv[i]),gen));
-                delete siv[i]; 
-            }
-
+        // cast back to msi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->n=(size_t)nvec[i];    // cast back to size_t
         }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
 
-        //drawnodetheta -- sample from the posterior of the terminal node parameters
-        //virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen){
+        // receive sumyywvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempsumyywvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++)
+                sumyywvec[j]+=tempsumyywvec[j];
+        }
+        request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&sumyywvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->sumyyw=sumyywvec[i];
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
 
-        //}
+        // receive sumfywvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempsumfywvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++)
+                sumfywvec[j]+=tempsumfywvec[j];
+        }
+        request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&sumfywvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->sumfyw=sumfywvec[i];
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
 
-        protected:
-        //Model Information -- conditioning info = parameters and hyperparameters to condition on
-        cinfo ci;
+        // receive sumffwvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempsumffwvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++)
+                sumffwvec[j]+=tempsumffwvec[j];
+        }
+        request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&sumffwvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->sumffw=sumffwvec[i];
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+    }
+    else {
+        MPI_Request *request=new MPI_Request;
+        MPI_Status status;
 
-};
+        // send/recv nvec      
+        MPI_Isend(&nvec,siv.size(),MPI_UNSIGNED,0,0,MPI_COMM_WORLD,request);
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&nvec,siv.size(),MPI_UNSIGNED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-*/
+        // send sumyywvec, update nvec, receive sumyywvec
+        request=new MPI_Request;
+        MPI_Isend(&sumyywvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->n=(size_t)nvec[i];    // cast back to size_t
+        }
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&sumyywvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+        // send sumfywvec, update sumyywvec, receive sumfywvec
+        request=new MPI_Request;
+        MPI_Isend(&sumfywvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->sumyyw=sumyywvec[i];
+        }
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&sumfywvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+        // send sumffwvec, update sumfywvec, receive sumffwvec
+        request=new MPI_Request;
+        MPI_Isend(&sumffwvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            mxsi->sumfyw=sumfywvec[i];
+        }
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&sumffwvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+        // update sumffwvec
+        // cast back to mxsi
+        for(size_t i=0;i<siv.size();i++) {
+            mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
+            msi->sumffw=sumffwvec[i];
+        }
+    }
+
+    // cout << "reduced:" << siv[0]->n << " " << siv[1]->n << endl;
+#endif
+}
+
 
 
 
