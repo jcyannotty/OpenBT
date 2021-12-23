@@ -268,14 +268,46 @@ int main(){
     */
 
    /*
-   //Two ways to convert a vector to a matrix -- used to make finfo
-   Eigen::VectorXd v(6);
-   v << 10,20,30,40, 50, 60;
-   Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), 2,3);
-   cout << M.transpose() << endl;
+    //Two ways to convert a vector to a matrix -- used to make finfo
+    Eigen::VectorXd v(6);
+    v << 10,20,30,40, 50, 60;
+    Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), 2,3);
+    cout << M.transpose() << endl;
+    
+    mxd M2 = Eigen::Map<Eigen::Matrix<double, 3,2, Eigen::RowMajor>>(v.data());
+    cout << M2 << endl;
+
+    //Create an identity matrix
+    mxd m(2,2);
+    m = Eigen::MatrixXd::Identity(2,2); 
+    cout << m << endl;
+
+    //Taking the elementwise square root of a matrix
+    mxd A(2,2);
+    A << 1,4,9,16;
+    cout << "A = \n" << A << endl;
+    cout << "A.array() = \n" << A.array() << endl;
+    cout << "A.array().sqrt() = \n"<< A.array().sqrt() << endl;
+    
+    A = A.array().sqrt();
+    cout << "sqrt(A) = \n" << A << endl;
+
+
+    //Vector of ones
+    vxd A(3);
+    A = Eigen::VectorXd::Ones(3);
+    cout << A << endl;
+
+    //Log determinants
+    mxd A(2,2);
+    A << 1,4,9,16;
+    mxd AL(A.llt().matrixL()); 
+    cout << AL << endl;
+    cout << AL.diagonal() << endl;
+    cout << AL.diagonal().array().log() << endl;
+    cout << (AL.diagonal().array().log().sum())*2 << endl;
+
    
-   mxd M2 = Eigen::Map<Eigen::Matrix<double, 3,2, Eigen::RowMajor>>(v.data());
-   cout << M2 << endl;
    */
 
 

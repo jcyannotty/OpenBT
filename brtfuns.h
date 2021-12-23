@@ -139,5 +139,9 @@ double probxall_termkl_rect(size_t k, size_t l, std::vector<std::vector<double> 
 std::vector<size_t> find_pareto_front(size_t start, size_t end, std::list<std::vector<double> > theta);
 bool not_dominated(size_t index, std::vector<size_t> R, std::list<std::vector<double> > theta);
 
+//--------------------------------------------------
+//Helper Functions for tree models with vector parameters & model mixing 
+//--------------------------------------------------
+//Compute spectral decomposition of covariance matrix -- update later 
 
 #endif

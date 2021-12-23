@@ -437,7 +437,7 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
       //else this x doesn't map to the subtree so it's not added into suff stats.
    }
 }
-//--------------------------------------------------
+//-------------------------------------------------- 
 //local_ompsubsuff
 void brt::local_ompsubsuff(dinfo di, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv)
 {
