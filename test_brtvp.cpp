@@ -12,7 +12,6 @@
 #   include <mpi.h>
 #endif
 
-
 using std::cout;
 using std::endl;
 
@@ -307,8 +306,19 @@ int main(){
     cout << AL.diagonal().array().log() << endl;
     cout << (AL.diagonal().array().log().sum())*2 << endl;
 
-   
+    //vector of Eigen matrix/vector
+    #include <Eigen/StdVector>
+
+    std::vector<mxd, Eigen::aligned_allocator<mxd>> temp(2);
+    mxd A(2,2), B(2,2);
+    A << 1,2,3,4;
+    B << 10, 20, 30, 40;
+    temp[0] = A;
+    temp[1] = B;
+
+    cout << "A = \n" << temp[0] << endl;
+    cout << "B = \n" << temp[1] << endl;
    */
 
-
+    
 }
