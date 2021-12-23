@@ -10,7 +10,98 @@
 //Include the Eigen header files
 #include "Eigen/Dense"
 
+//--------------------------------------------------
+//a single iteration of the MCMC for brt model
+void mxbrt::drawvec(rn& gen){
+    //All the usual steps
+    brt::drawvec(gen);
 
+    // Update the in-sample predicted vector
+    setf_mix();
+
+    // Update the in-sample residual vector
+    setr_mix();
+}
+
+//--------------------------------------------------
+//slave controller for draw when using MPI
+void mxbrt::drawvec_mpislave(rn& gen){
+    //All the usual steps
+    brt::drawvec_mpislave(gen);
+
+    // Update the in-sample predicted vector
+    setf_mix();
+
+    // Update the in-sample residual vector
+    setr_mix();
+}
+
+//--------------------------------------------------
+//draw theta for a single bottom node for the brt model
+vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
+    //initialize variables
+    mxsinfo& mxsi=static_cast<mxsinfo&>(si);
+    mxd I(k,k), Sig_inv(k,k), Sig(k,k), Ev(k,k), E(k,k), Sp(k,k);
+    vxd muhat(k), evals(k), stdnorm(k), betavec(k);
+    //double sig2 = (*ci.sigma)*(*ci.sigma); //error variance
+    
+    I = Eigen::MatrixXd::Identity(k,k); //Set identity matrix
+    betavec = ci.beta0*Eigen::VectorXd::Ones(k); //Set the prior mean vector
+    
+    //Compute the covariance
+    Sig_inv = mxsi.sumffw + (1.0/(ci.tau*ci.tau))*I; //Get inverse covariance matrix
+    Sig = Sig_inv.llt().solve(I); //Invert Sig_inv with Cholesky Decomposition
+    
+    //Compute the mean vector
+    muhat = Sig*(mxsi.sumfyw + (1.0/(ci.tau*ci.tau))*I*betavec); //Get posterior mean -- may be able to simplify this calculation (k*ci.beta0/(ci.tau*ci.tau)) 
+
+    //Spectral Decomposition of Covaraince Matrix Sig -- maybe move to a helper function
+    //--Get eigenvalues and eigenvectors
+    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(Sig); //Get eigenvectors and eigenvalues
+    if(eigensolver.info() != Eigen::ComputationInfo::Success) abort(); //Checks if any errors occurred
+    evals = eigensolver.eigenvalues(); //Get vector of eigenvalues
+    Ev = eigensolver.eigenvectors(); //Get matrix of eigenvectors
+
+    //--Get sqrt of eigen values and store into a matrix
+    E = mxd::Identity(k,k)*evals; //Diagonal Matrix of eigen values
+    E = E.array().sqrt(); //Diagonal Matrix of sqrt of eigen values
+
+    //--Compute Spectral Decomposition
+    Sp = Ev*E*Ev;
+
+    //Generate MVN Random vector
+    //--Get vector of standard normal normal rv's
+    for(int i=0; i<k;i++){
+        stdnorm(i) = gen.normal();
+    }
+    
+    //--Generate the MVN vector
+    return muhat + Sp*stdnorm;
+}
+
+//--------------------------------------------------
+//lm: log of integrated likelihood, depends on prior and suff stats
+double mxbrt::lm(sinfo& si){
+    mxsinfo& mxsi=static_cast<mxsinfo&>(si);
+    mxd Sig_inv(k,k), I(k,k); 
+    double t2 = ci.tau*ci.tau;
+    double suml;
+
+    I = mxd::Identity(k,k); //Set identity matrix
+
+    //Get Log determinant of covariance matrix
+    Sig_inv = mxsi.sumffw + I/t2; //get sig_inv matrix
+    mxd L(Sig_inv.llt().matrixL()); //Cholesky decomp and store the L matrix
+    suml = (L.diagonal().array().log().sum())*2; //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
+
+    //Now work on the exponential terms
+    
+    //double t2 =ci.tau*ci.tau;
+    //double k = mxsi.sumw*t2+1;
+
+    //cout << "msi.sumw=" << msi.sumw << " msi.sumwy=" << msi.sumwy << endl;
+    //return -.5*log(k)+.5*msi.sumwy*msi.sumwy*t2/k;
+}
 
 /*
 //Define the mxbrt class -- inherits from brt
