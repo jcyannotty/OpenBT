@@ -1649,7 +1649,6 @@ void brt::local_setf_mix(diterator& diter)
    }
 }
 
-
 //--------------------------------------------------
 //set the vector of residual values
 void brt::setr_mix() {
@@ -1719,13 +1718,13 @@ void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
    local_predict_mix(diter, fipred);
 #endif
 }
-void brt::local_predict_mix(diterator& diter, finfo& fipred)
-{
+void brt::local_predict_mix(diterator& diter, finfo& fipred){
    tree::tree_p bn;
-
+   vxd thetavec_temp(k); 
    for(;diter<diter.until();diter++) {
       bn = t.bn(diter.getxp(),*xi);
-      diter.sety(bn->gettheta());
+      thetavec_temp = bn->getthetavec();
+      diter.sety(fipred.row(*diter)*thetavec_temp);
    }
 }
 
@@ -1755,6 +1754,87 @@ void brt::pr_vec(){
    std::cout << "**the tree:\n";
    t.pr_vec();   
 }
+
+
+//--------------------------------------------------
+//save/load tree to/from vector format -- for these functions, each double vector is of length k*nn. 
+//Save tree with vector parameters
+void brt::savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   #ifdef _OPENMP
+#    pragma omp parallel num_threads(tc)
+     local_ompsavetree_vec(iter,m,nn,id,v,c,theta);
+   #else
+     int beg=0;
+     int end=(int)m;
+     local_savetree_vec(iter,beg,end,nn,id,v,c,theta);
+   #endif
+}
+
+//void brt::local_ompsavetree(int* id, int* v, int* c, double* theta)
+void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = (int)m; //1 tree in brt version of save/load tree(s)
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+   if(end>my_rank)
+      local_savetree_vec(iter,beg,end,nn,id,v,c,theta);
+#endif
+}
+void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
+     std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   //beg,end are not used in the single-tree models.
+   nn[iter]=t.treesize();
+   id[iter].resize(nn[iter]);
+   v[iter].resize(nn[iter]);
+   c[iter].resize(nn[iter]);
+   theta[iter].resize(k*nn[iter]);
+
+   //t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0]);
+   t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0], k);
+}
+void brt::loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   #ifdef _OPENMP
+#    pragma omp parallel num_threads(tc)
+     local_omploadtree_vec(iter,m,nn,id,v,c,theta);
+   #else
+     int beg=0;
+     int end=(int)m;
+     local_loadtree_vec(iter,beg,end,nn,id,v,c,theta);
+   #endif
+}
+
+//void brt::local_omploadtree(size_t nn, int* id, int* v, int* c, double* theta)
+void brt::local_omploadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = (int)m; //1 tree in brt version of save/load tree(s)
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+   if(end>my_rank)
+      local_loadtree_vec(iter,beg,end,nn,id,v,c,theta);
+#endif
+}
+void brt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   //beg,end are not used in the single-tree models.
+   t.vectotree(nn[iter],&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],k);
+}
+
 
 /*
 //--------------------------------------------------

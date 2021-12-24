@@ -212,8 +212,10 @@ public:
    void pr_vec(); 
 
    //Save and load the tree
-   //Save Tree -- revist this
-   //Load Tree -- revist this 
+   void savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   void loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta); 
 
 protected:
    //--------------------
@@ -267,10 +269,7 @@ protected:
    void local_ompsetf(dinfo di);
    void local_ompsetr(dinfo di);
    void local_omppredict(dinfo dipred);
-//   void local_ompsavetree(int* id, int* v, int* c, double* theta);
-//   void local_savetree(int* id, int* v, int* c, double* theta);
-//   void local_omploadtree(size_t nn, int* id, int* v, int* c, double* theta);
-//   void local_loadtree(size_t nn, int* id, int* v, int* c, double* theta);
+
    void local_ompsavetree(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
    virtual void local_savetree(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
@@ -311,6 +310,17 @@ protected:
    void local_ompsetf_mix(dinfo di);
    void local_ompsetr_mix(dinfo di);
    void local_omppredict_mix(dinfo dipred, finfo fipred);
+
+   //Save and Load tree with vector parameters
+   void local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   void local_omploadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+
 };
 
 #endif

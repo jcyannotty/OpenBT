@@ -319,6 +319,5 @@ int main(){
     cout << "A = \n" << temp[0] << endl;
     cout << "B = \n" << temp[1] << endl;
    */
-
     
 }
