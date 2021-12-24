@@ -15,6 +15,7 @@ int main(){
     Eigen::MatrixXd F;
     Eigen::VectorXd v;
     int k = 4;
+    double yy = 10.2;
 
     F = Eigen::MatrixXd::Random(k,k);
     v = Eigen::VectorXd::Random(k);
@@ -25,7 +26,7 @@ int main(){
 
     //Try to create mxinfo objects
     mxsinfo mx1; //constructor 1
-    mxsinfo mx2(s, k, F, v); //Constructor 2
+    mxsinfo mx2(s, k, F, v, yy); //Constructor 2
     mxsinfo mx3(mx2); //Constructor 3
 
     //See what they print
