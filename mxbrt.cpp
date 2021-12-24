@@ -108,10 +108,6 @@ double mxbrt::lm(sinfo& si){
     mxsi.print_mx();
     return 0.5*(suml - sumq);
 
-    
-
-    //cout << "msi.sumw=" << msi.sumw << " msi.sumwy=" << msi.sumwy << endl;
-    //return -.5*log(k)+.5*msi.sumwy*msi.sumwy*t2/k;
 }
 
 //--------------------------------------------------
