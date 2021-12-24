@@ -627,37 +627,56 @@ void tree::deathp(tree_p nb, double theta)
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
 //Functions to accomodate for vector parameters
-//Tree-to-vector: Override the original one by changing the datatype from double to vxd
-void tree::treetovec(int* oid, int* ov, int* oc, vxd* othetavec)
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+//treetovec_vec: Tree-to-vector for vector parameters
+void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
 {
    tree::cnpv nds;
+   vxd thetavec_temp(k);
    this->getnodes(nds);
    for(size_t i=0;i<nds.size();i++) {
       oid[i]=(int)nds[i]->nid();
       ov[i]=(int)nds[i]->getv();
       oc[i]=(int)nds[i]->getc();
-      othetavec[i]=nds[i]->getthetavec(); //Store the theta vector and MAYBE cast as an array 
+      
+      thetavec_temp = nds[i]->getthetavec();
+      for(int j = 0; j<k; j++){
+         othetavec[i*k+j]=thetavec_temp(j); 
+      }
    }
 }
 
 //---------------------------------------------------------------------
-//Vector-to-tree: Override the original one by changing the datatype from double to vxd (nn is number of nodes)
-void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, vxd* ithetavec)
-{
+//Vector-to-tree for vector parameters 
+void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, int ik){
    size_t itid,ipid;                     //itid: id of current node, ipid: parent's id
    std::map<size_t,tree::tree_p> pts;  //pointers to nodes indexed by node id
+   vxd thetavec_temp(ik);
 
    this->tonull(); // obliterate old tree (if there)
 
+   //Populate the first theta vector 
+   for(int j = 0; j<k; j++){
+      thetavec_temp(j) = ithetavec[j];
+   }
+   
+
    //first node has to be the top one
    pts[1] = this; //careful! this is not the first pts, it is pointer of id 1.
-   this->setv((size_t)iv[0]); this->setc((size_t)ic[0]); this->setthetavec(ithetavec[0]);
+   this->setv((size_t)iv[0]); this->setc((size_t)ic[0]); this->setthetavec(thetavec_temp);
    this->p=0;
 
    //now loop through the rest of the nodes knowing parent is already there.
    for(size_t i=1;i!=inn;i++) {
       tree::tree_p np = new tree;
-      np->v = (size_t)iv[i]; np->c=(size_t)ic[i]; np->thetavec=ithetavec[i];
+
+      //Populate the first theta vector 
+      for(int j = 0; j<k; j++){
+         thetavec_temp(j) = ithetavec[i*k + j];
+      }
+
+      np->v = (size_t)iv[i]; np->c=(size_t)ic[i]; np->thetavec=thetavec_temp;
       itid = (size_t)iid[i];
       pts[itid] = np;
       ipid = itid/2;
