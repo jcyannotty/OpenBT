@@ -73,9 +73,9 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     //Generate MVN Random vector
     //--Get vector of standard normal normal rv's
     for(int i=0; i<k;i++){
-        stdnorm(i) = gen.normal();
+        stdnorm(i) = gen.normal(); 
     }
-    
+    std::cout << stdnorm << std::endl;
     //Print out matrix algebra step-by-step
     /*
     std::cout << "\nAll matrix Calculations:" << std::endl;
@@ -141,6 +141,11 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     ff = (*fi).row(*diter).transpose()*(*fi).row(*diter);
     fy = (*fi).row(*diter).transpose()*diter.gety();
     yy = diter.gety()*diter.gety();
+
+    //std::cout << "---------------------" << std::endl;
+    //std::cout << "Obs i = " << *diter << std::endl;
+    //std::cout << "y = " << diter.gety() << std::endl;
+    //std::cout << "fi = " << (*fi).row(*diter) << std::endl;
 
     //Update sufficient stats for nodes
     mxsi.n+=1;

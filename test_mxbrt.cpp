@@ -152,16 +152,14 @@ int main(){
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau=0.25;
+    double tau=0.1;
     double beta0 = 0.8;
-    for(size_t i=0;i<di.n;i++) sig[i]=0.05;
+    for(size_t i=0;i<di.n;i++) sig[i]=0.1;
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
     cout << "****Initial Object" << endl; 
     mxb.pr_vec();
-
-    //cutpoints
     mxb.setxi(&xi);    //set the cutpoints for this model object
     //function output 
     mxb.setfi(&fi,k); //set function output for this model object
@@ -198,12 +196,13 @@ int main(){
 
     cout << "-----------------------------------" << endl;
     
-    /*
+       
     cout << "\n*****After 1 draw:\n";
     mxb.drawvec(gen);
     mxb.pr_vec();
-    */
+    
 
+    /*
     cout << "\n-----------------------------------" << endl;
     size_t nd = 5000;
     size_t nadapt=1000;
@@ -220,10 +219,16 @@ int main(){
     for(int i = 0; i<nd; i++){
         //cout << "*****Draw "<< i << endl;
         mxb.drawvec(gen);
+        
+        if((i % 2500) ==0){
+            cout << "***Draw " << i << "\n" << endl;
+            //mxb.pr_vec();
+        } 
+        
         for(size_t j=0;j<n;j++) fitted[j]+=mxb.f(j)/nd;
         //mxb.pr_vec();
     }    
-        
+
     // summary statistics
     unsigned int varcount[p];
     unsigned int totvarcount=0;
@@ -250,8 +255,7 @@ int main(){
     for(int i = 0; i<n; i++){
         cout << "Y = " << y[i] <<" -- Fitted " << fitted[i] << endl;
     }
-
-
+    */
     return 0;
 
 }
