@@ -152,9 +152,9 @@ int main(){
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau=100.0;
+    double tau=1.0;
     double beta0 = 1.0;
-    for(size_t i=0;i<di.n;i++) sig[i]=1.0;
+    for(size_t i=0;i<di.n;i++) sig[i]=0.05;
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
@@ -205,14 +205,37 @@ int main(){
     */
 
     cout << "\n-----------------------------------" << endl;
-    cout << "\n*****After nd draws:\n";
-    int nd = 10;
+    int nd = 5000;
+    cout << "\n*****After "<< nd << " draws:\n";
+    cout << "Collecting statistics" << endl;
+    mxb.setstats(true);
     for(int i = 0; i<nd; i++){
+        //cout << "*****Draw "<< i << endl;
         mxb.drawvec(gen);
-        cout << "*****Draw "<< i << endl;
         //mxb.pr_vec();
     }    
+        
+    // summary statistics
+    unsigned int varcount[p];
+    unsigned int totvarcount=0;
+    for(size_t i=0;i<p;i++) varcount[i]=0;
+    unsigned int tmaxd=0;
+    unsigned int tmind=0;
+    double tavgd=0.0;
 
+    mxb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
+    for(size_t i=0;i<p;i++) totvarcount+=varcount[i];
+    tavgd/=(double)(nd);
+
+    cout << "Average tree depth: " << tavgd << endl;
+    cout << "Maximum tree depth: " << tmaxd << endl;
+    cout << "Minimum tree depth: " << tmind << endl;
+    cout << "Variable perctg:    ";
+    for(size_t i=0;i<p;i++) cout << "  " << i+1 << "  ";
+    cout << endl;
+    cout << "                    ";
+    for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
+    cout << endl;
     return 0;
 
 }

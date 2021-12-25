@@ -1282,6 +1282,7 @@ void brt::drawvec(rn& gen)
       bd_vec(gen);
    else
    {
+      //std::cout << "Rotate" << std::endl; 
       tree::tree_p tnew;
       tnew=new tree(t); //copy of current to make life easier upon rejection
       rot(tnew,t,gen);
@@ -1482,6 +1483,7 @@ void brt::bd_vec(rn& gen)
 
    if(gen.uniform() < PBx) { //do birth or death
       mi.bproposal++;
+      //std::cout << "Birth" << std::endl;
       //--------------------------------------------------
       //draw proposal
       tree::tree_p nx; //bottom node
@@ -1513,14 +1515,14 @@ void brt::bd_vec(rn& gen)
          //std::cout << "lml" << lml << std::endl;
          //std::cout << "lmr" << lmr << std::endl;
          //std::cout << "lmt" << lmt << std::endl;
-         std::cout << "lalpha" << lalpha << std::endl;
+         //std::cout << "lalpha" << lalpha << std::endl;
          lalpha = std::min(0.0,lalpha);
       }
       //--------------------------------------------------
       //try metrop
       Eigen::VectorXd thetavecl,thetavecr; //parameters for new bottom nodes, left and right
       double uu = gen.uniform();
-      std::cout << "lu" << log(uu) << std::endl;
+      //std::cout << "lu" << log(uu) << std::endl;
 #ifdef _OPENMPI
       MPI_Request *request = new MPI_Request[tc];
 #endif
@@ -1555,6 +1557,7 @@ void brt::bd_vec(rn& gen)
 #endif
    } else {
       mi.dproposal++;
+      //std::cout << "Death" << std::endl;
       //--------------------------------------------------
       //draw proposal
       double pr;  //part of metropolis ratio from proposal and prior
