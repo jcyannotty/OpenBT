@@ -75,7 +75,6 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     for(int i=0; i<k;i++){
         stdnorm(i) = gen.normal(); 
     }
-    std::cout << stdnorm << std::endl;
     //Print out matrix algebra step-by-step
     /*
     std::cout << "\nAll matrix Calculations:" << std::endl;

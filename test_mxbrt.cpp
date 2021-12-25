@@ -77,10 +77,10 @@ int main(){
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
-    size_t nc=50;
+    size_t nc=100;
     makexinfo(p,n,&x[0],xi,nc); //use the 1st column with x[0]
 
-    //prxi(xi);
+    prxi(xi);
     //--------------------------------------------------
     //make finfo -- need to read in and store f formally, just using same x from above for now
     finfo fi;
@@ -154,7 +154,7 @@ int main(){
     double *sig = new double[di.n];
     double tau=0.1;
     double beta0 = 0.8;
-    for(size_t i=0;i<di.n;i++) sig[i]=0.1;
+    for(size_t i=0;i<di.n;i++) sig[i]=0.05;
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
@@ -175,7 +175,7 @@ int main(){
     mxb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            5,    //minimum number of observations in a bottom node
+            2,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -196,15 +196,16 @@ int main(){
 
     cout << "-----------------------------------" << endl;
     
-       
+    /*   
     cout << "\n*****After 1 draw:\n";
     mxb.drawvec(gen);
     mxb.pr_vec();
-    
+    */
 
-    /*
+    //cout << "FtF/sig^2 = " << fi.transpose()*fi/(sig[0]*sig[0]) << endl;
+
     cout << "\n-----------------------------------" << endl;
-    size_t nd = 5000;
+    size_t nd = 10000;
     size_t nadapt=1000;
     size_t adaptevery=100;
     size_t nburn=200;
@@ -253,9 +254,9 @@ int main(){
 
     cout << "Print Fitted Values" << endl;
     for(int i = 0; i<n; i++){
-        cout << "Y = " << y[i] <<" -- Fitted " << fitted[i] << endl;
+        cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
     }
-    */
+
     return 0;
 
 }
