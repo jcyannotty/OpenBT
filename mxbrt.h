@@ -62,10 +62,13 @@ class mxsinfo : public sinfo{
         //Print mxinfo instance
         void print_mx(){
             std::cout << "**************************************" << std::endl; 
+            std::cout << "Model mixing sufficient statistics for this terminal node" << std::endl;
             std::cout << "sumffw = \n" << sumffw << std::endl;
-            std::cout << "sumfyw = \n" << sumfyw << std::endl;
-            std::cout << "sumyyw = \n" << sumyyw << std::endl;
-            std::cout << "K = " << k << std::endl;
+            std::cout << "\nsumfyw = \n" << sumfyw << std::endl;
+            std::cout << "\n sumyyw = " << sumyyw << std::endl;
+            std::cout << "k = " << k << std::endl;
+            std::cout << "n = " << n << std::endl;
+            std::cout << "**************************************" << std::endl;
         }
 };
 

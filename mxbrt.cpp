@@ -52,7 +52,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     //Compute the covariance
     Sig_inv = mxsi.sumffw + (1.0/(ci.tau*ci.tau))*I; //Get inverse covariance matrix
     Sig = Sig_inv.llt().solve(I); //Invert Sig_inv with Cholesky Decomposition
-    
+        
     //Compute the mean vector
     muhat = Sig*(mxsi.sumfyw + (1.0/(ci.tau*ci.tau))*I*betavec); //Get posterior mean -- may be able to simplify this calculation (k*ci.beta0/(ci.tau*ci.tau)) 
 
@@ -63,12 +63,12 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     evals = eigensolver.eigenvalues(); //Get vector of eigenvalues
     Ev = eigensolver.eigenvectors(); //Get matrix of eigenvectors
 
-    //--Get sqrt of eigen values and store into a matrix
-    E = mxd::Identity(k,k)*evals; //Diagonal Matrix of eigen values
-    E = E.array().sqrt(); //Diagonal Matrix of sqrt of eigen values
-
+    //--Get sqrt of eigen values and store into a matrix    
+    E = mxd::Zero(k,k); //Set as matrix of 0's
+    E.diagonal() = evals.array().sqrt(); //Diagonal Matrix of sqrt of eigen values
+    
     //--Compute Spectral Decomposition
-    Sp = Ev*E*Ev;
+    Sp = Ev*E*Ev.transpose();
 
     //Generate MVN Random vector
     //--Get vector of standard normal normal rv's
@@ -76,6 +76,19 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
         stdnorm(i) = gen.normal();
     }
     
+    //Print out matrix algebra step-by-step
+    /*
+    std::cout << "\nAll matrix Calculations:" << std::endl;
+    std::cout << "Sig_inv = \n" << Sig_inv << std::endl;
+    std::cout << "\n Sig = \n" << Sig << std::endl;
+    std::cout << "\n muhat = \n" << muhat << std::endl;
+    std::cout << "\n Ev = \n" << Ev << std::endl;
+    std::cout << "\n evals = \n" << evals << std::endl;
+    std::cout << "\n E = \n" << E << std::endl;
+    std::cout << "\n Sp = \n" << Sp << std::endl;
+    std::cout << "\n thetavec = " << std::endl;
+    */
+
     //--Generate the MVN vector
     return muhat + Sp*stdnorm;
 }
@@ -103,9 +116,9 @@ double mxbrt::lm(sinfo& si){
 
     //Now work on the exponential terms
     sumq = mxsi.sumyyw - (mxsi.sumfyw + beta/t2).transpose()*Sig*(mxsi.sumfyw + beta/t2);
-
+  
     //print the mxinfo
-    mxsi.print_mx();
+    //mxsi.print_mx();
     return 0.5*(suml - sumq);
 
 }
@@ -136,7 +149,7 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     mxsi.sumyyw+=w*yy;
 
     //Print to check
-    mxsi.print_mx();
+    //mxsi.print_mx();
 }
 
 //--------------------------------------------------
@@ -353,6 +366,21 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
 
     // cout << "reduced:" << siv[0]->n << " " << siv[1]->n << endl;
 #endif
+}
+
+//--------------------------------------------------
+//Print mxbrt object
+void mxbrt::pr_vec()
+{
+   std::cout << "***** mxbrt object:\n";
+   std::cout << "Conditioning info:" << std::endl;
+   std::cout << "   mean:   tau =" << ci.tau << std::endl;
+   std::cout << "   mean:   beta0 =" << ci.beta0 << std::endl;
+   if(!ci.sigma)
+     std::cout << "         sigma=[]" << std::endl;
+   else
+     std::cout << "         sigma=[" << ci.sigma[0] << ",...," << ci.sigma[di->n-1] << "]" << std::endl;
+   brt::pr_vec();
 }
 
 

@@ -104,7 +104,7 @@ int main()
    //--------------------------------------------------
    // try instantiating a mbrt
    mbrt mbm;
-   double *sig=new double[di.n];
+   double *sig = new double[di.n];
    double tau=100.0;
    for(size_t i=0;i<di.n;i++) sig[i]=1.0;
 

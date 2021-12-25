@@ -1473,7 +1473,7 @@ void brt::drawvec_mpislave(rn& gen)
 //--------------------------------------------------
 //Model Mixing Birth and Death
 //--------------------------------------------------
-//bd_mix: birth/death for vector parameters
+//bd_vec: birth/death for vector parameters
 void brt::bd_vec(rn& gen)
 {
 //   cout << "--------------->>into bd" << endl;
@@ -1488,14 +1488,15 @@ void brt::bd_vec(rn& gen)
       size_t v,c; //variable and cutpoint
       double pr; //part of metropolis ratio from proposal and prior
       bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);
-
+      
       //--------------------------------------------------
       //compute sufficient statistics
       sinfo& sil = *newsinfo();
       sinfo& sir = *newsinfo();
       sinfo& sit = *newsinfo();
-
+      
       getsuff(nx,v,c,sil,sir);
+      
       // sit = sil + sir; NO! The + operator cannot be overloaded, so instead we do this:
       sit += sil;
       sit += sir;
@@ -1509,12 +1510,17 @@ void brt::bd_vec(rn& gen)
          lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
          hardreject=false;
          lalpha = log(pr) + (lml+lmr-lmt);
+         //std::cout << "lml" << lml << std::endl;
+         //std::cout << "lmr" << lmr << std::endl;
+         //std::cout << "lmt" << lmt << std::endl;
+         std::cout << "lalpha" << lalpha << std::endl;
          lalpha = std::min(0.0,lalpha);
       }
       //--------------------------------------------------
       //try metrop
       Eigen::VectorXd thetavecl,thetavecr; //parameters for new bottom nodes, left and right
       double uu = gen.uniform();
+      std::cout << "lu" << log(uu) << std::endl;
 #ifdef _OPENMPI
       MPI_Request *request = new MPI_Request[tc];
 #endif
