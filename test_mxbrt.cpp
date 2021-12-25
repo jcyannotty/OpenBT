@@ -77,7 +77,7 @@ int main(){
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
-    size_t nc=15;
+    size_t nc=50;
     makexinfo(p,n,&x[0],xi,nc); //use the 1st column with x[0]
 
     //prxi(xi);
@@ -152,8 +152,8 @@ int main(){
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau=1.0;
-    double beta0 = 1.0;
+    double tau=0.25;
+    double beta0 = 0.8;
     for(size_t i=0;i<di.n;i++) sig[i]=0.05;
 
     //First mix bart object with basic constructor
@@ -205,13 +205,22 @@ int main(){
     */
 
     cout << "\n-----------------------------------" << endl;
-    int nd = 5000;
+    size_t nd = 5000;
+    size_t nadapt=1000;
+    size_t adaptevery=100;
+    size_t nburn=200;
+    std::vector<double> fitted(n);
+
+    for(size_t i=0;i<nadapt;i++) { mxb.draw(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
+    for(size_t i=0;i<nburn;i++) mxb.draw(gen); 
+    
     cout << "\n*****After "<< nd << " draws:\n";
     cout << "Collecting statistics" << endl;
     mxb.setstats(true);
     for(int i = 0; i<nd; i++){
         //cout << "*****Draw "<< i << endl;
         mxb.drawvec(gen);
+        for(size_t j=0;j<n;j++) fitted[j]+=mxb.f(j)/nd;
         //mxb.pr_vec();
     }    
         
@@ -236,6 +245,13 @@ int main(){
     cout << "                    ";
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
+
+    cout << "Print Fitted Values" << endl;
+    for(int i = 0; i<n; i++){
+        cout << "Y = " << y[i] <<" -- Fitted " << fitted[i] << endl;
+    }
+
+
     return 0;
 
 }
