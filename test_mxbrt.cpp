@@ -152,9 +152,9 @@ int main(){
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau=0.1;
+    double tau = 0.5;
     double beta0 = 0.8;
-    for(size_t i=0;i<di.n;i++) sig[i]=0.05;
+    for(size_t i=0;i<di.n;i++) sig[i]=0.03;
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
@@ -257,6 +257,17 @@ int main(){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
     }
 
+    //Write Fitted values to a file
+    std::ofstream outdata;
+    outdata.open("fits1.txt"); // opens the file
+    if( !outdata ) { // file couldn't be opened
+        std::cerr << "Error: file could not be opened" << endl;
+        exit(1);
+    }
+    for(int i = 0; i<n; i++){
+        outdata << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
+    }
+    outdata.close();
     return 0;
 
 }
