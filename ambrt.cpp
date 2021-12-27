@@ -111,7 +111,6 @@ void ambrt::setdata(dinfo *di) {
   // each mb[j]'s data is the appropriate row in notjmus
   for(size_t j=0;j<m;j++)
     mb[j].setdata(divec[j]);
-
   resid.resize(di->n);
   yhat.resize(di->n);
   setf();
