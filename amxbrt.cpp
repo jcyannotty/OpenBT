@@ -75,19 +75,29 @@ void amxbrt::setdata_mix(dinfo *di) {
     for(size_t j=0;j<m;j++){
         notjmus[j].resize(this->di->n,0.0);
     }
+    std::cout << "SDM Checkpt 1" << std::endl;
     for(size_t j=0;j<m;j++){
-        for(size_t i=0;i<di->n;i++)
-        notjmus[j][i]=this->di->y[i]/((double)m);
+        for(size_t i=0;i<di->n;i++){
+            notjmus[j][i]=this->di->y[i]/((double)m);
+        }
     }
+    std::cout << "SDM Checkpt 2" << std::endl;
     for(size_t j=0;j<m;j++){
         divec[j]=new dinfo(this->di->p,this->di->n,this->di->x,&notjmus[j][0],this->di->tc); //constructing a new dinfo with notjmus[j][0] as the y value 
+    }
+    std::cout << "SDM Checkpt 3" << std::endl;
+    diterator diter(divec[0]);
+    for(;diter<diter.until();diter++){
+        cout << diter.getx() << " ------- " << *diter << " ------- " << diter.gety() << endl;
     }
     // each mb[j]'s data is the appropriate row in notjmus
     for(size_t j=0;j<m;j++){
         mb[j].setdata_mix(divec[j]); //setdata_mix is a method of mb[j] which is a member of mxbrt class. This is different than setdata_mix in amxbrt
     }
+    std::cout << "SDM Checkpt 4" << std::endl;
     resid.resize(di->n);
     yhat.resize(di->n);
+    std::cout << "SDM Checkpt 5" << std::endl;
     setf_mix();
     setr_mix();
 }
@@ -95,7 +105,7 @@ void amxbrt::setdata_mix(dinfo *di) {
 //--------------------------------------------------
 //set vector of predicted values for psbrt model
 void amxbrt::local_setf_mix(diterator& diter){
-   for(;diter<diter.until();diter++) {
+   for(;diter<diter.until();diter++){
       yhat[*diter]=0.0;
       for(size_t j=0;j<m;j++)
         yhat[*diter]+=mb[j].f(*diter); //sum of trees - add the fitted value from each tree
@@ -164,6 +174,7 @@ void amxbrt::pr_vec()
    cout << "        m:   m=" << m << endl;
    cout << "Conditioning info on each individual tree:" << endl;
    cout << "   mean:   tau=" << ci.tau << endl;
+   cout << "   mean:   beta0 =" << ci.beta0 << endl;
    if(!ci.sigma)
      cout << "         sigma=[]" << endl;
    else

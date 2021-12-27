@@ -1650,7 +1650,6 @@ void brt::local_setf_mix(diterator& diter)
 {
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
-   
    for(;diter<diter.until();diter++) {
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec(); 
