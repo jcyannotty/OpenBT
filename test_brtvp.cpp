@@ -64,7 +64,7 @@ int main(){
     //--------------------------------------------------
     //Make dinfo and diterator
     dinfo di;
-    di.n=n;di.p=p,di.x = &x[1];di.tc=tc;
+    di.n=n;di.p=p,di.x = &x[0];di.tc=tc;
 
     diterator diter(&di);
     /*

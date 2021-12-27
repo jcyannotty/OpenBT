@@ -6,6 +6,7 @@
 #include "brtfuns.h"
 #include "dinfo.h"
 #include "mxbrt.h"
+#include "amxbrt.h"
 
 //Include Eigen library
 #include "Eigen/Dense"
@@ -108,44 +109,17 @@ int main(){
         cout << endl;
     }
 
+    //-------------------------------------------------------
+    //Example 1 -- Test Constructors
+    //-------------------------------------------------------
+    amxbrt am1; //default constructor
+    amxbrt am2(3); //Constructor with number of trees as input
+
+    //Print am2 model 
+    am2.pr_vec();
 
     //-------------------------------------------------------
-    //Example 1 -- Test mxsinfo
-    //-------------------------------------------------------
-    //Initialize matrix and vector
-    Eigen::MatrixXd F;
-    Eigen::VectorXd v;
-    double yy = 10.2;
-
-    F = Eigen::MatrixXd::Random(k,k);
-    v = Eigen::VectorXd::Random(k);
-
-    //Work with sinfo object
-    sinfo s;
-    std::cout << s.n << std::endl; //Prints out 0 as expected
-    s.n = 10; //Change the sample size to 10
-
-    //Try to create mxinfo objects
-    mxsinfo mx1; //constructor 1
-    mxsinfo mx2(s, k, F, v, yy); //Constructor 2
-    mxsinfo mx3(mx2); //Constructor 3
-
-    //See what they print
-    mx1.print_mx();
-    mx2.print_mx();
-    mx3.print_mx();
-
-    //Work with operators
-    std::cout << "---Compound Addition Operator" << std::endl;
-    mx3 += mx2;
-    mx3.print_mx();
-
-    std::cout << "---Addition and Equality Operator" << std::endl;    
-    mxsinfo mx4 = mx2 + mx3; //Add two mxsinfo objects 
-    mx4.print_mx();
-
-    //-------------------------------------------------------
-    //Example 2 -- Create an mxbrt object
+    //Example 2 -- Test MCMC
     //-------------------------------------------------------
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
@@ -157,22 +131,22 @@ int main(){
     for(size_t i=0;i<di.n;i++) sig[i]=0.03;
 
     //First mix bart object with basic constructor
-    mxbrt mxb; 
+    amxbrt axb(20); //20 Trees 
     cout << "****Initial Object" << endl; 
-    mxb.pr_vec();
-    mxb.setxi(&xi);    //set the cutpoints for this model object
+    axb.pr_vec();
+    axb.setxi(&xi);    //set the cutpoints for this model object 
     //function output 
-    mxb.setfi(&fi,k); //set function output for this model object
+    axb.setfi(&fi,k); //set function output for this model object
     //data objects
-    mxb.setdata_mix(&di);  //set the data for model mixing
+    axb.setdata_mix(&di);  //set the data for model mixing
     //thread count
-    mxb.settc(tc);      //set the number of threads when using OpenMP, etc.
+    axb.settc(tc);      //set the number of threads when using OpenMP, etc.
     //tree prior
-    mxb.settp(0.95, //the alpha parameter in the tree depth penalty prior
+    axb.settp(0.95, //the alpha parameter in the tree depth penalty prior
             1.0     //the beta parameter in the tree depth penalty prior
             );
     //MCMC info
-    mxb.setmi(
+    axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
             2,    //minimum number of observations in a bottom node
@@ -181,55 +155,44 @@ int main(){
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
             &chgv  //initialize the change of variable correlation matrix.
             );
-    mxb.setci(tau,beta0,sig);
+    axb.setci(tau,beta0,sig);
 
     cout << "\n*****After init:\n";
-    mxb.pr_vec();
-
-    cout << "-----------------------------------" << endl;
-    cout << "Test Individual Functions involved in draw: \n\n" << endl; 
-    cout << "mxbrt lm = " << mxb.lm(mx3) << endl;
-    cout << "mxbrt drawnodethetavec: " << mxb.drawnodethetavec(mx3, gen) << endl;
-    cout << "mxbrt birth/death: \n" << endl;
-    mxb.bd_vec(gen);
-    mxb.pr_vec();
-
-    cout << "-----------------------------------" << endl;
-    
-    /*   
-    cout << "\n*****After 1 draw:\n";
-    mxb.drawvec(gen);
-    mxb.pr_vec();
-    */
-
-    //cout << "FtF/sig^2 = " << fi.transpose()*fi/(sig[0]*sig[0]) << endl;
+    axb.pr_vec();
 
     cout << "\n-----------------------------------" << endl;
+    cout << "-----------------------------------" << endl;
+
     size_t nd = 10000;
     size_t nadapt=1000;
     size_t adaptevery=100;
     size_t nburn=200;
     std::vector<double> fitted(n);
+    //dinfo inpred;
+    //inpred.n=n;inpred.p=p,inpred.x = &x[0];inpred.tc=tc;inpred.y=&fitted[0];
 
-    for(size_t i=0;i<nadapt;i++) { mxb.draw(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
-    for(size_t i=0;i<nburn;i++) mxb.draw(gen); 
+    for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
+    for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
     
     cout << "\n*****After "<< nd << " draws:\n";
     cout << "Collecting statistics" << endl;
-    mxb.setstats(true);
+    axb.setstats(true);
     for(int i = 0; i<nd; i++){
-        //cout << "*****Draw "<< i << endl;
-        mxb.drawvec(gen);
-        
-        if((i % 2500) ==0){
-            cout << "***Draw " << i << "\n" << endl;
-            //mxb.pr_vec();
-        } 
-        
-        for(size_t j=0;j<n;j++) fitted[j]+=mxb.f(j)/nd;
-        //mxb.pr_vec();
-    }    
-
+        if((i % 50) ==0){ cout << "***Draw " << i << "\n" << endl;}
+        axb.drawvec(gen);
+        for(size_t j=0;j<n;j++) fitted[j]+=axb.f(j)/nd;
+        //inpred+= *axb.getf();
+    }
+    
+    /*
+    //Write the fits
+    std::ofstream axbfit("fit_amxb.txt"); 
+    for(size_t j=0;j<n;j++){
+        axbfit << fitted[j] << "\n";
+    } 
+    axbfit.close();
+    */
+    
     // summary statistics
     unsigned int varcount[p];
     unsigned int totvarcount=0;
@@ -238,7 +201,7 @@ int main(){
     unsigned int tmind=0;
     double tavgd=0.0;
 
-    mxb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
+    axb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
     for(size_t i=0;i<p;i++) totvarcount+=varcount[i];
     tavgd/=(double)(nd);
 
@@ -257,10 +220,9 @@ int main(){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
     }
 
-    //Write Fitted values to a file
-
+    //Write all data values to a file
     std::ofstream outdata;
-    outdata.open("fits.txt"); // opens the file
+    outdata.open("fit_amxb1.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
