@@ -648,7 +648,7 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
 }
 
 //---------------------------------------------------------------------
-//Vector-to-tree for vector parameters 
+//Vector-to-tree for vector parameters -- ithetavec is a n*k vector if the others are pointers to n vectors  
 void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, int ik){
    size_t itid,ipid;                     //itid: id of current node, ipid: parent's id
    std::map<size_t,tree::tree_p> pts;  //pointers to nodes indexed by node id
