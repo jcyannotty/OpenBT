@@ -127,7 +127,7 @@ int main()
    tv1.pr_vec();
    cout << "***************************************" << endl;
 
-   //Reset tree to the root node with defaukt parameters via a destructor
+   //Reset tree to the root node with default parameters via a destructor
    cout << "~~~ Destruct the tree -- revert to root node ~~~\n";
    tv1.tonull();
    tv1.pr_vec();
@@ -159,5 +159,40 @@ int main()
    cout << "Updated theta vector: \n" << tv3.getthetavec() << endl;
    cout << "***************************************" << endl;
 
+   //----------------------------------------------
+   //Collapse a tree
+   tree::npv bots;
+   tree st;
+
+   //Create two new trees
+   Eigen::VectorXd v1(2), v2(2), v21(2), v22(2);
+   v1 << 0.5, 0.78;
+   v2 << 1.5, -0.9;
+   v21 << 1.0,2.0;
+   v22 << 0.9,0.8; 
+
+   tree tc1(v1);
+   tree tc2(v2);
+
+   //Brith Step
+   tc2.birth(1,0,50,v21,v22);
+
+   st=tc1; //copy
+   cout << "***** supertree:\n";
+   st.pr_vec();
+
+   cout << "***** get bots:\n";
+   st.getbots(bots);
+   cout << "bots.size=" << bots.size() << endl;
+   //collapse each tree j=1..m into the supertree
+   for(size_t i=0;i<bots.size();i++) {
+      cout << "iteration i=" << i << endl;
+      collapsetree_vec(st,bots[i],&tc2); 
+      st.pr_vec();
+   }
+   bots.clear();
+
+   cout << "***** collapsed supertree:\n";
+   st.pr_vec();
    return 0;
 }
