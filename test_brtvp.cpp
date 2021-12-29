@@ -183,7 +183,6 @@ int main(){
     //--------------------------------------------------
     //Example 5: Run an MCMC
     cout << "\n******************************************" << endl;
-    /*
     size_t tuneevery=250;
     size_t tune=5000;
     size_t burn=5000;
@@ -241,7 +240,6 @@ int main(){
     cout << "                    ";
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
-    */
 
     //--------------------------------------------------
     //Example 6: Save and load tree
