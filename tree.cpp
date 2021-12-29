@@ -629,7 +629,7 @@ void tree::deathp(tree_p nb, double theta)
 //Functions to accomodate for vector parameters
 //---------------------------------------------------------------------
 //---------------------------------------------------------------------
-//treetovec_vec: Tree-to-vector for vector parameters
+//treetovec_vec: Tree-to-vector for vector parameters -- override scalar parameter function by including the value of k
 void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
 {
    tree::cnpv nds;
@@ -648,11 +648,12 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
 }
 
 //---------------------------------------------------------------------
-//Vector-to-tree for vector parameters -- ithetavec is a n*k vector if the others are pointers to n vectors  
-void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, int ik){
+//Vector-to-tree for vector parameters -- ithetavec is a n*k vector if the others are pointers to n vectors 
+// -- override scalar parameter function by including the value of k 
+void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, int k){
    size_t itid,ipid;                     //itid: id of current node, ipid: parent's id
    std::map<size_t,tree::tree_p> pts;  //pointers to nodes indexed by node id
-   vxd thetavec_temp(ik);
+   vxd thetavec_temp(k);
 
    this->tonull(); // obliterate old tree (if there)
 
@@ -661,7 +662,6 @@ void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, 
       thetavec_temp(j) = ithetavec[j];
    }
    
-
    //first node has to be the top one
    pts[1] = this; //careful! this is not the first pts, it is pointer of id 1.
    this->setv((size_t)iv[0]); this->setc((size_t)ic[0]); this->setthetavec(thetavec_temp);
@@ -671,11 +671,11 @@ void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, 
    for(size_t i=1;i!=inn;i++) {
       tree::tree_p np = new tree;
 
-      //Populate the first theta vector 
+      //Populate the temp theta vector 
       for(int j = 0; j<k; j++){
          thetavec_temp(j) = ithetavec[i*k + j];
       }
-
+      
       np->v = (size_t)iv[i]; np->c=(size_t)ic[i]; np->thetavec=thetavec_temp;
       itid = (size_t)iid[i];
       pts[itid] = np;

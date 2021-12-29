@@ -145,8 +145,8 @@ public:
 
    //Tree functions when using vector parameters-------------------
    // Vectorized nput/output methods to support saving/loading to R.
-   void treetovec(int* id, int* v, int* c, double* thetavec, int k);
-   void vectotree(size_t inn, int* id, int* iv, int* ic, double* ithetavec, int ik);
+   void treetovec(int* id, int* v, int* c, double* thetavec, int k); //needs an input value of k
+   void vectotree(size_t inn, int* id, int* iv, int* ic, double* ithetavec, int ik); //needs an input value of k
    //set and get
    void setthetavec(vxd thetavec) {this->thetavec=thetavec;}
    vxd getthetavec() const {return thetavec;}

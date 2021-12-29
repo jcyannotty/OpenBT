@@ -194,5 +194,45 @@ int main()
 
    cout << "***** collapsed supertree:\n";
    st.pr_vec();
+   
+   //----------------------------------------------
+   //Tree to vector -- note with the vector parameter setup, otheta is of length nn*k (number.of.nodes x number.of.models)
+   tree tv4; //get a new tree
+   tv4.birth(1,0,50,v21,v22); //birth step
+   cout << "***************************************" << endl;
+   cout << "Construct new tree and perform a birth" << endl;
+   tv4.pr_vec();
+
+   //set up containers/pointers for the information
+   int oid[3], oc[3], ov[3]; //tree size, nn = 3
+   double otheta[3*2]; //k = 2
+   
+   tv4.treetovec(oid, ov, oc, otheta, 2);
+
+   //Print Results
+   cout << "***************************************" << endl;
+   cout << "~~~ Tree to Vector Output ~~~" << endl; 
+   for(int i = 0;i<3;i++){
+      cout << "Out ID = " << oid[i] << " -- ";
+      cout << "Out V = " << ov[i] << " -- ";
+      cout << "Out C = " << oc[i] << " -- ";
+      cout << "Out Theta = " << otheta[2*i] << ", " << otheta[2*i+1] << endl;
+   }
+   
+   //----------------------------------------------
+   //Vector to tree -- same thing as above, the theta here is nn*k
+   tree tv5; //get a new tree
+   cout << "***************************************" << endl;
+   cout << "~~~ Tree to Vector Output ~~~" << endl;
+   cout << "**** Initial Tree" << endl;
+   tv5.pr_vec();
+
+   //Use the vectors from previous example (tree to vector) to populate the tree
+   tv5.vectotree(3,oid,ov,oc,otheta,2); //number nodes nn = 3 && number models k = 2
+   cout << "**** Updated Tree" << endl;
+   tv5.pr_vec();
+   
+   
+
    return 0;
 }
