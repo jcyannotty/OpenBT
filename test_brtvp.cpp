@@ -132,7 +132,7 @@ int main(){
     //MCMC info
     bm.setmi(0.7,  //probability of birth/death
          0.5,  //probability of birth
-         5,    //minimum number of observations in a bottom node
+         5,    //minimum number of observations in a bottom node 
          true, //do perturb/change variable proposal?
          0.2,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
          0.2,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -181,8 +181,9 @@ int main(){
     std::cout << siv[0].n << ", " << siv[1].n << std::endl;
 
     //--------------------------------------------------
-    //Example 5: Work towards constructing a full mcmc
+    //Example 5: Run an MCMC
     cout << "\n******************************************" << endl;
+    /*
     size_t tuneevery=250;
     size_t tune=5000;
     size_t burn=5000;
@@ -240,7 +241,79 @@ int main(){
     cout << "                    ";
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
+    */
+
+    //--------------------------------------------------
+    //Example 6: Save and load tree
+    brt b1, b2; //new brt objects
+    b1.setxi(&xi); b1.setfi(&fi,k); b1.setdata_mix(&di); b1.settc(tc); b1.settp(0.95,1.0); b1.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);
+    b2.setxi(&xi); b2.setfi(&fi,k); b2.setdata_mix(&di); b2.settc(tc); b2.settp(0.95,1.0); b2.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);
+
+    //Populate the brt objects -- look through to get larger objects
+    for(int i=0; i<20;i++){
+        b1.drawvec(gen);
+        b2.drawvec(gen);
+    }
     
+    //Print the bart objects
+    cout << "\n~~~Print brt 1~~~" << endl;
+    b1.pr_vec();
+    cout << "\n~~~Print brt 2~~~" << endl;
+    b2.pr_vec();
+
+    //Save tree's 1 and 2 using brt object;
+    std::vector<int> nn_vec(2); //2 bart models -- length of vector = 2
+    std::vector<std::vector<int>> id_vec(2), v_vec(2), c_vec(2); //2 bart models -- number of rows = 2 
+    std::vector<std::vector<double>> theta_vec(2*k); //length of vector of 2*k
+
+    b1.savetree_vec(0,1,nn_vec,id_vec,v_vec,c_vec,theta_vec); //0th iteration 
+    b2.savetree_vec(1,1,nn_vec,id_vec,v_vec,c_vec,theta_vec); //1st iteration
+
+    //Print the saved tree vectors
+    cout << "\n****** Print nn vector" << endl;
+    for(int i=0; i<2;i++){
+        cout << "--------------------------------------" << endl;
+        cout << "Brt " << i+1 << ": \n" << "nn = " << nn_vec[i] << endl;
+        for(int j=0;j<id_vec[i].size();j++){
+            cout << "id = " << id_vec[i][j] << " -- " << "(v,c) = " << "(" << v_vec[i][j] << "," << c_vec[i][j] << ") -- " << "thetavec = ";
+            for(int l = 0; l<k; l++){
+                cout << theta_vec[i][j*k+l] << ", ";
+            }
+            cout << endl;
+        }    
+    }
+
+    //Load a tree -- use the containers from above
+    brt b11, b22;
+    b11.setxi(&xi); b11.setfi(&fi,k); b11.setdata_mix(&di); b11.settc(tc); b11.settp(0.95,1.0); b11.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);
+    b22.setxi(&xi); b22.setfi(&fi,k); b22.setdata_mix(&di); b22.settc(tc); b22.settp(0.95,1.0); b22.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);
+    b11.loadtree_vec(0,1,nn_vec,id_vec,v_vec,c_vec,theta_vec);
+    b22.loadtree_vec(1,1,nn_vec,id_vec,v_vec,c_vec,theta_vec);
+    
+    //Print the bart objects from the loading process
+    cout << "\n*******Loading Trees*******" << endl;
+    cout << "\n~~~Print brt 1~~~" << endl;
+    b11.t.pr_vec();
+    cout << "\n~~~Print brt 2~~~" << endl;
+    b22.t.pr_vec();
+
+
+    /*
+    tree t1,t2; //New Trees
+    brt b1; //New brt object
+    int kk = 3;
+    vxd theta(k), thetar(k), thetal(k);
+    thetar << 1.9, 2.4, 3.1;
+    thetal << 4.3, 2.2, 3.1;
+    theta << 0.9, 0.4, -1.2;
+
+    //Set theta for tree 1
+    t1.setthetavec(theta);
+
+    //brith for tree 2
+    t2.birth(1, 0, 2, thetal, thetar);
+    */
+
     //--------------------------------------------------
     //--------------------------------------------------
     //Extra 

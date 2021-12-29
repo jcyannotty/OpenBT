@@ -656,12 +656,12 @@ void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, 
    vxd thetavec_temp(k);
 
    this->tonull(); // obliterate old tree (if there)
-
+   
    //Populate the first theta vector 
    for(int j = 0; j<k; j++){
-      thetavec_temp(j) = ithetavec[j];
+      thetavec_temp(j) = (double)ithetavec[j];
    }
-   
+
    //first node has to be the top one
    pts[1] = this; //careful! this is not the first pts, it is pointer of id 1.
    this->setv((size_t)iv[0]); this->setc((size_t)ic[0]); this->setthetavec(thetavec_temp);
@@ -673,7 +673,7 @@ void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, 
 
       //Populate the temp theta vector 
       for(int j = 0; j<k; j++){
-         thetavec_temp(j) = ithetavec[i*k + j];
+         thetavec_temp(j) = (double)ithetavec[i*k + j];
       }
       
       np->v = (size_t)iv[i]; np->c=(size_t)ic[i]; np->thetavec=thetavec_temp;
