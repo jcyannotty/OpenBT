@@ -387,6 +387,39 @@ void mxbrt::pr_vec()
    brt::pr_vec();
 }
 
+//--------------------------------------------------
+//Sample from the variance posterior -- using Gibbs sampler under a homscedastic variance assumption
+void mxbrt::drawsigma(rn& gen){
+    double sumr2 = 0;
+    int n;
+    n = resid.size();
 
+    //Get sum of residuals squared
+    for(int i = 0; i<n;i++){
+        sumr2 = sumr2 + resid[i]*resid[i];
+        //std::cout << resid[i] << " --- " << resid[i]*resid[i] << std::endl;
+    }
+    //Get nu*lambda and nu
+    double nulampost=ci.nu*ci.lambda+sumr2;
+    double nupost = n + (int)ci.nu;
+
+    //Generate new inverse scaled chi2 rv
+    gen.set_df(nupost); //set df's
+    double newsig = sqrt((nulampost)/gen.chi_square());
+    for(int i = 0;i<n;i++){
+        ci.sigma[i] = newsig; 
+    }
+
+    /*
+    std::cout << "n=" << n << " -- sumr2=" << sumr2 << std::endl;
+    std::cout << "Before --- *ci.sigma = " <<  *(ci.sigma) << std::endl;
+    std::cout << "Chi2 = " <<  gen.chi_square() << std::endl;
+    std::cout << "nulambda post = " <<  nulampost << std::endl;
+    std::cout << "Value = " << sqrt((nulampost)/gen.chi_square()) << std::endl;
+    *(ci.sigma) = sqrt((nulampost)/gen.chi_square());
+    std::cout << "After --- *ci.sigma = " <<  *(ci.sigma) << std::endl;
+    */
+
+}
 
 

@@ -80,9 +80,10 @@ public:
     // tprior and mcmcinfo are same as in brt
         class cinfo{
         public:
-            cinfo():beta0(1.0), tau(1.0), sigma(0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
+            cinfo():beta0(1.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
             double beta0, tau;
             double* sigma; //use pointer since this will be changed as mcmc iterates
+            double nu, lambda;
         };
     //--------------------
     //constructors/destructors
@@ -91,7 +92,7 @@ public:
     //methods
     void drawvec(rn& gen);
     void drawvec_mpislave(rn& gen);
-    void setci(double tau, double beta0 ,double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; }
+    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; } 
     virtual vxd drawnodethetavec(sinfo& si, rn& gen);
     virtual double lm(sinfo& si);
     virtual void add_observation_to_suff(diterator& diter, sinfo& si);
@@ -102,6 +103,9 @@ public:
     virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
     void pr_vec();
 
+    //Method for sampling homoscedastic variance for paramter sigma^2 -- not sure if this works
+    void setvi(double nu, double lambda) {ci.nu = nu; ci.lambda = lambda; } //Use to change the defualt parameters  
+    void drawsigma(rn& gen); //Gibbs Sampler
 
     //Consider adding covariance inversion to local_subsuff-----******
 

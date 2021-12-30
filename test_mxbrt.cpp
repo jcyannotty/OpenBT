@@ -145,8 +145,9 @@ int main(){
     mx4.print_mx();
 
     //-------------------------------------------------------
-    //Example 2 -- Create an mxbrt object
+    //Example 2 -- Create an mxbrt object -- Use a fixed variance
     //-------------------------------------------------------
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
@@ -195,15 +196,6 @@ int main(){
     mxb.pr_vec();
 
     cout << "-----------------------------------" << endl;
-    
-    /*   
-    cout << "\n*****After 1 draw:\n";
-    mxb.drawvec(gen);
-    mxb.pr_vec();
-    */
-
-    //cout << "FtF/sig^2 = " << fi.transpose()*fi/(sig[0]*sig[0]) << endl;
-
     cout << "\n-----------------------------------" << endl;
     size_t nd = 10000;
     size_t nadapt=1000;
@@ -261,6 +253,113 @@ int main(){
 
     std::ofstream outdata;
     outdata.open("fit_mxbrt_k2_mn5.txt"); // opens the file
+    if( !outdata ) { // file couldn't be opened
+        std::cerr << "Error: file could not be opened" << endl;
+        exit(1);
+    }
+    for(int i = 0; i<n; i++){
+        outdata << fitted[i] <<  endl;
+    }
+    outdata.close();
+
+    */
+
+    //-------------------------------------------------------
+    //Example 3 -- Create an mxbrt object -- Constant but unknown error variance
+    //-------------------------------------------------------
+    cout << "\n\n-----------------------------------------" << endl;
+    cout << "Example 3: Work with a mxbrt object with unknown and constant variance \n" << endl;
+    
+    //Initialize prior parameters
+    double *sig = new double[di.n];
+    double tau = 0.5; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
+    double beta0 = 0.8; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
+    double nu = 3.0;
+    double lambda = 0.001;
+    for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
+
+    //First mix bart object with basic constructor
+    mxbrt mxb; 
+    cout << "****Initial Object" << endl; 
+    mxb.pr_vec();
+    mxb.setxi(&xi);    //set the cutpoints for this model object
+    mxb.setfi(&fi,k); //set function output for this model object
+    mxb.setdata_mix(&di);  //set the data for model mixing
+    mxb.settc(tc);      //set the number of threads when using OpenMP, etc.
+    mxb.settp(0.95,1.0); //the alpha and beta parameters in the tree depth penalty prior
+    mxb.setmi(
+            0.5,  //probability of birth/death
+            0.5,  //probability of birth
+            2,    //minimum number of observations in a bottom node
+            true, //do perturb/change variable proposal?
+            0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
+            0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
+            &chgv  //initialize the change of variable correlation matrix.
+            );
+    mxb.setci(tau,beta0,sig); //Set conditioning information for prior mean
+    mxb.setvi(nu, lambda); //Set conditioning information for prior varaince
+
+    cout << "\n*****After init:\n";
+    mxb.pr_vec();
+
+    cout << "-----------------------------------" << endl;
+    cout << "\n-----------------------------------" << endl;
+    size_t nd = 10000;
+    size_t nadapt=1000;
+    size_t adaptevery=100;
+    size_t nburn=200;
+    std::vector<double> fitted(n);
+
+    for(size_t i=0;i<nadapt;i++) { mxb.draw(gen); mxb.drawsigma(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
+    for(size_t i=0;i<nburn;i++) mxb.draw(gen); mxb.drawsigma(gen); 
+    
+    cout << "\n*****After "<< nd << " draws:\n";
+    cout << "Collecting statistics" << endl;
+    mxb.setstats(true);
+    for(int i = 0; i<nd; i++){
+        //cout << "*****Draw "<< i << endl;
+        mxb.drawvec(gen);
+        mxb.drawsigma(gen);
+        if((i % 2500) ==0){
+            cout << "***Draw " << i << "\n" << endl;
+            //mxb.pr_vec();
+        } 
+        for(size_t j=0;j<n;j++) fitted[j]+=mxb.f(j)/nd;
+    }    
+    
+    mxb.pr_vec();
+    
+    // summary statistics
+    unsigned int varcount[p];
+    unsigned int totvarcount=0;
+    for(size_t i=0;i<p;i++) varcount[i]=0;
+    unsigned int tmaxd=0;
+    unsigned int tmind=0;
+    double tavgd=0.0;
+
+    mxb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
+    for(size_t i=0;i<p;i++) totvarcount+=varcount[i];
+    tavgd/=(double)(nd);
+
+    cout << "Average tree depth: " << tavgd << endl;
+    cout << "Maximum tree depth: " << tmaxd << endl;
+    cout << "Minimum tree depth: " << tmind << endl;
+    cout << "Variable perctg:    ";
+    for(size_t i=0;i<p;i++) cout << "  " << i+1 << "  ";
+    cout << endl;
+    cout << "                    ";
+    for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
+    cout << endl;
+
+
+    cout << "Print Fitted Values" << endl;
+    for(int i = 0; i<n; i++){
+        cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted = " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
+    }
+
+    //Write Fitted values to a file
+    std::ofstream outdata;
+    outdata.open("fit_mxb1_sig.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
