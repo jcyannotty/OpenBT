@@ -52,16 +52,9 @@ public:
    void resetst() { st.tonull(); st=mb[0].t; } //copy mb0's tree to st.
    void collapseensemble();
 
-    /*
-   // function for calculating Sobol-based variable activity indices
-   void sobol(std::vector<double>& Si, std::vector<double>&Sij, std::vector<double>& TSi, double& V, std::vector<double>& minx, std::vector<double>& maxx, size_t p);
+   //Method for sampling homoscedastic variance for paramter sigma^2 -- not sure if this works
+   void setvi(double nu, double lambda) {ci.nu = nu; ci.lambda = lambda; for(size_t j=0;j<m;j++) mb[j].setvi(nu, lambda);} //Use to change the defualt parameters
 
-   // function for converting an ensemble to vector hyperrectangle format, needed for Pareto Front multiobjective optimization (see mopareto.cpp)
-   void ens2rects(std::vector<std::vector<double> >& asol, std::vector<std::vector<double> >& bsol, 
-                  std::vector<double>& thetasol, std::vector<double>& minx,
-                  std::vector<double>& maxx, size_t p);
-    */
-    
     //--------------------
     //data
     //--------------------------------------------------
