@@ -1691,13 +1691,7 @@ void brt::local_setr_mix(diterator& diter)
       bn = t.bn(diter.getxp(),*xi);
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec();
-      //std::cout << thetavec_temp << std::endl; //works
-      //cout << (*fi).row(*diter)*thetavec_temp << endl; //works
-      //cout << di->y[*diter]; does not work
-      //resid[*diter] = (di->y[*diter]) - (*fi).row(*diter)*thetavec_temp; //Error thrown: Segmentation fault (core dumped)
-
-      //resid[*diter] = 0.0 - bn->gettheta(); //Original and default. Would still work for this basic initialization
-      resid[*diter] = 0.0 - (*fi).row(*diter)*thetavec_temp;
+      resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
    }
 }
 //--------------------------------------------------
