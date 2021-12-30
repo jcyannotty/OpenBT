@@ -263,7 +263,7 @@ void grm_vec(tree& tr, xinfo& xgrid, std::ostream& os)
 //--------------------------------------------------
 //fit_mix = perform model mixing with a tree at matrix of x and f, matrix is stacked columns x[i,j] is *(x+p*i+j)
 //---need to include f to mix models.
-void fit_mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv)
+void mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv)
 {
    tree::tree_p bn;
    for(size_t i=0;i<n;i++) {

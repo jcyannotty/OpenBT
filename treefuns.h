@@ -93,7 +93,7 @@ void getinternalvars(tree::tree_p n, xinfo& xi,  std::vector<size_t>& goodvars);
 void grm_vec(tree& tr, xinfo& xgrid, std::ostream& os);
 
 //fit tree at matrix of x, matrix is stacked columns x[i,j] is *(x+p*i+j) -- used for model mixing 
-void fit_mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv);
+void mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv);
 
 
 #endif

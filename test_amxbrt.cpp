@@ -109,6 +109,48 @@ int main(){
         cout << endl;
     }
 
+    //--------------------------------------------------
+    //Make test set information
+    //Read in test data
+    //read in x
+    std::vector<double> x_test;
+    int n_test;
+    std::ifstream xf2("xtest.txt");
+    while(xf2 >> xtemp){
+        x_test.push_back(xtemp);
+    }
+    n_test = x_test.size()/p;
+    if(x_test.size() != n_test*p) {
+        cout << "error: input x file has wrong number of values\n";
+        return 1;
+    }
+    cout << "n_test,p: " << n_test << ", " << p << endl;
+
+    //read in f
+    std::vector<double> f_test;
+    std::ifstream ff2("ftest.txt");
+    while(ff2 >> ftemp){
+        f_test.push_back(ftemp);
+    }
+    
+    if(f_test.size() != n_test*k) {
+        cout << "error: input f file has wrong number of values\n";
+        return 1;
+    }
+    cout << "n_test,k: " << n_test << ", " << k << endl;
+    
+    //Make dinfo and diterator
+    dinfo di_test;
+    std::vector<double> y_test(n_test); //empty y
+    for(int j=0;j<n_test;j++){y_test.push_back(0);}
+    di_test.n=n_test;di_test.p=p,di_test.x = &x_test[0];di_test.tc=tc;di_test.y = &y_test[0];    
+    
+    diterator diter_test(&di_test);
+
+    //Make finfo
+    finfo fi_test;
+    makefinfo(k,n_test, &f_test[0], fi_test);
+
     //-------------------------------------------------------
     //Example 1 -- Test Constructors
     //-------------------------------------------------------
@@ -125,13 +167,16 @@ int main(){
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
+    int m = 20;
     double *sig = new double[di.n];
-    double tau = 0.5;
-    double beta0 = 0.8;
+    double tau = 0.5/sqrt(double(m));
+    double beta0 = 0.8/double(m);
+    //double tau = 0.3464*0.5/(1*sqrt((double)m)); //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 30 here
+    //double beta0 = 0.537/(double)m; //..... median(y)/((median(f1) + median(f2))*m) .... m = 30 here
     for(size_t i=0;i<di.n;i++) sig[i]=0.03;
 
     //First mix bart object with basic constructor
-    amxbrt axb(20); //20 Trees 
+    amxbrt axb(m); //20 Trees 
     cout << "****Initial Object" << endl; 
     axb.pr_vec();
     axb.setxi(&xi);    //set the cutpoints for this model object 
@@ -167,10 +212,9 @@ int main(){
     size_t nadapt=1000;
     size_t adaptevery=100;
     size_t nburn=200;
-    std::vector<double> fitted(n);
-    //dinfo inpred;
-    //inpred.n=n;inpred.p=p,inpred.x = &x[0];inpred.tc=tc;inpred.y=&fitted[0];
-
+    std::vector<double> fitted(n), predicted(n_test);
+    dinfo di_predict;
+    di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
     for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
     for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
     
@@ -178,21 +222,17 @@ int main(){
     cout << "Collecting statistics" << endl;
     axb.setstats(true);
     for(int i = 0; i<nd; i++){
-        if((i % 50) ==0){ cout << "***Draw " << i << "\n" << endl;}
+        if((i % 500) ==0){cout << "***Draw " << i << "\n" << endl;}
         axb.drawvec(gen);
         for(size_t j=0;j<n;j++) fitted[j]+=axb.f(j)/nd;
-        //inpred+= *axb.getf();
+        
+        axb.predict_mix(&di_test, &fi_test);
+        di_predict += di_test;
     }
     
-    /*
-    //Write the fits
-    std::ofstream axbfit("fit_amxb.txt"); 
-    for(size_t j=0;j<n;j++){
-        axbfit << fitted[j] << "\n";
-    } 
-    axbfit.close();
-    */
-    
+    //Take the prediction average
+    di_predict/=((double)nd);
+
     // summary statistics
     unsigned int varcount[p];
     unsigned int totvarcount=0;
@@ -220,17 +260,44 @@ int main(){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
     }
 
+    cout << "Print Predicted Values" << endl;
+    for(int i = 0; i<n_test; i++){
+        cout << i <<" -- Predicted " << predicted[i] << endl;
+    }
+
+    diterator diter_pred(&di_predict);
+    for(;diter_pred<diter_pred.until();diter_pred++){
+        cout << diter_pred.gety() << endl;
+        //predicted[*diter_test] = predicted[*diter_test] + diter_test.gety()/nd;
+    }
+        
+    /*
     //Write all data values to a file
     std::ofstream outdata;
-    outdata.open("fit_amxb1.txt"); // opens the file
+    outdata.open("fit_amxb1_m20.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
     }
     for(int i = 0; i<n; i++){
-        outdata << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
+        outdata << fitted[i] << endl;
     }
     outdata.close();
+    */
+
+   //Write all data values to a file
+    std::ofstream outdata;
+    outdata.open("predict_amxb1_m20.txt"); // opens the file
+    if( !outdata ) { // file couldn't be opened
+        std::cerr << "Error: file could not be opened" << endl;
+        exit(1);
+    }
+    for(int i = 0; i<n_test; i++){
+        outdata << predicted[i] << endl;
+    }
+    outdata.close();
+
+
 
     return 0;
 

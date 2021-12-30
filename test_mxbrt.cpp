@@ -152,9 +152,9 @@ int main(){
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau = 0.5;
-    double beta0 = 0.8;
-    for(size_t i=0;i<di.n;i++) sig[i]=0.03;
+    double tau = 0.3464*0.5/1; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
+    double beta0 = 0.537; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
+    for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
@@ -175,7 +175,7 @@ int main(){
     mxb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            2,    //minimum number of observations in a bottom node
+            5,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -254,19 +254,19 @@ int main(){
 
     cout << "Print Fitted Values" << endl;
     for(int i = 0; i<n; i++){
-        cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
+        cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted = " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
     }
 
     //Write Fitted values to a file
 
     std::ofstream outdata;
-    outdata.open("fits.txt"); // opens the file
+    outdata.open("fit_mxbrt_k2_mn5.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
     }
     for(int i = 0; i<n; i++){
-        outdata << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
+        outdata << fitted[i] <<  endl;
     }
     outdata.close();
 

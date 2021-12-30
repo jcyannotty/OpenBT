@@ -137,6 +137,7 @@ void amxbrt::local_predict_mix(diterator& diter, finfo& fipred){
             thetavec_temp = bn->getthetavec();
             temp = temp + fipred.row(*diter)*thetavec_temp;
         }
+        //std::cout << temp << std::endl;
         diter.sety(temp);
     }
 }
