@@ -77,7 +77,7 @@ int main(){
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
-    size_t nc=100;
+    size_t nc=50; //100
     makexinfo(p,n,&x[0],xi,nc); //use the 1st column with x[0]
 
     prxi(xi);
@@ -108,6 +108,47 @@ int main(){
         cout << endl;
     }
 
+    //--------------------------------------------------
+    //Make test set information
+    //Read in test data
+    //read in x
+    std::vector<double> x_test;
+    int n_test;
+    std::ifstream xf2("xtest.txt");
+    while(xf2 >> xtemp){
+        x_test.push_back(xtemp);
+    }
+    n_test = x_test.size()/p;
+    if(x_test.size() != n_test*p) {
+        cout << "error: input x file has wrong number of values\n";
+        return 1;
+    }
+    cout << "n_test,p: " << n_test << ", " << p << endl;
+
+    //read in f
+    std::vector<double> f_test;
+    std::ifstream ff2("ftest.txt");
+    while(ff2 >> ftemp){
+        f_test.push_back(ftemp);
+    }
+    
+    if(f_test.size() != n_test*k) {
+        cout << "error: input f file has wrong number of values\n";
+        return 1;
+    }
+    cout << "n_test,k: " << n_test << ", " << k << endl;
+    
+    //Make dinfo and diterator
+    dinfo di_test;
+    std::vector<double> y_test(n_test); //empty y
+    for(int j=0;j<n_test;j++){y_test.push_back(0);}
+    di_test.n=n_test;di_test.p=p,di_test.x = &x_test[0];di_test.tc=tc;di_test.y = &y_test[0];    
+    
+    diterator diter_test(&di_test);
+
+    //Make finfo
+    finfo fi_test;
+    makefinfo(k,n_test, &f_test[0], fi_test);
 
     //-------------------------------------------------------
     //Example 1 -- Test mxsinfo
@@ -147,15 +188,17 @@ int main(){
     //-------------------------------------------------------
     //Example 2 -- Create an mxbrt object -- Use a fixed variance
     //-------------------------------------------------------
-    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau = 0.3464*0.5/1; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
-    double beta0 = 0.537; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
+    double tau = 0.35; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
+    double beta0 = 0.54; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
+    std::vector<double> fitted(n), predicted(n_test);
     for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
+    dinfo di_predict;
+    di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
@@ -170,7 +213,7 @@ int main(){
     mxb.settc(tc);      //set the number of threads when using OpenMP, etc.
     //tree prior
     mxb.settp(0.95, //the alpha parameter in the tree depth penalty prior
-            1.0     //the beta parameter in the tree depth penalty prior
+            0.5     //the beta parameter in the tree depth penalty prior
             );
     //MCMC info
     mxb.setmi(
@@ -201,7 +244,6 @@ int main(){
     size_t nadapt=1000;
     size_t adaptevery=100;
     size_t nburn=200;
-    std::vector<double> fitted(n);
 
     for(size_t i=0;i<nadapt;i++) { mxb.draw(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
     for(size_t i=0;i<nburn;i++) mxb.draw(gen); 
@@ -210,16 +252,19 @@ int main(){
     cout << "Collecting statistics" << endl;
     mxb.setstats(true);
     for(int i = 0; i<nd; i++){
-        //cout << "*****Draw "<< i << endl;
+        //Sample tree and theta
         mxb.drawvec(gen);
-        
         if((i % 2500) ==0){
             cout << "***Draw " << i << "\n" << endl;
             //mxb.pr_vec();
         } 
         
+        //Updated fitted values
         for(size_t j=0;j<n;j++) fitted[j]+=mxb.f(j)/nd;
-        //mxb.pr_vec();
+        
+        //Predictions
+        mxb.predict_mix(&di_test, &fi_test);
+        di_predict += di_test;
     }    
 
     // summary statistics
@@ -252,7 +297,7 @@ int main(){
     //Write Fitted values to a file
 
     std::ofstream outdata;
-    outdata.open("fit_mxbrt_k2_mn5.txt"); // opens the file
+    outdata.open("fit_mxb2.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
@@ -262,11 +307,23 @@ int main(){
     }
     outdata.close();
 
-    */
+    //Write all data values to a file
+    std::ofstream outpred;
+    outpred.open("predict_mxb2.txt"); // opens the file
+    if( !outpred ) { // file couldn't be opened
+        std::cerr << "Error: file could not be opened" << endl;
+        exit(1);
+    }
+
+    for(int i = 0; i<n_test; i++){
+        outpred << predicted[i] << endl;
+    }
+    outpred.close();
 
     //-------------------------------------------------------
     //Example 3 -- Create an mxbrt object -- Constant but unknown error variance
     //-------------------------------------------------------
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 3: Work with a mxbrt object with unknown and constant variance \n" << endl;
     
@@ -368,6 +425,7 @@ int main(){
         outdata << fitted[i] <<  endl;
     }
     outdata.close();
+    */
 
     return 0;
 

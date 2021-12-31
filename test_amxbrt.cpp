@@ -78,7 +78,7 @@ int main(){
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
-    size_t nc=100;
+    size_t nc=50; //100
     makexinfo(p,n,&x[0],xi,nc); //use the 1st column with x[0]
 
     prxi(xi);
@@ -163,15 +163,15 @@ int main(){
     //-------------------------------------------------------
     //Example 2 -- Test MCMC
     //-------------------------------------------------------
-    /*
+    
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
     int m = 20;
     double *sig = new double[di.n];
-    double tau = 0.5/sqrt(double(m));
-    double beta0 = 0.8/double(m);
+    double tau = 0.35/sqrt(double(m));
+    double beta0 = 0.54/double(m);
     //double tau = 0.3464*0.5/(1*sqrt((double)m)); //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 30 here
     //double beta0 = 0.537/(double)m; //..... median(y)/((median(f1) + median(f2))*m) .... m = 30 here
     for(size_t i=0;i<di.n;i++) sig[i]=0.03;
@@ -195,7 +195,7 @@ int main(){
     axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            2,    //minimum number of observations in a bottom node
+            5,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -266,8 +266,6 @@ int main(){
         cout << i <<" -- Predicted " << predicted[i] << endl;
     }
 
-    */
-
     /*
     diterator diter_pred(&di_predict);
     for(;diter_pred<diter_pred.until();diter_pred++){
@@ -276,10 +274,9 @@ int main(){
     }
     */
 
-    /*
     //Write all data values to a file
     std::ofstream outdata;
-    outdata.open("fit_amxb1_m20.txt"); // opens the file
+    outdata.open("fit_amxb2_m20.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
@@ -289,22 +286,23 @@ int main(){
     }
     outdata.close();
 
-   //Write all data values to a file
-    std::ofstream outdata;
-    outdata.open("predict_amxb1_m20.txt"); // opens the file
-    if( !outdata ) { // file couldn't be opened
+    //Write all data values to a file
+    std::ofstream outpred;
+    outpred.open("predict_amxb2_m20.txt"); // opens the file
+    if( !outpred ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
     }
     for(int i = 0; i<n_test; i++){
-        outdata << predicted[i] << endl;
+        outpred << predicted[i] << endl;
     }
-    outdata.close();
-    */
+    outpred.close();
+    
 
     //-------------------------------------------------------
     //Example 3 -- Test MCMC with unknown constant variance
     //-------------------------------------------------------
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
