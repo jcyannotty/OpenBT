@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
    conf >> nadapt;
    conf >> adaptevery;
 
-   //mu prior (tau, ambrt) and sigma prior (lambda,nu, psbrt)
+   //mu prior (tau, ambrt) and sigma prior (lambda,nu, psbrt) **** Add in mean value
    double tau;
    double overalllambda;
    double overallnu;
@@ -251,6 +251,9 @@ int main(int argc, char* argv[])
 #ifdef _OPENMPI
       }
 #endif
+
+   //--------------------------------------------------
+   //Initialize f matrix and make finfo -- used only for model mixing 
 
    //--------------------------------------------------
    //Initialize vector of truncated observations.  Only used in merck_truncated model.
@@ -553,7 +556,8 @@ int main(int argc, char* argv[])
          );
    psbm.setci(nu,lambda);
 
-
+   //--------------------------------------------------
+   //Set up amxbrt object
 
    //--------------------------------------------------
    //run mcmc

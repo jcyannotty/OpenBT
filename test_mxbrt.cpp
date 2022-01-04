@@ -77,7 +77,7 @@ int main(){
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
-    size_t nc=50; //100
+    size_t nc=100; //100
     makexinfo(p,n,&x[0],xi,nc); //use the 1st column with x[0]
 
     prxi(xi);
@@ -184,17 +184,18 @@ int main(){
     std::cout << "---Addition and Equality Operator" << std::endl;    
     mxsinfo mx4 = mx2 + mx3; //Add two mxsinfo objects 
     mx4.print_mx();
-
+    
     //-------------------------------------------------------
     //Example 2 -- Create an mxbrt object -- Use a fixed variance
     //-------------------------------------------------------
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
     double *sig = new double[di.n];
-    double tau = 0.35; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
-    double beta0 = 0.54; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
+    double tau = 0.5; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
+    double beta0 = 0.55; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
     std::vector<double> fitted(n), predicted(n_test);
     for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
     dinfo di_predict;
@@ -213,13 +214,13 @@ int main(){
     mxb.settc(tc);      //set the number of threads when using OpenMP, etc.
     //tree prior
     mxb.settp(0.95, //the alpha parameter in the tree depth penalty prior
-            0.5     //the beta parameter in the tree depth penalty prior
+            0.75     //the beta parameter in the tree depth penalty prior
             );
     //MCMC info
     mxb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            5,    //minimum number of observations in a bottom node
+            3,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -240,13 +241,13 @@ int main(){
 
     cout << "-----------------------------------" << endl;
     cout << "\n-----------------------------------" << endl;
-    size_t nd = 10000;
-    size_t nadapt=1000;
-    size_t adaptevery=100;
-    size_t nburn=200;
+    size_t nd = 20000;
+    size_t nadapt=5000;
+    size_t adaptevery=500;
+    size_t nburn=1000;
 
-    for(size_t i=0;i<nadapt;i++) { mxb.draw(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
-    for(size_t i=0;i<nburn;i++) mxb.draw(gen); 
+    for(size_t i=0;i<nadapt;i++) { mxb.drawvec(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
+    for(size_t i=0;i<nburn;i++) mxb.drawvec(gen); 
     
     cout << "\n*****After "<< nd << " draws:\n";
     cout << "Collecting statistics" << endl;
@@ -266,6 +267,9 @@ int main(){
         mxb.predict_mix(&di_test, &fi_test);
         di_predict += di_test;
     }    
+
+    //Take the prediction average
+    di_predict/=((double)nd);
 
     // summary statistics
     unsigned int varcount[p];
@@ -295,7 +299,6 @@ int main(){
     }
 
     //Write Fitted values to a file
-
     std::ofstream outdata;
     outdata.open("fit_mxb2.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
@@ -319,21 +322,25 @@ int main(){
         outpred << predicted[i] << endl;
     }
     outpred.close();
+    */
 
     //-------------------------------------------------------
     //Example 3 -- Create an mxbrt object -- Constant but unknown error variance
     //-------------------------------------------------------
-    /*
+
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 3: Work with a mxbrt object with unknown and constant variance \n" << endl;
     
     //Initialize prior parameters
     double *sig = new double[di.n];
     double tau = 0.5; //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 1 here
-    double beta0 = 0.8; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
-    double nu = 3.0;
-    double lambda = 0.001;
+    double beta0 = 0.55; //..... median(y)/((median(f1) + median(f2))*m) .... m = 1 here
+    double nu = 5.0;
+    double lambda = 0.01; //0.01
+    std::vector<double> fitted(n), predicted(n_test);
     for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
+    dinfo di_predict;
+    di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
 
     //First mix bart object with basic constructor
     mxbrt mxb; 
@@ -343,11 +350,11 @@ int main(){
     mxb.setfi(&fi,k); //set function output for this model object
     mxb.setdata_mix(&di);  //set the data for model mixing
     mxb.settc(tc);      //set the number of threads when using OpenMP, etc.
-    mxb.settp(0.95,1.0); //the alpha and beta parameters in the tree depth penalty prior
+    mxb.settp(0.95,0.75); //the alpha and beta parameters in the tree depth penalty prior
     mxb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            2,    //minimum number of observations in a bottom node
+            1,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -361,30 +368,51 @@ int main(){
 
     cout << "-----------------------------------" << endl;
     cout << "\n-----------------------------------" << endl;
-    size_t nd = 10000;
-    size_t nadapt=1000;
-    size_t adaptevery=100;
-    size_t nburn=200;
-    std::vector<double> fitted(n);
+    size_t nd = 20000;
+    size_t nadapt=5000;
+    size_t adaptevery=500;
+    size_t nburn=1000;
 
-    for(size_t i=0;i<nadapt;i++) { mxb.draw(gen); mxb.drawsigma(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
-    for(size_t i=0;i<nburn;i++) mxb.draw(gen); mxb.drawsigma(gen); 
+    for(size_t i=0;i<nadapt;i++) { mxb.drawvec(gen); mxb.drawsigma(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
+    for(size_t i=0;i<nburn;i++) mxb.drawvec(gen); mxb.drawsigma(gen); 
     
+    //Initialize the sigma posterior txt file
+    std::ofstream outsig;
+    outsig.open("postsig_mxb2.txt"); // opens the file
+    outsig.close(); // closes the file
+
+
     cout << "\n*****After "<< nd << " draws:\n";
     cout << "Collecting statistics" << endl;
     mxb.setstats(true);
     for(int i = 0; i<nd; i++){
-        //cout << "*****Draw "<< i << endl;
+        //Draw theta and a tree
         mxb.drawvec(gen);
+
+        //Draw Sigma and save the last 25% of draws
         mxb.drawsigma(gen);
-        if((i % 2500) ==0){
-            cout << "***Draw " << i << "\n" << endl;
-            //mxb.pr_vec();
-        } 
+
+        if(i > nd*0.75){
+            outsig.open("postsig_mxb2.txt", std::ios_base::app); // opens the file
+            outsig << mxb.getsigma() << endl;
+            outsig.close(); // closes the file
+        }
+        
+
+        if((i % 2500) ==0){cout << "***Draw " << i << "\n" << endl;} 
+        
+        //Get Fitted Values 
         for(size_t j=0;j<n;j++) fitted[j]+=mxb.f(j)/nd;
+
+        //get Predictions
+        mxb.predict_mix(&di_test, &fi_test);
+        di_predict += di_test;
     }    
     
     mxb.pr_vec();
+
+    //Take the prediction average
+    di_predict/=((double)nd);
     
     // summary statistics
     unsigned int varcount[p];
@@ -416,7 +444,7 @@ int main(){
 
     //Write Fitted values to a file
     std::ofstream outdata;
-    outdata.open("fit_mxb1_sig.txt"); // opens the file
+    outdata.open("fit_mxb2_sig.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
@@ -425,7 +453,18 @@ int main(){
         outdata << fitted[i] <<  endl;
     }
     outdata.close();
-    */
+
+    //Write all data values to a file
+    std::ofstream outpred;
+    outpred.open("predict_mxb2_sig.txt"); // opens the file
+    if( !outpred ) { // file couldn't be opened
+        std::cerr << "Error: file could not be opened" << endl;
+        exit(1);
+    }
+    for(int i = 0; i<n_test; i++){
+        outpred << predicted[i] << endl;
+    }
+    outpred.close();
 
     return 0;
 

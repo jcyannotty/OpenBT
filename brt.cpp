@@ -1692,6 +1692,7 @@ void brt::local_setr_mix(diterator& diter)
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec();
       resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
+      //resid[*diter] = 0.0 - (*fi).row(*diter)*thetavec_temp;
    }
 }
 //--------------------------------------------------

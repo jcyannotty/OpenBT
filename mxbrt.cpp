@@ -106,19 +106,19 @@ double mxbrt::lm(sinfo& si){
     beta = ci.beta0*vxd::Ones(k);
 
     //Get covariance matrix
-    Sig_inv = mxsi.sumffw + I/t2; //get sig_inv matrix
-    Sig = Sig_inv.llt().solve(I); //Get Sigma
+    Sig = mxsi.sumffw + I/t2; //get Sig matrix
+    Sig_inv = Sig.llt().solve(I); //Get Sigma_inv
     
     //Compute Log determinent
     mxd L(Sig.llt().matrixL()); //Cholesky decomp and store the L matrix
     suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
 
     //Now work on the exponential terms
-    sumq = mxsi.sumyyw - (mxsi.sumfyw + beta/t2).transpose()*Sig*(mxsi.sumfyw + beta/t2);
+    sumq = mxsi.sumyyw - (mxsi.sumfyw + beta/t2).transpose()*Sig_inv*(mxsi.sumfyw + beta/t2) + k*ci.beta0*ci.beta0/t2;
   
     //print the mxinfo
     //mxsi.print_mx();
-    return 0.5*(suml - sumq);
+    return -0.5*(suml + sumq + k*log(t2));
 
 }
 
