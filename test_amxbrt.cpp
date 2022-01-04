@@ -78,7 +78,7 @@ int main(){
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
-    size_t nc=50; //100
+    size_t nc=100; //100
     makexinfo(p,n,&x[0],xi,nc); //use the 1st column with x[0]
 
     prxi(xi);
@@ -163,21 +163,19 @@ int main(){
     //-------------------------------------------------------
     //Example 2 -- Test MCMC
     //-------------------------------------------------------
-    
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 2: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
-    int m = 20;
+    int m = 5; //25
     double *sig = new double[di.n];
-    double tau = 0.35/sqrt(double(m));
-    double beta0 = 0.54/double(m);
-    //double tau = 0.3464*0.5/(1*sqrt((double)m)); //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 30 here
-    //double beta0 = 0.537/(double)m; //..... median(y)/((median(f1) + median(f2))*m) .... m = 30 here
+    double tau = 0.5/sqrt(double(m)); // --- 0.2 with 2 trees
+    double beta0 = 0.55/double(m); // --- 0.2 with 2 trees
     for(size_t i=0;i<di.n;i++) sig[i]=0.03;
 
     //First mix bart object with basic constructor
-    amxbrt axb(m); //20 Trees 
+    amxbrt axb(m); //m Trees 
     cout << "****Initial Object" << endl; 
     axb.pr_vec();
     axb.setxi(&xi);    //set the cutpoints for this model object 
@@ -189,13 +187,13 @@ int main(){
     axb.settc(tc);      //set the number of threads when using OpenMP, etc.
     //tree prior
     axb.settp(0.95, //the alpha parameter in the tree depth penalty prior
-            1.0     //the beta parameter in the tree depth penalty prior
+            0.75     //the beta parameter in the tree depth penalty prior
             );
     //MCMC info
     axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            5,    //minimum number of observations in a bottom node
+            3,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -209,10 +207,10 @@ int main(){
     cout << "\n-----------------------------------" << endl;
     cout << "-----------------------------------" << endl;
 
-    size_t nd = 10000;
-    size_t nadapt=1000;
-    size_t adaptevery=100;
-    size_t nburn=200;
+    size_t nd = 20000;
+    size_t nadapt=5000;
+    size_t adaptevery=500;
+    size_t nburn=1000;
     std::vector<double> fitted(n), predicted(n_test);
     dinfo di_predict;
     di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
@@ -226,7 +224,7 @@ int main(){
         if((i % 500) ==0){cout << "***Draw " << i << "\n" << endl;}
         axb.drawvec(gen);
         for(size_t j=0;j<n;j++) fitted[j]+=axb.f(j)/nd;
-        
+        //if((i % 5) ==0){cout << "Draw " << i+1 << " --- " << "F(10) = " << axb.f(10) << " --- R(10) = " << axb.r(10) << endl;}
         axb.predict_mix(&di_test, &fi_test);
         di_predict += di_test;
     }
@@ -244,7 +242,7 @@ int main(){
 
     axb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
     for(size_t i=0;i<p;i++) totvarcount+=varcount[i];
-    tavgd/=(double)(nd);
+    tavgd/=(double)(nd*m);
 
     cout << "Average tree depth: " << tavgd << endl;
     cout << "Maximum tree depth: " << tmaxd << endl;
@@ -256,6 +254,7 @@ int main(){
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
 
+    
     cout << "Print Fitted Values" << endl;
     for(int i = 0; i<n; i++){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
@@ -264,16 +263,8 @@ int main(){
     cout << "Print Predicted Values" << endl;
     for(int i = 0; i<n_test; i++){
         cout << i <<" -- Predicted " << predicted[i] << endl;
-    }
-
-    /*
-    diterator diter_pred(&di_predict);
-    for(;diter_pred<diter_pred.until();diter_pred++){
-        cout << diter_pred.gety() << endl;
-        //predicted[*diter_test] = predicted[*diter_test] + diter_test.gety()/nd;
-    }
-    */
-
+    }    
+    
     //Write all data values to a file
     std::ofstream outdata;
     outdata.open("fit_amxb2_m20.txt"); // opens the file
@@ -298,29 +289,23 @@ int main(){
     }
     outpred.close();
     
-
+    */
+   
     //-------------------------------------------------------
     //Example 3 -- Test MCMC with unknown constant variance
     //-------------------------------------------------------
-    /*
     cout << "\n\n-----------------------------------------" << endl;
-    cout << "Example 2: Work with a mxbrt object \n" << endl;
+    cout << "Example 3: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
-    int m = 20;
+    int m = 5;
     double *sig = new double[di.n];
-    double tau = 0.5/sqrt(double(m));
-    double beta0 = 0.8/double(m);
-    double nu = 3.0;
-    double lambda = 0.001;
+    double tau = 0.2/sqrt(double(m));
+    double beta0 = 0.35/double(m);
+    double nu = 5.0;
+    double lambda = 0.01;
     for(size_t i=0;i<di.n;i++) sig[i]=0.1;
-    
-    //double tau = 0.3464*0.5/(1*sqrt((double)m)); //.... (1/B)*0.5/k .... B = sqrt(m*f1^2 + m*f2^2) .... m = 30 here
-    //double beta0 = 0.537/(double)m; //..... median(y)/((median(f1) + median(f2))*m) .... m = 30 here
-    
-    //Initialize txt files to save posterior draws
-    std::ofstream outpred; //Save the posterior draws to text file
-
+        
     //First mix bart object with basic constructor
     amxbrt axb(m); //20 Trees 
     cout << "****Initial Object" << endl; 
@@ -333,12 +318,12 @@ int main(){
     //thread count
     axb.settc(tc);      //set the number of threads when using OpenMP, etc.
     //tree prior
-    axb.settp(0.95,1.0);//the alpha and beta parameters in the tree depth penalty prior
+    axb.settp(0.95,0.75);//the alpha and beta parameters in the tree depth penalty prior
     //MCMC info
     axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            2,    //minimum number of observations in a bottom node
+            1,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -353,34 +338,44 @@ int main(){
     cout << "\n-----------------------------------" << endl;
     cout << "-----------------------------------" << endl;
 
-    size_t nd = 10000;
-    size_t nadapt=1000;
-    size_t adaptevery=100;
-    size_t nburn=200;
+    size_t nd = 20000;
+    size_t nadapt=5000;
+    size_t adaptevery=500;
+    size_t nburn=1000;
     std::vector<double> fitted(n), predicted(n_test);
     dinfo di_predict;
     di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
     for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
     for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
     
+    //Initialize the sigma posterior txt file
+    std::ofstream outsig;
+    outsig.open("postsig_axb2.txt"); // opens the file
+    outsig.close(); // closes the file
+
     cout << "\n*****After "<< nd << " draws:\n";
     cout << "Collecting statistics" << endl;
     axb.setstats(true);
     for(int i = 0; i<nd; i++){
-        if((i % 500) ==0){cout << "***Draw " << i << "\n" << endl;}
+        if((i % 1000) ==0){cout << "***Draw " << i << "\n" << endl;}
         
         //Draw tree and theta -- then get fitted values
         axb.drawvec(gen);
         for(size_t j=0;j<n;j++) fitted[j]+=axb.f(j)/nd;
         
-        //Draw Sigma 
+        //Draw Sigma and save the last 25% of draws
         axb.drawsigma(gen);
-
+        if(i > nd*0.75){
+            outsig.open("postsig_axb2.txt", std::ios_base::app); // opens the file
+            outsig << axb.getsigma() << endl;
+            outsig.close(); // closes the file
+        }
         //Get Predictions
         axb.predict_mix(&di_test, &fi_test);
         di_predict += di_test;
 
         //Write last 500 posterior draws to txt file
+        /*
         if(i == nd-500){
             outpred.open("predict_amxb1_sig_m20_draws.txt"); // opens the file
             for(int i = 0; i<n_test; i++){
@@ -396,6 +391,7 @@ int main(){
             outpred << endl;
             outpred.close();
         }
+        */
     }
     
     //Take the prediction average
@@ -423,7 +419,6 @@ int main(){
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
 
-    /*
     cout << "Print Fitted Values" << endl;
     for(int i = 0; i<n; i++){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
@@ -436,12 +431,10 @@ int main(){
 
     //Print the Last Tree
     axb.pr_vec();
-    */
 
-    /*
     //Write all data values to a file
     std::ofstream outdata;
-    outdata.open("fit_amxb1_m20.txt"); // opens the file
+    outdata.open("fit_amxb2.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
@@ -452,19 +445,82 @@ int main(){
     outdata.close();
 
    //Write all data values to a file
-    std::ofstream outdata;
-    outdata.open("predict_amxb1_m20.txt"); // opens the file
-    if( !outdata ) { // file couldn't be opened
+    std::ofstream outpred;
+    outpred.open("predict_amxb2.txt"); // opens the file
+    if( !outpred ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
     }
     for(int i = 0; i<n_test; i++){
-        outdata << predicted[i] << endl;
+        outpred << predicted[i] << endl;
     }
-    outdata.close();
+    outpred.close();
+
+
+    //-------------------------------------------------------
+    //Example 4 -- Do some draws and look at the results
+    //-------------------------------------------------------
+    /*
+    cout << "\n\n-----------------------------------------" << endl;
+    cout << "Example 4: View some results \n" << endl;
+    
+    //Initialize prior parameters
+    int m = 10; //25
+    double *sig = new double[di.n];
+    double tau =  1.0; //0.5/sqrt(double(m));
+    double beta0 = 0.0; //0.53/double(m);
+    for(size_t i=0;i<di.n;i++) sig[i]=0.03;
+
+    //First mix bart object with basic constructor
+    amxbrt axb(m); //20 Trees 
+    cout << "****Initial Object" << endl; 
+    axb.pr_vec();
+    axb.setxi(&xi);    //set the cutpoints for this model object 
+    //function output 
+    axb.setfi(&fi,k); //set function output for this model object
+    //data objects
+    axb.setdata_mix(&di);  //set the data for model mixing
+    //thread count
+    axb.settc(tc);      //set the number of threads when using OpenMP, etc.
+    //tree prior
+    axb.settp(0.95, //the alpha parameter in the tree depth penalty prior
+            0.75     //the beta parameter in the tree depth penalty prior
+            );
+    //MCMC info
+    axb.setmi(
+            0.5,  //probability of birth/death
+            0.5,  //probability of birth
+            3,    //minimum number of observations in a bottom node
+            true, //do perturb/change variable proposal?
+            0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
+            0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
+            &chgv  //initialize the change of variable correlation matrix.
+            );
+    axb.setci(tau,beta0,sig);
+
+    cout << "\n*****After init:\n";
+    axb.pr_vec();
+
+    cout << "\n-----------------------------------" << endl;
+    cout << "-----------------------------------" << endl;
+
+    size_t nd = 10;
+    size_t nadapt=5000;
+    size_t adaptevery=500;
+    size_t nburn=1000;
+    //for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
+    //for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
+    
+    cout << "\n*****After "<< nd << " draws:\n";
+    cout << "Collecting statistics" << endl;
+    axb.setstats(true);
+    for(int i = 0; i<nd; i++){
+        cout << "\n------------------------------" << endl;
+        cout << "~~Draw " << i+1 << endl;
+        axb.drawvec(gen);
+        axb.pr_vec();
+    }
     */
-
-
     return 0;
 
 }
