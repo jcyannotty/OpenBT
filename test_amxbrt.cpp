@@ -300,8 +300,8 @@ int main(){
     //Initialize prior parameters
     int m = 5;
     double *sig = new double[di.n];
-    double tau = 0.2/sqrt(double(m));
-    double beta0 = 0.35/double(m);
+    double tau = 0.5/sqrt(double(m));
+    double beta0 = 0.55/double(m);
     double nu = 5.0;
     double lambda = 0.01;
     for(size_t i=0;i<di.n;i++) sig[i]=0.1;
@@ -344,6 +344,8 @@ int main(){
     size_t nburn=1000;
     std::vector<double> fitted(n), predicted(n_test);
     dinfo di_predict;
+    std::ofstream outdraw; //used for final 500 prediction draws
+    
     di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
     for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
     for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
@@ -377,19 +379,19 @@ int main(){
         //Write last 500 posterior draws to txt file
         /*
         if(i == nd-500){
-            outpred.open("predict_amxb1_sig_m20_draws.txt"); // opens the file
+            outdraw.open("pdraws_amxb2_sig.txt"); // opens the file
             for(int i = 0; i<n_test; i++){
-                outpred << y_test[i] << ","; //write the current mixed function to a text file
+                outdraw << y_test[i] << ","; //write the current mixed function to a text file
             }
-            outpred << endl;
-            outpred.close();
+            outdraw << endl;
+            outdraw.close();
         }else if(i > nd-500){
-            outpred.open("predict_amxb1_sig_m20_draws.txt",std::ios_base::app); // opens and appends the file
+            outdraw.open("pdraws_amxb2_sig.txt",std::ios_base::app); // opens and appends the file
             for(int i = 0; i<n_test; i++){
-                outpred << y_test[i] << ","; //write the current mixed function to a text file
+                outdraw << y_test[i] << ","; //write the current mixed function to a text file
             }
-            outpred << endl;
-            outpred.close();
+            outdraw << endl;
+            outdraw.close();
         }
         */
     }
