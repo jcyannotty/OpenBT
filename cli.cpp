@@ -30,6 +30,9 @@
 #include <vector>
 #include <limits>
 
+#include "Eigen/Dense"
+#include <Eigen/StdVector>
+
 #include "crn.h"
 #include "tree.h"
 #include "brt.h"
@@ -51,6 +54,7 @@ using std::endl;
 #define MODEL_PROBIT 6
 #define MODEL_MODIFIEDPROBIT 7
 #define MODEL_MERCK_TRUNCATED 8
+#define MODEL_MIXBART 9
 
 int main(int argc, char* argv[])
 {
@@ -88,10 +92,11 @@ int main(int argc, char* argv[])
    int modeltype;
    conf >> modeltype;
 
-   // core filenames for x,y input
-   std::string xcore,ycore;
+   // core filenames for x,y,f input --- f input is for model mixing
+   std::string xcore,ycore,fcore;
    conf >> xcore;
    conf >> ycore;
+   conf >> fcore;
 
    //offset -- used in probit, but not in bart for instance.
    double off;
@@ -113,14 +118,16 @@ int main(int argc, char* argv[])
    conf >> nadapt;
    conf >> adaptevery;
 
-   //mu prior (tau, ambrt) and sigma prior (lambda,nu, psbrt) **** Add in mean value
+   //mu prior (tau, ambrt --OR-- beta0,tau, amxbrt) and sigma prior (lambda,nu, psbrt) 
    double tau;
+   double beta0;
    double overalllambda;
    double overallnu;
    conf >> tau;
+   conf >> beta0;
    conf >> overalllambda;
    conf >> overallnu;
-
+   
    //tree prior
    double alpha;
    double mybeta;
@@ -253,9 +260,6 @@ int main(int argc, char* argv[])
 #endif
 
    //--------------------------------------------------
-   //Initialize f matrix and make finfo -- used only for model mixing 
-
-   //--------------------------------------------------
    //Initialize vector of truncated observations.  Only used in merck_truncated model.
    std::vector<size_t> truncs;
    std::vector<double> truncvals;
@@ -312,7 +316,38 @@ int main(int argc, char* argv[])
    p=(size_t)tempp;
 #endif
 
+   //--------------------------------------------------
+   //Initialize f matrix and make finfo -- used only for model mixing 
+   std::vector<double> f;
+   double ftemp;
+   size_t k=0;
+   if(modeltype==MODEL_MIXBART) {
+#ifdef _OPENMPI
+   if(mpirank>0) {
+#endif
+      std::stringstream ffss;
+      std::string ffs;
+      ffss << folder << fcore << mpirank;
+      ffs=ffss.str();
+      std::ifstream ff(ffs);
+      while(ff >> ftemp)
+         f.push_back(ftemp);
+      k = f.size()/n;
+#ifndef SILENT
+      cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
+#endif
+#ifdef _OPENMPI
+   }
+   int tempk = (unsigned int) k;
+   MPI_Allreduce(MPI_IN_PLACE,&tempk,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+   if(mpirank>0 && k != ((size_t) tempk)) { cout << "PROBLEM LOADING DATA" << endl; MPI_Finalize(); return 0;}
+   k=(size_t)tempk;
+#endif
 
+   //Make finfo
+   finfo fi;
+   makefinfo(k,n,&f[0],fi);
+}
    //--------------------------------------------------
    //dinfo
    dinfo di;
@@ -412,12 +447,16 @@ int main(int argc, char* argv[])
    cout << "**********************\n";
    cout << "n: " << n << endl;
    cout << "p: " << p << endl;
+   if(modeltype==MODEL_MIXBART){cout << "k: " << k << endl; }
    if(mpirank>0) cout << "first row: " << x[0] << ", " << x[p-1] << endl;
    if(mpirank>0) cout << "second row: " << x[p] << ", " << x[2*p-1] << endl;
    if(mpirank>0) cout << "last row: " << x[(n-1)*p] << ", " << x[n*p-1] << endl;
    if(mpirank>0) cout << "first and last y: " << y[0] << ", " << y[n-1] << endl;
+   if(mpirank>0 && modeltype==MODEL_MIXBART){ cout << "first row: " << f[0] << ", " << f[k-1] << endl;}
+   if(mpirank>0 && modeltype==MODEL_MIXBART){ cout << "last row: " << f[(n-1)*k] << ", " << f[n*k-1] << endl;}
    cout << "number of trees mean: " << m << endl;
    cout << "number of trees stan dev: " << mh << endl;
+   if(modeltype==MODEL_MIXBART){cout << "beta0: " << beta0 << endl; }
    cout << "tau: " << tau << endl;
    cout << "overalllambda: " << overalllambda << endl;
    cout << "overallnu: " << overallnu << endl;
