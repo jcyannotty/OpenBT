@@ -846,6 +846,7 @@ if(modeltype!=MODEL_MIXBART){
 #else
    delete[] r;
 #endif
+return 0;
 }else if(modeltype == MODEL_MIXBART){
    //Setup additive mean mixing bart model
    amxbrt axb(m);
@@ -977,6 +978,26 @@ if(modeltype!=MODEL_MIXBART){
       omf.close();
 
       cout << " done." << endl;
+   }
+
+   // summary statistics
+   if(summarystats) {
+      cout << "Calculating summary statistics" << endl;
+      unsigned int varcount[p];
+      for(size_t i=0;i<p;i++) varcount[i]=0;
+      unsigned int tmaxd=0;
+      unsigned int tmind=0;
+      double tavgd=0.0;
+
+      axb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
+      tavgd/=(double)(nd*m);
+      cout << "Average tree depth (ambm): " << tavgd << endl;
+      cout << "Maximum tree depth (ambm): " << tmaxd << endl;
+      cout << "Minimum tree depth (ambm): " << tmind << endl;
+      cout << "Vartivity summary (ambm)" << endl;
+      for(size_t i=0;i<p;i++)
+         cout << "Var " << i << ": " << varcount[i] << endl;
+
    }
    return 0;
 }
