@@ -300,6 +300,7 @@ public:
 };
 
 
+/*
 //dinfo class for model mixing
 class dinfo_mx : public dinfo{
    public:
@@ -335,5 +336,6 @@ class dinfo_mx : public dinfo{
    }
 
 };
+*/
 
 #endif

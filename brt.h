@@ -292,10 +292,8 @@ protected:
    //-------------------------------------------
    //Protected Model Mixing functions and data
    //-------------------------------------------
-   dinfo_mx *dimx; //dinfo for model mixing...maybe remove in favor of a setdata_mx function  
    finfo *fi; //pointer to the f matrix  
    size_t k;
-   
    
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
    virtual void local_setf_mix(diterator& diter);

@@ -25,10 +25,21 @@ int main(){
     int tc=4; //thread count for OpenMP
 
     //--------------------------------------------------
+    //read in y
+    std::vector<double> y;
+    double ytemp;
+
+    std::ifstream yf("y.txt");
+    while(yf >> ytemp)
+        y.push_back(ytemp);
+    size_t n = y.size();
+    cout << "n from y.txt: " << n <<endl;
+
+    //--------------------------------------------------
     //read in x
     std::vector<double> x;
     double xtemp;
-    size_t n,p;
+    size_t p;
     p=1;
 
     std::ifstream xf("x.txt");
@@ -36,7 +47,6 @@ int main(){
         x.push_back(xtemp);
     }
     
-    n = x.size()/p;
     if(x.size() != n*p) {
         cout << "error: input x file has wrong number of values\n";
         return 1;
@@ -65,6 +75,7 @@ int main(){
     //Make dinfo and diterator
     dinfo di;
     di.n=n;di.p=p,di.x = &x[0];di.tc=tc;
+    di.y = &y[0];
 
     diterator diter(&di);
     /*
@@ -262,7 +273,7 @@ int main(){
     //Save tree's 1 and 2 using brt object;
     std::vector<int> nn_vec(2); //2 bart models -- length of vector = 2
     std::vector<std::vector<int>> id_vec(2), v_vec(2), c_vec(2); //2 bart models -- number of rows = 2 
-    std::vector<std::vector<double>> theta_vec(2*k); //length of vector of 2*k
+    std::vector<std::vector<double>> theta_vec(k); //length of each vector is nn*k 
 
     b1.savetree_vec(0,1,nn_vec,id_vec,v_vec,c_vec,theta_vec); //0th iteration 
     b2.savetree_vec(1,1,nn_vec,id_vec,v_vec,c_vec,theta_vec); //1st iteration

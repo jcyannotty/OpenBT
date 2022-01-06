@@ -42,6 +42,8 @@
 #include "ambrt.h"
 #include "psbrt.h"
 #include "tnorm.h"
+#include "mxbrt.h"
+#include "amxbrt.h"
 
 using std::cout;
 using std::endl;
@@ -321,6 +323,7 @@ int main(int argc, char* argv[])
    std::vector<double> f;
    double ftemp;
    size_t k=0;
+   finfo fi;
    if(modeltype==MODEL_MIXBART) {
 #ifdef _OPENMPI
    if(mpirank>0) {
@@ -345,7 +348,6 @@ int main(int argc, char* argv[])
 #endif
 
    //Make finfo
-   finfo fi;
    makefinfo(k,n,&f[0],fi);
 }
    //--------------------------------------------------
@@ -516,6 +518,12 @@ int main(int argc, char* argv[])
    }
 #endif
 
+//--------------------------------------------------
+//Set up model objects and MCMC
+//--------------------------------------------------
+//~~First conditional: Models using ambrt and psbrt
+//~~Second conditional: Models using amxbrt  
+if(modeltype!=MODEL_MIXBART){
    // set up ambrt object
    ambrt ambm(m);
 
@@ -594,9 +602,6 @@ int main(int argc, char* argv[])
          &chgv  //initialize the change of variable correlation matrix.
          );
    psbm.setci(nu,lambda);
-
-   //--------------------------------------------------
-   //Set up amxbrt object
 
    //--------------------------------------------------
    //run mcmc
@@ -831,7 +836,6 @@ int main(int argc, char* argv[])
          cout << "Var " << i << ": " << varcount[i] << endl;
    }
 
-
    //-------------------------------------------------- 
    // Cleanup.
 #ifdef _OPENMPI
@@ -842,6 +846,137 @@ int main(int argc, char* argv[])
 #else
    delete[] r;
 #endif
+}else if(modeltype == MODEL_MIXBART){
+   //Setup additive mean mixing bart model
+   amxbrt axb(m);
 
+   //cutpoints
+   axb.setxi(&xi);    //set the cutpoints for this model object
+   //data objects
+   axb.setdata_mix(&di);  //set the data
+   //function output information
+   axb.setfi(&fi, k);
+   //thread count
+   axb.settc(tc-1);      //set the number of slaves when using MPI.
+   //mpi rank
+#ifdef _OPENMPI
+   ambm.setmpirank(mpirank);  //set the rank when using MPI.
+   ambm.setmpicvrange(lwr,upr); //range of variables each slave node will update in MPI change-of-var proposals.
+#endif
+   //tree prior
+   axb.settp(alpha, //the alpha parameter in the tree depth penalty prior
+         mybeta     //the beta parameter in the tree depth penalty prior
+         );
+   //MCMC info
+   axb.setmi(
+         pbd,  //probability of birth/death
+         pb,  //probability of birth
+         minnumbot,    //minimum number of observations in a bottom node
+         dopert, //do perturb/change variable proposal?
+         stepwpert,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
+         probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
+         &chgv  //initialize the change of variable correlation matrix.
+         );
+   //Set prior information
+   axb.setci(tau,beta0,sig); //conditioning info for mu prior
+   axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
+
+   //--------------------------------------------------
+   //run mcmc
+   std::vector<int> onn(nd*m,1);
+   std::vector<std::vector<int> > oid(nd*m, std::vector<int>(1));
+   std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
+   std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
+   std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
+   brtMethodWrapper fambm(&brt::f,axb);
+
+   #ifdef _OPENMPI
+   double tstart=0.0,tend=0.0;
+   if(mpirank==0) tstart=MPI_Wtime();
+   if(mpirank==0) cout << "Starting MCMC..." << endl;
+#else
+   cout << "Starting MCMC..." << endl;
+#endif
+
+   for(size_t i=0;i<nadapt;i++) { 
+      if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
+#ifdef _OPENMPI
+      if(mpirank==0) axb.drawvec(gen); axb.drawsigma(gen); else axb.drawvec_mpislave(gen); axb.drawsigma(gen); //Check this for the MPI
+#else
+      axb.drawvec(gen); //Draw tree and parameter vector
+      axb.drawsigma(gen); //Draw variance
+#endif
+      if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+   }
+   
+   for(size_t i=0;i<burn;i++) {
+      if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
+#ifdef _OPENMPI
+      if(mpirank==0) ambm.drawvec(gen); axb.drawsigma(gen); else ambm.drawvec_mpislave(gen); axb.drawsigma(gen);
+#else
+      axb.drawvec(gen);
+      axb.drawsigma(gen);
+#endif
+   }
+   if(summarystats) {
+      axb.setstats(true);
+   }
+   for(size_t i=0;i<nd;i++) {
+      if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
+#ifdef _OPENMPI
+      if(mpirank==0) axb.drawvec(gen); axb.drawsigma(gen); else axb.drawvec_mpislave(gen); axb.drawsigma(gen);
+#else
+      axb.drawvec(gen);
+      axb.drawsigma(gen);
+#endif
+   //save tree to vec format
+   if(mpirank==0) {
+      axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta);  
+   }
+
+}
+
+#ifdef _OPENMPI
+   if(mpirank==0) {
+      tend=MPI_Wtime();
+      cout << "Training time was " << (tend-tstart)/60.0 << " minutes." << endl;
+   }
+#endif
+
+   //Flatten posterior trees to a few (very long) vectors so we can just pass pointers
+   //to these vectors back to R (which is much much faster than copying all the data back).
+   if(mpirank==0) {
+      cout << "Returning posterior, please wait...";
+      std::vector<int>* e_ots=new std::vector<int>(nd*m);
+      std::vector<int>* e_oid=new std::vector<int>;
+      std::vector<int>* e_ovar=new std::vector<int>;
+      std::vector<int>* e_oc=new std::vector<int>;
+      std::vector<double>* e_otheta=new std::vector<double>;
+      for(size_t i=0;i<nd;i++)
+         for(size_t j=0;j<m;j++) {
+            e_ots->at(i*m+j)=static_cast<int>(oid[i*m+j].size());
+            e_oid->insert(e_oid->end(),oid[i*m+j].begin(),oid[i*m+j].end());
+            e_ovar->insert(e_ovar->end(),ovar[i*m+j].begin(),ovar[i*m+j].end());
+            e_oc->insert(e_oc->end(),oc[i*m+j].begin(),oc[i*m+j].end());
+            e_otheta->insert(e_otheta->end(),otheta[i*m+j].begin(),otheta[i*m+j].end());
+         }
+      //write out to file
+      std::ofstream omf(folder + modelname + ".fit");
+      omf << nd << endl;
+      omf << m << endl;
+      omf << e_ots->size() << endl;
+      for(size_t i=0;i<e_ots->size();i++) omf << e_ots->at(i) << endl;
+      omf << e_oid->size() << endl;
+      for(size_t i=0;i<e_oid->size();i++) omf << e_oid->at(i) << endl;
+      omf << e_ovar->size() << endl;
+      for(size_t i=0;i<e_ovar->size();i++) omf << e_ovar->at(i) << endl;
+      omf << e_oc->size() << endl;
+      for(size_t i=0;i<e_oc->size();i++) omf << e_oc->at(i) << endl;
+      omf << e_otheta->size() << endl;
+      for(size_t i=0;i<e_otheta->size();i++) omf << std::scientific << e_otheta->at(i) << endl;
+      omf.close();
+
+      cout << " done." << endl;
+   }
    return 0;
 }
