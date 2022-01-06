@@ -11,6 +11,10 @@
 //Include Eigen library
 #include "Eigen/Dense"
 
+#ifdef _OPENMPI
+#   include <mpi.h>
+#endif
+
 int main(){
     //-------------------------------------------------------
     //---Read in Data for mxbrt examples
