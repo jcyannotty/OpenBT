@@ -999,6 +999,13 @@ return 0;
          cout << "Var " << i << ": " << varcount[i] << endl;
 
    }
+      //-------------------------------------------------- 
+   // Cleanup.
+#ifdef _OPENMPI
+   delete[] lwr;
+   delete[] upr;
+   MPI_Finalize();
+#endif
    return 0;
 }
 }
