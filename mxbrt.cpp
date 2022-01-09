@@ -161,7 +161,7 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
 void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
 #ifdef _OPENMPI
    mxsinfo& msil=static_cast<mxsinfo&>(sil);
-   mxsinfo& msir=static_cast<msxinfo&>(sir);
+   mxsinfo& msir=static_cast<mxsinfo&>(sir);
    if(rank==0) { // MPI receive all the answers from the slaves
       MPI_Status status;
       mxsinfo& tsil = (mxsinfo&) *newsinfo();
@@ -364,7 +364,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-            msi->sumffw=sumffwvec[i];
+            mxsi->sumffw=sumffwvec[i];
         }
     }
 
