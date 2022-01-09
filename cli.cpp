@@ -861,8 +861,8 @@ return 0;
    axb.settc(tc-1);      //set the number of slaves when using MPI.
    //mpi rank
 #ifdef _OPENMPI
-   ambm.setmpirank(mpirank);  //set the rank when using MPI.
-   ambm.setmpicvrange(lwr,upr); //range of variables each slave node will update in MPI change-of-var proposals.
+   axb.setmpirank(mpirank);  //set the rank when using MPI.
+   axb.setmpicvrange(lwr,upr); //range of variables each slave node will update in MPI change-of-var proposals.
 #endif
    //tree prior
    axb.settp(alpha, //the alpha parameter in the tree depth penalty prior
@@ -902,7 +902,7 @@ return 0;
    for(size_t i=0;i<nadapt;i++) { 
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0) axb.drawvec(gen); axb.drawsigma(gen); else axb.drawvec_mpislave(gen); axb.drawsigma(gen); //Check this for the MPI
+      if(mpirank==0){ axb.drawvec(gen); axb.drawsigma(gen); } else {axb.drawvec_mpislave(gen); axb.drawsigma(gen);} //Check this for the MPI
 #else
       axb.drawvec(gen); //Draw tree and parameter vector
       axb.drawsigma(gen); //Draw variance
@@ -913,7 +913,7 @@ return 0;
    for(size_t i=0;i<burn;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0) ambm.drawvec(gen); axb.drawsigma(gen); else ambm.drawvec_mpislave(gen); axb.drawsigma(gen);
+      if(mpirank==0){ axb.drawvec(gen); axb.drawsigma(gen);}else {axb.drawvec_mpislave(gen); axb.drawsigma(gen);}
 #else
       axb.drawvec(gen);
       axb.drawsigma(gen);
@@ -925,7 +925,7 @@ return 0;
    for(size_t i=0;i<nd;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0) axb.drawvec(gen); axb.drawsigma(gen); else axb.drawvec_mpislave(gen); axb.drawsigma(gen);
+      if(mpirank==0){axb.drawvec(gen); axb.drawsigma(gen); }else{ axb.drawvec_mpislave(gen); axb.drawsigma(gen);}
 #else
       axb.drawvec(gen);
       axb.drawsigma(gen);
@@ -1000,4 +1000,5 @@ return 0;
 
    }
    return 0;
+}
 }
