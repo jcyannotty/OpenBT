@@ -188,8 +188,7 @@ if(modeltype==MODEL_MIXBART)
 if(!is.null(xicuts)) # use xicuts
 {
    xi=xicuts
-}
-else # default to equal numcut per dimension
+}else # default to equal numcut per dimension
 {
    xi=vector("list",p)
    minx=floor(apply(x,1,min))
@@ -210,12 +209,18 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
    rgy = c(-2,2)
 }
 
-if(modeltype!=MODEL_MIXBART){
+if(modeltype==MODEL_MIXBART){
   fmed = apply(f.train, 2, median) 
   sumfmed2 = sum(fmed^2)
+  
+  #Prior standard deviation
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m*sumfmed2)*k)
+  
+  #prior mean
+  beta0 = median(y.train)/(m*sum(fmed))
 }else{
-  tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)  
+  tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
+  beta0=0
 }
   
 
@@ -314,7 +319,7 @@ folder=paste(folder,"/",tmpsubfolder,sep="")
 if(!dir.exists(folder)) dir.create(folder)
 fout=file(paste(folder,"/config",sep=""),"w")
 writeLines(c(paste(modeltype),xroot,yroot,froot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
-            paste(nadapt),paste(adaptevery),paste(tau),paste(overalllambda),
+            paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
             paste(tc),paste(sroot),paste(chgvroot),paste(pbd),paste(pb),
             paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
@@ -391,7 +396,7 @@ res=list()
 res$modeltype=modeltype
 res$model=model
 res$xroot=xroot; res$yroot=yroot; res$froot=froot; res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
-res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau; res$overalllambda=overalllambda
+res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
 res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
 res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot; res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth

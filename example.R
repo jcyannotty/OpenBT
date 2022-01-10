@@ -35,7 +35,7 @@ y=rep(0,n)
 for(i in 1:n) y[i] = braninsc(x[i,])
 
 # Load the R wrapper functions to the OpenBT library.
-source("openbt.R")
+source("Documents/Open BT Project SRC/openbt.R")
 
 # Homoscedasitc BART model
 fit=openbt(x,y,pbd=c(0.7,0.0),ntreeh=1,numcut=100,tc=4,model="bart",modelname="branin")
