@@ -348,7 +348,6 @@ int main(int argc, char* argv[])
 #endif
 
    //Make finfo
-   cout << "Make finfo" << endl;
    makefinfo(k,n,&f[0],fi);
    }
    //--------------------------------------------------
@@ -849,24 +848,26 @@ if(modeltype!=MODEL_MIXBART){
 #endif
 return 0;
 }else if(modeltype == MODEL_MIXBART){
-   
-   cout << "Setup amxbrt object" << endl;
    //Setup additive mean mixing bart model
    amxbrt axb(m);
 
    //cutpoints
    axb.setxi(&xi);    //set the cutpoints for this model object
+   cout << "Checkpt 1" << endl;
    //data objects
    axb.setdata_mix(&di);  //set the data
    //function output information
+   cout << "Checkpt 2" << endl;
    axb.setfi(&fi, k);
    //thread count
+   cout << "Checkpt 3" << endl;
    axb.settc(tc-1);      //set the number of slaves when using MPI.
    //mpi rank
 #ifdef _OPENMPI
    axb.setmpirank(mpirank);  //set the rank when using MPI.
    axb.setmpicvrange(lwr,upr); //range of variables each slave node will update in MPI change-of-var proposals.
 #endif
+   cout << "Checkpt 4" << endl;
    //tree prior
    axb.settp(alpha, //the alpha parameter in the tree depth penalty prior
          mybeta     //the beta parameter in the tree depth penalty prior
@@ -881,6 +882,7 @@ return 0;
          probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
          &chgv  //initialize the change of variable correlation matrix.
          );
+   cout << "Checkpt 5" << endl;
    //Set prior information
    axb.setci(tau,beta0,sig); //conditioning info for mu prior
    axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
@@ -892,7 +894,7 @@ return 0;
    std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
-   brtMethodWrapper fambm(&brt::f,axb);
+   brtMethodWrapper faxb(&brt::f,axb);
 
    #ifdef _OPENMPI
    double tstart=0.0,tend=0.0;
