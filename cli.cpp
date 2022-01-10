@@ -348,8 +348,9 @@ int main(int argc, char* argv[])
 #endif
 
    //Make finfo
+   cout << "Make finfo" << endl;
    makefinfo(k,n,&f[0],fi);
-}
+   }
    //--------------------------------------------------
    //dinfo
    dinfo di;
@@ -848,6 +849,8 @@ if(modeltype!=MODEL_MIXBART){
 #endif
 return 0;
 }else if(modeltype == MODEL_MIXBART){
+   
+   cout << "Setup amxbrt object" << endl;
    //Setup additive mean mixing bart model
    amxbrt axb(m);
 

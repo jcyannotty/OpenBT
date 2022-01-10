@@ -133,9 +133,9 @@ public:
    bool isright() const;
    //these are in public right now so brt::rot compiles
    double theta; //univariate double parameter
-   vxd thetavec; //multivariate double parameter -- using Eigen VectorXd
    size_t k; //Dimension of thetavec == number of models to be fixed
-
+   vxd thetavec; //multivariate double parameter -- using Eigen VectorXd
+   
    size_t v;
    size_t c;
    //tree structure
