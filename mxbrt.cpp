@@ -72,7 +72,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
 
     //Generate MVN Random vector
     //--Get vector of standard normal normal rv's
-    for(int i=0; i<k;i++){
+    for(size_t i=0; i<k;i++){
         stdnorm(i) = gen.normal(); 
     }
     //Print out matrix algebra step-by-step
@@ -174,10 +174,10 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
          MPI_Recv(buffer,SIZE_UINT6,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumffw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumffw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumfyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumfyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,tsil.sumffw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,tsir.sumffw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,tsil.sumfyw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,tsir.sumfyw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
@@ -196,12 +196,24 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
       unsigned int ln,rn;
       ln=(unsigned int)msil.n;
       rn=(unsigned int)msir.n;
+        /*
+        std::cout << "Address: " << &msil.sumffw << std::endl;
+        std::cout << "Address: " << msil.sumffw.data() << std::endl;
+        std::cout << "Address: " << &msil.sumfyw << std::endl;
+        std::cout << "Address: " << msil.sumfyw.data() << std::endl;
+        std::cout << "Address: " << &msil.sumyyw << std::endl;
+        std::cout << "Address: " << &msir.sumffw << std::endl;
+        std::cout << "Address: " << msir.sumffw.data() << std::endl;
+        std::cout << "Address: " << &msir.sumfyw << std::endl;
+        std::cout << "Address: " << msir.sumfyw.data() << std::endl;
+        std::cout << "Address: " << &msir.sumyyw << std::endl;
+        */
       MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(&msil.sumffw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(&msir.sumffw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(&msil.sumfyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(&msir.sumfyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(msil.sumffw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(msir.sumffw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(msil.sumfyw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(msir.sumfyw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
 
@@ -220,7 +232,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
     std::vector<mxd, Eigen::aligned_allocator<mxd>> sumffwvec(siv.size());
     std::vector<vxd, Eigen::aligned_allocator<vxd>> sumfywvec(siv.size());
     
-    
     for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
         mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
         nvec[i]=(unsigned int)mxsi->n;    // cast to int
@@ -236,23 +247,31 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
     // MPI_Allreduce(MPI_IN_PLACE,&sumwyvec,siv.size(),MPI_DOUBLE,MPI_SUM,MPI_COMM_WORLD);
 
     if(rank==0) {
+        //std::cout << "Enter with rank 0 ---- " << std::endl;
         MPI_Status status;
         unsigned int tempnvec[siv.size()];
         double tempsumyywvec[siv.size()];
         std::vector<mxd, Eigen::aligned_allocator<mxd>> tempsumffwvec(siv.size());
         std::vector<vxd, Eigen::aligned_allocator<vxd>> tempsumfywvec(siv.size());
 
+        //Initialize the tempvectors to avoid errors
+        for(size_t i = 0; i<siv.size();i++){
+            tempsumffwvec[i] = mxd::Zero(k,k);
+            tempsumfywvec[i] = vxd::Zero(k);
+        }
+
         // receive nvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempnvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
+            for(size_t j=0;j<siv.size();j++){
                 nvec[j]+=tempnvec[j];
+            }
         }
         MPI_Request *request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Isend(&nvec,siv.size(),MPI_UNSIGNED,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
-        // cast back to msi
+        // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
             mxsi->n=(size_t)nvec[i];    // cast back to size_t
@@ -274,47 +293,54 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
             mxsi->sumyyw=sumyywvec[i];
+            //std::cout << "Sumyyw[" << i << "] = " << sumyywvec[i] << std::endl;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
 
         // receive sumfywvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Recv(&tempsumfywvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
+            MPI_Recv(tempsumfywvec[0].data(),siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++){
+                //std::cout << "Tempsumfywvec[" << j << "]" << tempsumfywvec[j].transpose() << std::endl;
                 sumfywvec[j]+=tempsumfywvec[j];
+            }
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(&sumfywvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(sumfywvec[0].data(),siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
+        
         // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
             mxsi->sumfyw=sumfywvec[i];
+            //std::cout << "sumfy = " << sumfywvec[i].transpose() << std::endl;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
 
         // receive sumffwvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Recv(&tempsumffwvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            MPI_Recv(tempsumffwvec[0].data(),siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
             for(size_t j=0;j<siv.size();j++)
                 sumffwvec[j]+=tempsumffwvec[j];
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(&sumffwvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(sumffwvec[0].data(),siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
         // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
             mxsi->sumffw=sumffwvec[i];
+            //std::cout << "sumff:\n" << sumffwvec[i] << std::endl;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
-    }
+    }   
     else {
+        //std::cout << "Enter with rank " << rank << " ---- " << std::endl;
         MPI_Request *request=new MPI_Request;
         MPI_Status status;
 
@@ -338,7 +364,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
 
         // send sumfywvec, update sumyywvec, receive sumfywvec
         request=new MPI_Request;
-        MPI_Isend(&sumfywvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(sumfywvec[0].data(),siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
         // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
@@ -346,11 +372,11 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
-        MPI_Recv(&sumfywvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        MPI_Recv(sumfywvec[0].data(),siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
         // send sumffwvec, update sumfywvec, receive sumffwvec
         request=new MPI_Request;
-        MPI_Isend(&sumffwvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(sumffwvec[0].data(),siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
         // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
@@ -358,7 +384,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
-        MPI_Recv(&sumffwvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        MPI_Recv(sumffwvec[0].data(),siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
         // update sumffwvec
         // cast back to mxsi

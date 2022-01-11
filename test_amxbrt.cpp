@@ -304,14 +304,14 @@ int main(){
     //Initialize prior parameters
     int m = 5;
     double *sig = new double[di.n];
-    double tau = 0.5/sqrt(double(m));
-    double beta0 = 0.55/double(m);
-    double nu = 5.0;
-    double lambda = 0.01;
+    double tau = 0.0909;//0.5/sqrt(double(m));
+    double beta0 = 0.1033; //0.55/double(m);
+    double nu = 10.0;//5.0;
+    double lambda = 0.036;//0.01;
     for(size_t i=0;i<di.n;i++) sig[i]=0.1;
         
     //First mix bart object with basic constructor
-    amxbrt axb(m); //20 Trees 
+    amxbrt axb(m); //m Trees 
     cout << "****Initial Object" << endl; 
     axb.pr_vec();
     axb.setxi(&xi);    //set the cutpoints for this model object 
@@ -327,7 +327,7 @@ int main(){
     axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            1,    //minimum number of observations in a bottom node
+            5,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -342,22 +342,26 @@ int main(){
     cout << "\n-----------------------------------" << endl;
     cout << "-----------------------------------" << endl;
 
-    size_t nd = 20000;
+    size_t nd = 10000;
     size_t nadapt=5000;
     size_t adaptevery=500;
     size_t nburn=1000;
     std::vector<double> fitted(n), predicted(n_test);
     dinfo di_predict;
-    std::ofstream outdraw; //used for final 500 prediction draws
     
     di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
-    for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
-    for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
+    for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); axb.drawsigma(gen); if((i+1)%adaptevery==0) axb.adapt(); }
+    for(size_t i=0;i<nburn;i++) axb.drawvec(gen); axb.drawsigma(gen); 
     
     //Initialize the sigma posterior txt file
     std::ofstream outsig;
-    outsig.open("postsig_axb2.txt"); // opens the file
+    outsig.open("zz_postsig_amxb2.txt"); // opens the file
     outsig.close(); // closes the file
+
+    //Initialize the posterior prediction txt file
+    std::ofstream outdraw;
+    outdraw.open("zz_pdraws_amxb2.txt"); // opens the file
+    outdraw.close(); // closes the file
 
     cout << "\n*****After "<< nd << " draws:\n";
     cout << "Collecting statistics" << endl;
@@ -369,10 +373,10 @@ int main(){
         axb.drawvec(gen);
         for(size_t j=0;j<n;j++) fitted[j]+=axb.f(j)/nd;
         
-        //Draw Sigma and save the last 25% of draws
+        //Draw Sigma and save the last (1-p)% of draws (nd*(1-p)%)
         axb.drawsigma(gen);
-        if(i > nd*0.75){
-            outsig.open("postsig_axb2.txt", std::ios_base::app); // opens the file
+        if(i > nd*0){
+            outsig.open("zz_postsig_amxb2.txt", std::ios_base::app); // opens the file
             outsig << axb.getsigma() << endl;
             outsig.close(); // closes the file
         }
@@ -380,24 +384,15 @@ int main(){
         axb.predict_mix(&di_test, &fi_test);
         di_predict += di_test;
 
-        //Write last 500 posterior draws to txt file
-        /*
-        if(i == nd-500){
-            outdraw.open("pdraws_amxb2_sig.txt"); // opens the file
+        if(i > 0){
+            outdraw.open("zz_pdraws_amxb2.txt",std::ios_base::app); // opens and appends the file
             for(int i = 0; i<n_test; i++){
-                outdraw << y_test[i] << ","; //write the current mixed function to a text file
-            }
-            outdraw << endl;
-            outdraw.close();
-        }else if(i > nd-500){
-            outdraw.open("pdraws_amxb2_sig.txt",std::ios_base::app); // opens and appends the file
-            for(int i = 0; i<n_test; i++){
-                outdraw << y_test[i] << ","; //write the current mixed function to a text file
+                outdraw << y_test[i]; //write the current mixed function to a text file
+                if(i<(n_test-1)){outdraw << ",";} 
             }
             outdraw << endl;
             outdraw.close();
         }
-        */
     }
     
     //Take the prediction average
@@ -440,7 +435,7 @@ int main(){
 
     //Write all data values to a file
     std::ofstream outdata;
-    outdata.open("fit_amxb2.txt"); // opens the file
+    outdata.open("zz_fit_amxb2.txt"); // opens the file
     if( !outdata ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);
@@ -452,7 +447,7 @@ int main(){
 
    //Write all data values to a file
     std::ofstream outpred;
-    outpred.open("predict_amxb2.txt"); // opens the file
+    outpred.open("zz_predict_amxb2.txt"); // opens the file
     if( !outpred ) { // file couldn't be opened
         std::cerr << "Error: file could not be opened" << endl;
         exit(1);

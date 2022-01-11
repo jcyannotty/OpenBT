@@ -1339,7 +1339,7 @@ Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
 {
 //   return 1.0;
    Eigen::VectorXd sin_vec(k); //cast si.n to a vector of dimension 1.
-   for(int i = 0; i<k; i++){
+   for(size_t i = 0; i<k; i++){
       sin_vec(i) = si.n; //Input si.n into each vector component
    }
    return sin_vec;
@@ -1360,6 +1360,8 @@ void brt::drawvec_mpislave(rn& gen)
    MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
    sinfo& tsil = *newsinfo();
    sinfo& tsir = *newsinfo();
+   vxd theta0(k);
+   theta0 = vxd::Zero(k);
    if(status.MPI_TAG==MPI_TAG_BD_BIRTH_VC) {
       unsigned int nxid,v,c;
       tree::tree_p nx;
@@ -1370,7 +1372,7 @@ void brt::drawvec_mpislave(rn& gen)
       getsuff(nx,(size_t)v,(size_t)c,tsil,tsir);
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
-      if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,0.0,0.0); //accept birth
+      if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,theta0,theta0); //accept birth
       //else reject, for which we do nothing.
    }
    else if(status.MPI_TAG==MPI_TAG_BD_DEATH_LR) {
@@ -1383,7 +1385,7 @@ void brt::drawvec_mpislave(rn& gen)
       getsuff(nl,nr,tsil,tsir);
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
-      if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) t.deathp(nl->getp(),0.0); //accept death
+      if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) t.deathp(nl->getp(),theta0); //accept death
       //else reject, for which we do nothing.
    }
    else if(status.MPI_TAG==MPI_TAG_ROTATE) {

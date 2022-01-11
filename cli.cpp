@@ -853,21 +853,17 @@ return 0;
 
    //cutpoints
    axb.setxi(&xi);    //set the cutpoints for this model object
-   cout << "Checkpt 1" << endl;
+   //function output information
+   axb.setfi(&fi, k);
    //data objects
    axb.setdata_mix(&di);  //set the data
-   //function output information
-   cout << "Checkpt 2" << endl;
-   axb.setfi(&fi, k);
    //thread count
-   cout << "Checkpt 3" << endl;
    axb.settc(tc-1);      //set the number of slaves when using MPI.
    //mpi rank
 #ifdef _OPENMPI
    axb.setmpirank(mpirank);  //set the rank when using MPI.
    axb.setmpicvrange(lwr,upr); //range of variables each slave node will update in MPI change-of-var proposals.
 #endif
-   cout << "Checkpt 4" << endl;
    //tree prior
    axb.settp(alpha, //the alpha parameter in the tree depth penalty prior
          mybeta     //the beta parameter in the tree depth penalty prior
@@ -882,7 +878,6 @@ return 0;
          probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
          &chgv  //initialize the change of variable correlation matrix.
          );
-   cout << "Checkpt 5" << endl;
    //Set prior information
    axb.setci(tau,beta0,sig); //conditioning info for mu prior
    axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
@@ -907,7 +902,8 @@ return 0;
    for(size_t i=0;i<nadapt;i++) { 
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0){ axb.drawvec(gen); axb.drawsigma(gen); } else {axb.drawvec_mpislave(gen); axb.drawsigma(gen);} //Check this for the MPI
+      if(mpirank==0){cout << "Checkpt 6.1--" << i << endl; axb.drawvec(gen);  axb.drawsigma(gen);} else {axb.drawvec_mpislave(gen); cout << "Checkpt 7.1 -- "<< i << endl; axb.drawsigma(gen);}
+      //if((i%10)==0){axb.pr_vec();}
 #else
       axb.drawvec(gen); //Draw tree and parameter vector
       axb.drawsigma(gen); //Draw variance
