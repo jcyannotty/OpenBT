@@ -302,10 +302,10 @@ int main(){
     cout << "Example 3: Work with a mxbrt object \n" << endl;
     
     //Initialize prior parameters
-    int m = 5;
+    int m = 20;
     double *sig = new double[di.n];
-    double tau = 0.0909;//0.5/sqrt(double(m));
-    double beta0 = 0.1033; //0.55/double(m);
+    double beta0 = 0.0258; //0.55/double(m);
+    double tau = 0.0227;//0.5/sqrt(double(m));
     double nu = 10.0;//5.0;
     double lambda = 0.036;//0.01;
     for(size_t i=0;i<di.n;i++) sig[i]=0.1;
@@ -327,7 +327,7 @@ int main(){
     axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            5,    //minimum number of observations in a bottom node
+            1,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
