@@ -550,72 +550,6 @@ void collapsetree(tree& st, tree::tree_p t, tree::tree_p tprime)
       }
 }
 
-//--------------------------------------------------
-//Analogue of collapsetree function for vector valued parameters
-void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
-{
-      tree::npv tlefts, trights, tbots;
-      tree::tree_cp tempt;
-
-      vxd thetavec=t->getthetavec();
-
-      //simple case, tprime is terminal, t is (always) terminal
-      if(!tprime->l) {
-         t->setthetavec(tprime->getthetavec()+thetavec);
-      }
-      else if(!t->p)  //simple case 2: t is a terminal root node
-      {
-         st.tonull();
-         st=(*tprime); //copy
-         st.getbots(tbots);// all terminal nodes below t.
-         for(size_t j=0;j<tbots.size();j++)
-            tbots[j]->setthetavec(tbots[j]->getthetavec()+thetavec);
-      }
-      else { //general case, t is (always) terminal, tprime is not.
-         tempt=tprime;
-         tree::tree_p tpar=t->p;
-         if(t->isleft()) {
-            t->p=0;
-            delete t;
-            tpar->l=new tree(*tempt);
-            tpar->l->p=tpar;
-            tpar->l->getpathtorootlr(tlefts,trights);
-            //collapse redundancies in tprime
-            splitall(tpar->l,tlefts,trights);
-            tpar->l->getbots(tbots);// all terminal nodes below t.
-         }
-         else { //isright
-            t->p=0;
-            delete t;
-            tpar->r=new tree(*tempt);
-            tpar->r->p=tpar;
-            tpar->r->getpathtorootlr(tlefts,trights);
-            //collapse redundancies in tprime
-            splitall(tpar->r,tlefts,trights);
-            tpar->r->getbots(tbots);// all terminal nodes below t.
-         }
-
-         for(size_t j=0;j<tbots.size();j++)
-            tbots[j]->setthetavec(tbots[j]->getthetavec()+thetavec);
-      }
-}
-
-//--------------------------------------------------
-//Make finfo for model mixing -- changes fi using pass by reference
-
-void makefinfo(size_t k, int n, double *f, finfo &fi){
-   vxd v(n*k); //used to store the contents (as a vector) to be passed into finfo 
-   //Populate vxd using f
-   for(int i = 0; i < n*k; i++){
-      v(i) = f[i];
-   }
-   //Shape into a Matrix of kxn and populated by column
-   Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), k,n);
-
-   //Reshape to get nxk and store into fi
-   fi = M.transpose();  
-}
-
 
 //--------------------------------------------------
 //split tree along a sequence of variable, cutpoint pairs
@@ -1203,3 +1137,96 @@ bool not_dominated(size_t index, std::vector<size_t> R, std::list<std::vector<do
    return true;
 }
 
+//--------------------------------------------------
+//Analogue of collapsetree function for vector valued parameters
+void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
+{
+      tree::npv tlefts, trights, tbots;
+      tree::tree_cp tempt;
+
+      vxd thetavec=t->getthetavec();
+
+      //simple case, tprime is terminal, t is (always) terminal
+      if(!tprime->l) {
+         t->setthetavec(tprime->getthetavec()+thetavec);
+      }
+      else if(!t->p)  //simple case 2: t is a terminal root node
+      {
+         st.tonull();
+         st=(*tprime); //copy
+         st.getbots(tbots);// all terminal nodes below t.
+         for(size_t j=0;j<tbots.size();j++)
+            tbots[j]->setthetavec(tbots[j]->getthetavec()+thetavec);
+      }
+      else { //general case, t is (always) terminal, tprime is not.
+         tempt=tprime;
+         tree::tree_p tpar=t->p;
+         if(t->isleft()) {
+            t->p=0;
+            delete t;
+            tpar->l=new tree(*tempt);
+            tpar->l->p=tpar;
+            tpar->l->getpathtorootlr(tlefts,trights);
+            //collapse redundancies in tprime
+            splitall(tpar->l,tlefts,trights);
+            tpar->l->getbots(tbots);// all terminal nodes below t.
+         }
+         else { //isright
+            t->p=0;
+            delete t;
+            tpar->r=new tree(*tempt);
+            tpar->r->p=tpar;
+            tpar->r->getpathtorootlr(tlefts,trights);
+            //collapse redundancies in tprime
+            splitall(tpar->r,tlefts,trights);
+            tpar->r->getbots(tbots);// all terminal nodes below t.
+         }
+
+         for(size_t j=0;j<tbots.size();j++)
+            tbots[j]->setthetavec(tbots[j]->getthetavec()+thetavec);
+      }
+}
+
+//--------------------------------------------------
+//Make finfo for model mixing -- changes fi using pass by reference
+
+void makefinfo(size_t k, int n, double *f, finfo &fi){
+   vxd v(n*k); //used to store the contents (as a vector) to be passed into finfo 
+   //Populate vxd using f
+   for(int i = 0; i < n*k; i++){
+      v(i) = f[i];
+   }
+   //Shape into a Matrix of kxn and populated by column
+   Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), k,n);
+
+   //Reshape to get nxk and store into fi
+   fi = M.transpose();  
+}
+
+//--------------------------------------------------
+//Convert an Eigen Matrix into an std array (row by row)
+void matrix_to_array(Eigen::MatrixXd &M, double *b){
+   //Flatten the matrix by row
+    Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> M2(M); //Creates a dynamic X dynmaic matrix and updates by row
+    Eigen::Map<Eigen::RowVectorXd> v(M2.data(), M2.size()); //converts to Eigen Vector 
+    //cout << "M2 = \n" << M2 << endl;
+    //cout << "v = " << v << endl;
+    
+    //Populate b using v
+    for(int i=0;i<v.size();i++){
+       b[i] = v(i);
+    }
+}
+
+
+//--------------------------------------------------
+//Convert an std array to an Eigen Matrix (row by row)
+void array_to_matrix(Eigen::MatrixXd &M, double *b){
+    size_t nrow = M.rows();
+    size_t ncol = M.cols();
+    for(size_t i = 0; i<nrow; i++){
+        for(size_t j = 0; j<ncol; j++){
+            M(i,j) = b[i*ncol + j];
+        }
+    }
+}

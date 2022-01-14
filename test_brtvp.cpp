@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "Eigen/Dense"
+
 #include "crn.h"
 #include "brt.h"
 #include "brtfuns.h"
@@ -328,78 +330,5 @@ int main(){
     //Extra 
     //cout << x[44] << endl;
 
-    /*
-    //Important Eigen storage example. Shows ways to work with eigen pointers/references
-    Eigen::MatrixXd A(2,2);
-    Eigen::MatrixXd *B;
-    A << 2,4,1,3;
-    B = &A;
-    cout << "print A:" << endl;
-    cout << A << endl;
-    cout << &A << endl; //Address of the matrix
-    cout << A.data() << endl; //Address of the first element
-    cout << *(A.data() + 1) << endl; //Dereference the 2nd row 1st column element -- prints 1
-    cout << *(A.data() + 2) << endl; //Dereference the 1st row 2nd column element -- prints 4
-    cout << *(A.data() + 3) << endl; //Dereference the 2nd row 2nd column element -- prints 3
-
-    cout << "print B:" << endl;
-    cout << *B << endl; //Prints a dereferenced B -- same output as A
-    cout << ((*B).data()) << endl; //Prints the same as A.data()
-    cout << (*B).row(1) << endl; //Print the 2nd row of dereferenced B.
-    */
-
-   /*
-    //Two ways to convert a vector to a matrix -- used to make finfo
-    Eigen::VectorXd v(6);
-    v << 10,20,30,40, 50, 60;
-    Eigen::Map<mxd, Eigen::RowMajor> M(v.data(), 2,3);
-    cout << M.transpose() << endl;
-    
-    mxd M2 = Eigen::Map<Eigen::Matrix<double, 3,2, Eigen::RowMajor>>(v.data());
-    cout << M2 << endl;
-
-    //Create an identity matrix
-    mxd m(2,2);
-    m = Eigen::MatrixXd::Identity(2,2); 
-    cout << m << endl;
-
-    //Taking the elementwise square root of a matrix
-    mxd A(2,2);
-    A << 1,4,9,16;
-    cout << "A = \n" << A << endl;
-    cout << "A.array() = \n" << A.array() << endl;
-    cout << "A.array().sqrt() = \n"<< A.array().sqrt() << endl;
-    
-    A = A.array().sqrt();
-    cout << "sqrt(A) = \n" << A << endl;
-
-
-    //Vector of ones
-    vxd A(3);
-    A = Eigen::VectorXd::Ones(3);
-    cout << A << endl;
-
-    //Log determinants
-    mxd A(2,2);
-    A << 1,4,9,16;
-    mxd AL(A.llt().matrixL()); 
-    cout << AL << endl;
-    cout << AL.diagonal() << endl;
-    cout << AL.diagonal().array().log() << endl;
-    cout << (AL.diagonal().array().log().sum())*2 << endl;
-
-    //vector of Eigen matrix/vector
-    #include <Eigen/StdVector>
-
-    std::vector<mxd, Eigen::aligned_allocator<mxd>> temp(2);
-    mxd A(2,2), B(2,2);
-    A << 1,2,3,4;
-    B << 10, 20, 30, 40;
-    temp[0] = A;
-    temp[1] = B;
-
-    cout << "A = \n" << temp[0] << endl;
-    cout << "B = \n" << temp[1] << endl;
-   */
     
 }

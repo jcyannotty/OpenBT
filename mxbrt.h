@@ -5,6 +5,7 @@
 #include "treefuns.h"
 #include "dinfo.h"
 #include "brt.h"
+#include "brtfuns.h"
 
 //Include the Eigen header files
 #include "Eigen/Dense"

@@ -169,15 +169,26 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
       char buffer[SIZE_UINT6];
       int position=0;
       unsigned int ln,rn;
+      int mat_sz = tsil.sumffw.size(); //matrix size (number of elements) 
+      int vec_sz = tsil.sumfyw.size(); //vector dimension (number of elements)
+      
+      //Cast the matrices and vectors to arrays
+      double sumffw_rarray[k*k], sumffw_larray[k*k]; //arrays for right and left matrix suff stats
+      double sumfyw_rarray[k], sumfyw_larray[k]; //arrays for right and left vector suff stats
+      matrix_to_array(tsil.sumffw, &sumffw_larray[0]); //function defined in brtfuns
+      matrix_to_array(tsir.sumffw, &sumffw_rarray[0]); //function defined in brtfuns
+      std::copy(std::begin(tsil.sumfyw.array()), std::end(tsil.sumfyw.array()), std::begin(sumfyw_larray)); //use std functions for vectors
+      std::copy(std::begin(tsir.sumfyw.array()), std::end(tsir.sumfyw.array()), std::begin(sumfyw_rarray));
+
       for(size_t i=1; i<=(size_t)tc; i++) {
          position=0;
          MPI_Recv(buffer,SIZE_UINT6,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,tsil.sumffw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,tsir.sumffw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,tsil.sumfyw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6,&position,tsir.sumfyw.data(),1,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&sumffw_larray,mat_sz,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&sumffw_rarray,mat_sz,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&sumfyw_larray,vec_sz,MPI_DOUBLE,MPI_COMM_WORLD);
+         MPI_Unpack(buffer,SIZE_UINT6,&position,&sumfyw_rarray,vec_sz,MPI_DOUBLE,MPI_COMM_WORLD);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
@@ -194,6 +205,18 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
       char buffer[SIZE_UINT6];
       int position=0;  
       unsigned int ln,rn;
+
+      int mat_sz = tsil.sumffw.size(); //matrix size (number of elements) 
+      int vec_sz = tsil.sumfyw.size(); //vector dimension (number of elements)
+      
+      //Cast the matrices and vectors to arrays
+      double sumffw_rarray[k*k], sumffw_larray[k*k]; //arrays for right and left matrix suff stats
+      double sumfyw_rarray[k], sumfyw_larray[k]; //arrays for right and left vector suff stats
+      matrix_to_array(tsil.sumffw, &sumffw_larray[0]); //function defined in brtfuns
+      matrix_to_array(tsir.sumffw, &sumffw_rarray[0]); //function defined in brtfuns
+      std::copy(std::begin(tsil.sumfyw.array()), std::end(tsil.sumfyw.array()), std::begin(sumfyw_larray)); //use std functions for vectors
+      std::copy(std::begin(tsir.sumfyw.array()), std::end(tsir.sumfyw.array()), std::begin(sumfyw_rarray));
+
       ln=(unsigned int)msil.n;
       rn=(unsigned int)msir.n;
         /*
@@ -210,10 +233,10 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
         */
       MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(msil.sumffw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(msir.sumffw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(msil.sumfyw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      MPI_Pack(msir.sumfyw.data(),1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&sumffw_larray,mat_sz,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&sumffw_rarray,mat_sz,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&sumfyw_larray,vec_sz,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+      MPI_Pack(&sumfyw_rarray,vec_sz,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
 
@@ -226,20 +249,28 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
 //allsuff(2) -- the MPI communication part of local_mpiallsuff.  This is model-specific.
 void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
 #ifdef _OPENMPI
-    //Construct containers for suff stats
+    //Construct containers for suff stats -- each ith element in the container is a suff stat for the ith node
     unsigned int nvec[siv.size()];
     double sumyywvec[siv.size()];
-    std::vector<mxd, Eigen::aligned_allocator<mxd>> sumffwvec(siv.size());
-    std::vector<vxd, Eigen::aligned_allocator<vxd>> sumfywvec(siv.size());
+    double sumffwvec[k*k*siv.size()]; //An array that contains siv.size() matricies of kXk dimension that are flattened (by row).
+    double sumfywvec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension.
+    
+    std::vector<mxd, Eigen::aligned_allocator<mxd>> sumffwvec_em(siv.size()); //Vector of Eigen Matrixes kXk dim
+    std::vector<vxd, Eigen::aligned_allocator<vxd>> sumfywvec_ev(siv.size()); //Vector of Eigen Vectors k dim
     
     for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
         mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
         nvec[i]=(unsigned int)mxsi->n;    // cast to int
         sumyywvec[i]=mxsi->sumyyw;
-        sumfywvec[i]=mxsi->sumfyw;
-        sumffwvec[i]=mxsi->sumffw;
+        sumfywvec_ev[i]=mxsi->sumfyw;
+        sumffwvec_em[i]=mxsi->sumffw;
+
+        //Cast the current matrix to an array -- keep in mind to location given the stat for each node is stacked in the same array
+        matrix_to_array(sumffwvec_em[i], &sumffwvec[(i*k*k]);
+
+        //cast the current vecotor to an array
+        std::copy(std::begin(sumfywvec_ev[i].array()), std::end(sumfywvec_ev[i].array()), &sumfywvec[i*k]);
     }
-    // cout << "pre:" << siv[0]->n << " " << siv[1]->n << endl;
 
     // MPI sum
     // MPI_Allreduce(MPI_IN_PLACE,&nvec,siv.size(),MPI_UNSIGNED,MPI_SUM,MPI_COMM_WORLD);
@@ -251,15 +282,9 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         MPI_Status status;
         unsigned int tempnvec[siv.size()];
         double tempsumyywvec[siv.size()];
-        std::vector<mxd, Eigen::aligned_allocator<mxd>> tempsumffwvec(siv.size());
-        std::vector<vxd, Eigen::aligned_allocator<vxd>> tempsumfywvec(siv.size());
-
-        //Initialize the tempvectors to avoid errors
-        for(size_t i = 0; i<siv.size();i++){
-            tempsumffwvec[i] = mxd::Zero(k,k);
-            tempsumfywvec[i] = vxd::Zero(k);
-        }
-
+        double tempsumffwvec[k*k*siv.size()]; //An array that contains siv.size() matricies of kXk dimension that are flattened (by row).
+        double tempsumfywvec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension.
+        
         // receive nvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempnvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
@@ -300,41 +325,50 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
 
         // receive sumfywvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Recv(tempsumfywvec[0].data(),siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++){
-                //std::cout << "Tempsumfywvec[" << j << "]" << tempsumfywvec[j].transpose() << std::endl;
-                sumfywvec[j]+=tempsumfywvec[j];
+            MPI_Recv(&tempsumfywvec,k*siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<k*siv.size();j++){
+                sumfywvec[j]+=tempsumfywvec[j]; //add temp vector to the sufficient stat
             }
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(sumfywvec[0].data(),siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(&sumfywvec,k*siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
         
         // cast back to mxsi
+        Eigen::VectorXd tempsumfyw(k); //temp vector
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-            mxsi->sumfyw=sumfywvec[i];
-            //std::cout << "sumfy = " << sumfywvec[i].transpose() << std::endl;
+            tempsumfyw = Eigen::VectorXd::Zero(k); //initialize as zero vector before populating each node's suff stat 
+            
+            //Turn the ith section of k elements in the array into an Eigen VextorXd
+            for(size_t l=0; l<k; l++){
+                tempsumfyw(l) = sumfywvec[i*siv.size()+l] 
+            }
+            mxsi->sumfyw=tempsumfyw;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
 
         // receive sumffwvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Recv(tempsumffwvec[0].data(),siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
+            MPI_Recv(&tempsumffwvec,k*k*siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<k*k*siv.size();j++)
                 sumffwvec[j]+=tempsumffwvec[j];
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(sumffwvec[0].data(),siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(&sumffwvec,k*k*siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
         // cast back to mxsi
+        Eigen::MatrixXd tempsumffw(k,k); //temp matrix
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-            mxsi->sumffw=sumffwvec[i];
-            //std::cout << "sumff:\n" << sumffwvec[i] << std::endl;
+            tempsumffw = Eigen::MatrixXd::Zero(k,k); //initialize as zero matrix before populating each node's suff stat
+            
+            //cast the specific k*k elements from the array into the suff stat matrix
+            array_to_matrix(tempsumffw, &summffwvec[i*k*k]) 
+            mxsi->sumffw=tempsumffw;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
@@ -364,7 +398,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
 
         // send sumfywvec, update sumyywvec, receive sumfywvec
         request=new MPI_Request;
-        MPI_Isend(sumfywvec[0].data(),siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(&sumfywvec,k*siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
         // cast back to mxsi
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
@@ -372,25 +406,37 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
-        MPI_Recv(sumfywvec[0].data(),siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        MPI_Recv(&sumfywvec,k*siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
         // send sumffwvec, update sumfywvec, receive sumffwvec
         request=new MPI_Request;
-        MPI_Isend(sumffwvec[0].data(),siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(&sumffwvec,k*k*siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
         // cast back to mxsi
+        Eigen::VectorXd tempsumfyw(k); //temp vector
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-            mxsi->sumfyw=sumfywvec[i];
+            tempsumfyw = Eigen::VectorXd::Zero(k); //initialize as zero vector before populating each node's suff stat 
+            
+            //Turn the ith section of k elements in the array into an Eigen VextorXd
+            for(size_t l=0; l<k; l++){
+                tempsumfyw(l) = sumfywvec[i*siv.size()+l] 
+            }
+            mxsi->sumfyw=tempsumfyw;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
-        MPI_Recv(sumffwvec[0].data(),siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        MPI_Recv(&sumffwvec,k*k*siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
         // update sumffwvec
         // cast back to mxsi
+        Eigen::MatrixXd tempsumffw(k,k); //temp matrix
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-            mxsi->sumffw=sumffwvec[i];
+            tempsumffw = Eigen::MatrixXd::Zero(k,k); //initialize as zero matrix before populating each node's suff stat
+            
+            //cast the specific k*k elements from the array into the suff stat matrix
+            array_to_matrix(tempsumffw, &summffwvec[i*k*k]) 
+            mxsi->sumffw=tempsumffw;
         }
     }
 

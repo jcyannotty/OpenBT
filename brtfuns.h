@@ -111,12 +111,6 @@ void collapsetree(tree& st, tree::tree_p t, tree::tree_p tprime);
 void splitall(tree::tree_p t, tree::npv& tlefts, tree::npv& trights);
 
 //--------------------------------------------------
-// Functions to Model Mixing with BART and/or Vector Parameters
-//--------------------------------------------------
-void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime); //collapse tree for vector parameter theta
-void makefinfo(size_t k, int n, double *f, finfo &fi); 
-
-//--------------------------------------------------
 // Functions to support calculation of Sobol indices for BART
 // Based on Hiroguchi, Pratola and Santner (2020).
 //--------------------------------------------------
@@ -138,6 +132,14 @@ double probxall_termkl_rect(size_t k, size_t l, std::vector<std::vector<double> 
 
 std::vector<size_t> find_pareto_front(size_t start, size_t end, std::list<std::vector<double> > theta);
 bool not_dominated(size_t index, std::vector<size_t> R, std::list<std::vector<double> > theta);
+
+//--------------------------------------------------
+// Functions to Model Mixing with BART and/or Vector Parameters
+//--------------------------------------------------
+void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime); //collapse tree for vector parameter theta
+void makefinfo(size_t k, int n, double *f, finfo &fi); 
+void matrix_to_array(Eigen::MatrixXd &M, double *b);
+void array_to_matrix(Eigen::MatrixXd &M, double *b);
 
 //--------------------------------------------------
 //Helper Functions for tree models with vector parameters & model mixing 
