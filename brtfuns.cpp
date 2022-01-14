@@ -1193,7 +1193,7 @@ void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime)
 void makefinfo(size_t k, int n, double *f, finfo &fi){
    vxd v(n*k); //used to store the contents (as a vector) to be passed into finfo 
    //Populate vxd using f
-   for(int i = 0; i < n*k; i++){
+   for(size_t i = 0; i < n*k; i++){
       v(i) = f[i];
    }
    //Shape into a Matrix of kxn and populated by column
@@ -1218,6 +1218,13 @@ void matrix_to_array(Eigen::MatrixXd &M, double *b){
     }
 }
 
+//--------------------------------------------------
+//Convert an Eigen Vector into an std array 
+void vector_to_array(Eigen::VectorXd &V, double *b){
+   for(size_t j=0;j< (size_t)V.size();j++){
+      b[j] = V(j);
+   }
+}
 
 //--------------------------------------------------
 //Convert an std array to an Eigen Matrix (row by row)
@@ -1225,7 +1232,7 @@ void array_to_matrix(Eigen::MatrixXd &M, double *b){
     size_t nrow = M.rows();
     size_t ncol = M.cols();
     for(size_t i = 0; i<nrow; i++){
-        for(size_t j = 0; j<ncol; j++){
+        for(size_t j = 0; j<(size_t)ncol; j++){
             M(i,j) = b[i*ncol + j];
         }
     }

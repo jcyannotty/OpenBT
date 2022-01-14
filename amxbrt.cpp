@@ -143,7 +143,7 @@ void amxbrt::local_predict_mix(diterator& diter, finfo& fipred){
 
 //--------------------------------------------------
 //Local Save tree
-void amxbrt::local_savetree(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
+void amxbrt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
      std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta){
   size_t indx=iter*m;
   for(size_t i=(indx+(size_t)beg);i<(indx+(size_t)end);i++) {
@@ -158,7 +158,7 @@ void amxbrt::local_savetree(size_t iter, int beg, int end, std::vector<int>& nn,
 
 //--------------------------------------------------
 //Local load tree
-void amxbrt::local_loadtree(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+void amxbrt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta){
   size_t indx=iter*m;
   for(size_t i=(indx+(size_t)beg);i<(indx+(size_t)end);i++)

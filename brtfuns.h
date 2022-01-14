@@ -139,6 +139,7 @@ bool not_dominated(size_t index, std::vector<size_t> R, std::list<std::vector<do
 void collapsetree_vec(tree& st, tree::tree_p t, tree::tree_p tprime); //collapse tree for vector parameter theta
 void makefinfo(size_t k, int n, double *f, finfo &fi); 
 void matrix_to_array(Eigen::MatrixXd &M, double *b);
+void vector_to_array(Eigen::VectorXd &V, double *b);
 void array_to_matrix(Eigen::MatrixXd &M, double *b);
 
 //--------------------------------------------------
