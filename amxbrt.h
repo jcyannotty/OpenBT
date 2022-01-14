@@ -77,9 +77,9 @@ protected:
     virtual void local_setf_mix(diterator& diter);  //set the vector of predicted values
     virtual void local_setr_mix(diterator& diter);  //set the vector of residuals
     virtual void local_predict_mix(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
-    virtual void local_savetree(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
-    virtual void local_loadtree(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+    virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
 
 };

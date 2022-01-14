@@ -12,6 +12,11 @@
 
 int main(){
     //-------------------------------------------------------
+    //---Choose to run example 1,2,3,or 4 
+    //-------------------------------------------------------
+
+
+    //-------------------------------------------------------
     //---Read in Data for mxbrt examples
     //-------------------------------------------------------
     crn gen;
@@ -327,7 +332,7 @@ int main(){
     //-------------------------------------------------------
     //Example 3 -- Create an mxbrt object -- Constant but unknown error variance
     //-------------------------------------------------------
-
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 3: Work with a mxbrt object with unknown and constant variance \n" << endl;
     
@@ -465,7 +470,69 @@ int main(){
         outpred << predicted[i] << endl;
     }
     outpred.close();
+    */
+    //-------------------------------------------------------
+    //Example 4 -- Save and load the tree
+    //-------------------------------------------------------
+    //Initialize prior parameters
+    double *sig = new double[di.n];
+    double tau = 0.5; 
+    double beta0 = 0.55; 
+    double nu = 5.0;
+    double lambda = 0.01; //0.01
+    for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
+    
+    //Setup the objects
+    mxbrt b1, b2;
+    b1.setxi(&xi); b1.setfi(&fi,k); b1.setdata_mix(&di); b1.settc(tc); b1.settp(0.95,1.0); b1.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b1.setci(tau,beta0,sig);b1.setvi(nu, lambda);
+    b2.setxi(&xi); b2.setfi(&fi,k); b2.setdata_mix(&di); b2.settc(tc); b2.settp(0.95,1.0); b2.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b2.setci(tau,beta0,sig);b2.setvi(nu, lambda);
 
+    //Populate the brt objects -- look through to get larger objects
+    for(int i=0; i<20;i++){b1.drawvec(gen);}
+    for(int i=0; i<25;i++){b2.drawvec(gen);}
+    
+    //Print the bart objects
+    cout << "\n~~~Print brt 1~~~" << endl;
+    b1.pr_vec();
+    cout << "\n~~~Print brt 2~~~" << endl;
+    b2.pr_vec();
+
+    //Save tree's 1 and 2 using brt object;
+    std::vector<int> nn_vec(2); //2 bart models -- length of vector = 2
+    std::vector<std::vector<int>> id_vec(2), v_vec(2), c_vec(2); //2 bart models -- number of rows = 2 
+    std::vector<std::vector<double>> theta_vec(k); //length of each vector is nn*k 
+
+    b1.savetree_vec(0,1,nn_vec,id_vec,v_vec,c_vec,theta_vec); //0th iteration 
+    b2.savetree_vec(1,1,nn_vec,id_vec,v_vec,c_vec,theta_vec); //1st iteration
+
+    //Print the saved tree vectors
+    cout << "\n****** Print nn vector" << endl;
+    for(int i=0; i<2;i++){
+        cout << "--------------------------------------" << endl;
+        cout << "Brt " << i+1 << ": \n" << "nn = " << nn_vec[i] << endl;
+        for(int j=0;j<id_vec[i].size();j++){
+            cout << "id = " << id_vec[i][j] << " -- " << "(v,c) = " << "(" << v_vec[i][j] << "," << c_vec[i][j] << ") -- " << "thetavec = ";
+            for(int l = 0; l<k; l++){
+                cout << theta_vec[i][j*k+l] << ", ";
+            }
+            cout << endl;
+        }    
+    }
+
+    //Load a tree -- use the containers from above
+    mxbrt b11, b22;
+    b11.setxi(&xi); b11.setfi(&fi,k); b11.setdata_mix(&di); b11.settc(tc); b11.settp(0.95,1.0); b11.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b11.setci(tau,beta0,sig);b11.setvi(nu, lambda);
+    b22.setxi(&xi); b22.setfi(&fi,k); b22.setdata_mix(&di); b22.settc(tc); b22.settp(0.95,1.0); b22.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b22.setci(tau,beta0,sig);b22.setvi(nu, lambda);
+    b11.loadtree_vec(0,1,nn_vec,id_vec,v_vec,c_vec,theta_vec);
+    b22.loadtree_vec(1,1,nn_vec,id_vec,v_vec,c_vec,theta_vec);
+    
+    //Print the bart objects from the loading process
+    cout << "\n*******Loading Trees*******" << endl;
+    cout << "\n~~~Print brt 1~~~" << endl;
+    b11.t.pr_vec();
+    cout << "\n~~~Print brt 2~~~" << endl;
+    b22.t.pr_vec();
+    
     return 0;
 
 }

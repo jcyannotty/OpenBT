@@ -639,7 +639,6 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
       oid[i]=(int)nds[i]->nid();
       ov[i]=(int)nds[i]->getv();
       oc[i]=(int)nds[i]->getc();
-      
       thetavec_temp = nds[i]->getthetavec();
       for(int j = 0; j<k; j++){
          othetavec[i*k+j]=thetavec_temp(j); 

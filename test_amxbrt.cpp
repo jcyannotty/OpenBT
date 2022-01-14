@@ -298,6 +298,7 @@ int main(){
     //-------------------------------------------------------
     //Example 3 -- Test MCMC with unknown constant variance
     //-------------------------------------------------------
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 3: Work with a mxbrt object \n" << endl;
     
@@ -456,72 +457,74 @@ int main(){
         outpred << predicted[i] << endl;
     }
     outpred.close();
-
-
-    //-------------------------------------------------------
-    //Example 4 -- Do some draws and look at the results
-    //-------------------------------------------------------
-    /*
-    cout << "\n\n-----------------------------------------" << endl;
-    cout << "Example 4: View some results \n" << endl;
-    
-    //Initialize prior parameters
-    int m = 10; //25
-    double *sig = new double[di.n];
-    double tau =  1.0; //0.5/sqrt(double(m));
-    double beta0 = 0.0; //0.53/double(m);
-    for(size_t i=0;i<di.n;i++) sig[i]=0.03;
-
-    //First mix bart object with basic constructor
-    amxbrt axb(m); //20 Trees 
-    cout << "****Initial Object" << endl; 
-    axb.pr_vec();
-    axb.setxi(&xi);    //set the cutpoints for this model object 
-    //function output 
-    axb.setfi(&fi,k); //set function output for this model object
-    //data objects
-    axb.setdata_mix(&di);  //set the data for model mixing
-    //thread count
-    axb.settc(tc);      //set the number of threads when using OpenMP, etc.
-    //tree prior
-    axb.settp(0.95, //the alpha parameter in the tree depth penalty prior
-            0.75     //the beta parameter in the tree depth penalty prior
-            );
-    //MCMC info
-    axb.setmi(
-            0.5,  //probability of birth/death
-            0.5,  //probability of birth
-            3,    //minimum number of observations in a bottom node
-            true, //do perturb/change variable proposal?
-            0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
-            0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
-            &chgv  //initialize the change of variable correlation matrix.
-            );
-    axb.setci(tau,beta0,sig);
-
-    cout << "\n*****After init:\n";
-    axb.pr_vec();
-
-    cout << "\n-----------------------------------" << endl;
-    cout << "-----------------------------------" << endl;
-
-    size_t nd = 10;
-    size_t nadapt=5000;
-    size_t adaptevery=500;
-    size_t nburn=1000;
-    //for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); if((i+1)%adaptevery==0) axb.adapt(); }
-    //for(size_t i=0;i<nburn;i++) axb.drawvec(gen); 
-    
-    cout << "\n*****After "<< nd << " draws:\n";
-    cout << "Collecting statistics" << endl;
-    axb.setstats(true);
-    for(int i = 0; i<nd; i++){
-        cout << "\n------------------------------" << endl;
-        cout << "~~Draw " << i+1 << endl;
-        axb.drawvec(gen);
-        axb.pr_vec();
-    }
     */
+
+    //-------------------------------------------------------
+    //Example 4 -- Save and Load amxbrt objects
+    //-------------------------------------------------------
+    //Initialize prior parameters
+    double *sig = new double[di.n];
+    double tau = 0.5; 
+    double beta0 = 0.55; 
+    double nu = 5.0;
+    double lambda = 0.01;
+    int m = 2;
+    for(size_t i=0;i<di.n;i++) sig[i]=0.03; //True error std = 0.03
+    
+    //Setup the objects
+    amxbrt b1(m), b2(m);
+    b1.setxi(&xi); b1.setfi(&fi,k); b1.setdata_mix(&di); b1.settc(tc); b1.settp(0.95,1.0); b1.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b1.setci(tau,beta0,sig);b1.setvi(nu, lambda);
+    b2.setxi(&xi); b2.setfi(&fi,k); b2.setdata_mix(&di); b2.settc(tc); b2.settp(0.95,1.0); b2.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b2.setci(tau,beta0,sig);b2.setvi(nu, lambda);
+
+    //Populate the brt objects -- look through to get larger objects
+    for(int i=0; i<20;i++){b1.drawvec(gen);}
+    for(int i=0; i<25;i++){b2.drawvec(gen);}
+    
+    //Print the bart objects
+    cout << "\n~~~Print brt 1~~~" << endl;
+    b1.pr_vec();
+    cout << "\n~~~Print brt 2~~~" << endl;
+    b2.pr_vec();
+
+    //Save tree's 1 and 2 using brt object;
+    std::vector<int> nn_vec(2*m); //Initialize to 10 -- 2 iterations and m trees per iterations
+    std::vector<std::vector<int>> id_vec(2*m), v_vec(2*m), c_vec(2*m); //Initialize to 2*m
+    std::vector<std::vector<double>> theta_vec(2*m); //length of each vector is nn*k 
+
+    b1.savetree_vec(0,m,nn_vec,id_vec,v_vec,c_vec,theta_vec); //0th iteration 
+    b2.savetree_vec(1,m,nn_vec,id_vec,v_vec,c_vec,theta_vec); //1st iteration
+
+    //Print the saved tree vectors -- two amxb models with 5 trees each
+    cout << "\n****** Print tree vectors" << endl;
+    for(int i=0; i<2;i++){
+        cout << "--------------------------------------" << endl;
+        cout << "Amxbrt " << i+1 << ":" << endl;
+        for(int t=0;t<m;t++){
+            cout << "--------------------------------------" << endl;
+            cout << "---Tree" << t << ": \n" << "nn = " << nn_vec[i*m + t] << endl;
+            for(int j=0;j<id_vec[i*m + t].size();j++){
+                cout << "id = " << id_vec[i*m + t][j] << " -- " << "(v,c) = " << "(" << v_vec[i*m + t][j] << "," << c_vec[i*m + t][j] << ") -- " << "thetavec = ";
+                for(int l = 0; l<k; l++){
+                    cout << theta_vec[i*m + t][j*k+l] << ", ";
+                }
+                cout << endl;
+            }
+        }     
+    }
+
+    //Load a tree -- use the containers from above
+    amxbrt b11(m), b22(m);
+    b11.setxi(&xi); b11.setfi(&fi,k); b11.setdata_mix(&di); b11.settc(tc); b11.settp(0.95,1.0); b11.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b11.setci(tau,beta0,sig);b11.setvi(nu, lambda);
+    b22.setxi(&xi); b22.setfi(&fi,k); b22.setdata_mix(&di); b22.settc(tc); b22.settp(0.95,1.0); b22.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b22.setci(tau,beta0,sig);b22.setvi(nu, lambda);
+    b11.loadtree_vec(0,m,nn_vec,id_vec,v_vec,c_vec,theta_vec);
+    b22.loadtree_vec(1,m,nn_vec,id_vec,v_vec,c_vec,theta_vec);
+    
+    //Print the bart objects from the loading process
+    cout << "\n*******Loading Trees*******" << endl;
+    cout << "\n~~~Print brt 1~~~" << endl;
+    b11.pr_vec();
+    cout << "\n~~~Print brt 2~~~" << endl;
+    b22.pr_vec();
     return 0;
 
 }

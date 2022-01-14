@@ -902,8 +902,8 @@ return 0;
    for(size_t i=0;i<nadapt;i++) { 
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0){cout << "Checkpt 6.1--" << i << endl; axb.drawvec(gen);  axb.drawsigma(gen);} else {axb.drawvec_mpislave(gen); cout << "Checkpt 7.1 -- "<< i << endl; axb.drawsigma(gen);}
-      //if((i%10)==0){axb.pr_vec();}
+      if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
+      axb.drawsigma(gen);
 #else
       axb.drawvec(gen); //Draw tree and parameter vector
       axb.drawsigma(gen); //Draw variance
@@ -914,7 +914,8 @@ return 0;
    for(size_t i=0;i<burn;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0){ axb.drawvec(gen); axb.drawsigma(gen);}else {axb.drawvec_mpislave(gen); axb.drawsigma(gen);}
+      if(mpirank==0){ axb.drawvec(gen);}else {axb.drawvec_mpislave(gen);}
+      axb.drawsigma(gen);
 #else
       axb.drawvec(gen);
       axb.drawsigma(gen);
@@ -926,7 +927,8 @@ return 0;
    for(size_t i=0;i<nd;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank==0){axb.drawvec(gen); axb.drawsigma(gen); }else{ axb.drawvec_mpislave(gen); axb.drawsigma(gen);}
+      if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
+       axb.drawsigma(gen);
 #else
       axb.drawvec(gen);
       axb.drawsigma(gen);

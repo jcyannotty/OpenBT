@@ -536,7 +536,7 @@ int main(int argc, char* argv[])
             oid[j][l]=e_oid.at(cumdx+curdx+l);
             ov[j][l]=e_ovar.at(cumdx+curdx+l);
             oc[j][l]=e_oc.at(cumdx+curdx+l);
-            for(int r=0;r<k;r++){
+            for(size_t r=0;r<k;r++){
                otheta[j][l*k+r]=e_otheta.at(cumdx+curdx+l);
             }
             
