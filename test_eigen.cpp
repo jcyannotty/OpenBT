@@ -113,6 +113,17 @@ int main(){
     }
     cout << endl;
 
+    //-------------------------------------------------------------
+    //Populate an Eigen matrix/vector with an std vector
+    mxd C(4,2);
+    std::vector<double> cv1 = {1.2,3.4,5.6,7.8};
+    std::vector<double> cv2 = {10.0,20.0,30.0,40.0};
+
+    C.col(0) = Eigen::Map<Eigen::VectorXd>(cv1.data(),4);
+    C.col(1) = Eigen::Map<Eigen::VectorXd>(cv2.data(),4);
+
+    cout << "C = \n" << C << endl; 
+
     /*
     //Important Eigen storage example. Shows ways to work with eigen pointers/references
     Eigen::MatrixXd A(2,2);
