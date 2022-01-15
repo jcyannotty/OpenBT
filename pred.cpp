@@ -161,7 +161,7 @@ int main(int argc, char* argv[])
 #ifndef SILENT
    cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << p << " from " << xfs << endl;
 #endif
-
+   cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << p << " from " << xfs << endl;
    //--------------------------------------------------
    //make xinfo
    xinfo xi;
@@ -193,41 +193,29 @@ int main(int argc, char* argv[])
          cout << xi[i][0] << " ... " << xi[i][xi[i].size()-1] << endl;
       }
 #endif
-
    //--------------------------------------------------
    //Initialize f matrix and make finfo -- used only for model mixing 
    std::vector<double> fpd;
    double ftemp;
-   finfo fi_test;
+   finfo fi_test(np,k);
    if(modeltype==MODEL_MIXBART) {
-#ifdef _OPENMPI
-   if(mpirank>0) {
-#endif
       std::stringstream ffss;
       std::string ffs;
-      ffss << folder << fpcore << mpirank;
+      ffss << folder << fpcore << mpirank; //get the file to read in -- every processor reads in a different file (dictated by mpirank and R files)
       ffs=ffss.str();
       std::ifstream ff(ffs);
       while(ff >> ftemp)
          fpd.push_back(ftemp);
-      //k = fpd.size()/np;
+      Eigen::Map<Eigen::MatrixXd, Eigen::RowMajor> fi_test_temp(fpd.data(),k,np);
+      fi_test = fi_test_temp.transpose();
+      //fi_test.col(i) = Eigen::Map<Eigen::VectorXd>(fpd.data(),np);  
+      //cout << "-------------------------------\n" << "MPI = " << mpirank << "\n np = " << np << "\nk =" << k  << "\nfi_test = \n" << fi_test << endl;
 #ifndef SILENT
-      cout << "node " << mpirank << " loaded " << np << " mixing inputs of dimension " << k << " from " << ffs << endl;
+   cout << "&&& made finfo for test data\n";
 #endif
-#ifdef _OPENMPI
    }
-   int tempk = (unsigned int) k;
-   MPI_Allreduce(MPI_IN_PLACE,&tempk,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
-   if(mpirank>0 && k != ((size_t) tempk)) { cout << "PROBLEM LOADING DATA" << endl; MPI_Finalize(); return 0;}
-   k=(size_t)tempk;
-#endif
-
-   //Make finfo
-   makefinfo(k,np,&fpd[0],fi_test);
-
-}
-
-   if(modeltype!=MODEL_MIXBART){
+   
+if(modeltype!=MODEL_MIXBART){
    //--------------------------------------------------
    // set up ambrt object
    ambrt ambm(m);
@@ -251,7 +239,7 @@ int main(int argc, char* argv[])
 #ifdef _OPENMPI
    if(nd!=ind) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
    if(m!=im) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
-   if(mh!=imh) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
+   if(mh!=imh) { cout << "Error loading posterior trees"  << endl; MPI_Finalize(); return 0; }
 #else
    if(nd!=ind) { cout << "Error loading posterior trees" << endl; return 0; }
    if(m!=im) { cout << "Error loading posterior trees" << endl; return 0; }
@@ -447,30 +435,27 @@ int main(int argc, char* argv[])
    MPI_Finalize();
 #endif
 
-   }else if(modeltype == MODEL_MIXBART){
+}else if(modeltype == MODEL_MIXBART){
    //--------------------------------------------------
    // set up amxbrt object
-   ambrt axb(m);
+   amxbrt axb(m);
    axb.setxi(&xi); //set the cutpoints for this model object
    axb.setfi(&fi_test, k); //set the function output for this model object -- main use is to set k
-
+   
    //load from file
 #ifndef SILENT
    if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
 #endif
-   size_t ind,im,imh;
+   size_t ind,im;
    std::ifstream imf(folder + modelname + ".fit");
    imf >> ind;
    imf >> im;
-   imf >> imh;
 #ifdef _OPENMPI
-   if(nd!=ind) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
-   if(m!=im) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
-   if(mh!=imh) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
+   if(nd!=ind) { cout << "Error loading posterior trees"<< "nd = " << nd << " -- ind = " << ind << endl; MPI_Finalize(); return 0; }
+   if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; MPI_Finalize(); return 0; }
 #else
-   if(nd!=ind) { cout << "Error loading posterior trees" << endl; return 0; }
-   if(m!=im) { cout << "Error loading posterior trees" << endl; return 0; }
-   if(mh!=imh) { cout << "Error loading posterior trees" << endl; return 0; }
+   if(nd!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; return 0; }
+   if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; return 0; }
 #endif
 
    size_t temp=0;
@@ -532,12 +517,12 @@ int main(int argc, char* argv[])
          ov[j].resize(onn[j]);
          oc[j].resize(onn[j]);
          otheta[j].resize(onn[j]*k);
-         for(size_t l=0;l< (size_t)onn[j];l++) {
+         for(size_t l=0;l<(size_t)onn[j];l++) {
             oid[j][l]=e_oid.at(cumdx+curdx+l);
             ov[j][l]=e_ovar.at(cumdx+curdx+l);
             oc[j][l]=e_oc.at(cumdx+curdx+l);
             for(size_t r=0;r<k;r++){
-               otheta[j][l*k+r]=e_otheta.at(cumdx+curdx+l);
+               otheta[j][l*k+r]=e_otheta.at(cumdx+curdx+l*k+r);
             }
             
          }
@@ -546,17 +531,26 @@ int main(int argc, char* argv[])
       cumdx+=curdx;
 
       axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta);
+      if((i % 500) == 0){
+         //cout << "Here 5" << endl;
+         //axb.pr_vec();
+      } 
       // draw realization
       axb.predict_mix(&dip, &fi_test);
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
+      if((i % 500) == 0){
+         //cout << "Here 6" << endl;
+         //cout << tedraw[i][0] << endl;;
+      } 
    }
+   //cout << "Here 7" << endl;
    #ifdef _OPENMPI
    if(mpirank==0) {
       tend=MPI_Wtime();
       cout << "Posterior predictive draw time was " << (tend-tstart)/60.0 << " minutes." << endl;
    }
 #endif
-
+   //cout << "Here 8 --- " << mpirank << endl;
    // Save the draws.
    if(mpirank==0) cout << "Saving posterior predictive draws...";
    std::ofstream omf(folder + modelname + ".mdraws" + std::to_string(mpirank));

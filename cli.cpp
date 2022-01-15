@@ -336,6 +336,9 @@ int main(int argc, char* argv[])
       while(ff >> ftemp)
          f.push_back(ftemp);
       k = f.size()/n;
+      
+      //Make finfo on the slave node
+      makefinfo(k,n,&f[0],fi);
 #ifndef SILENT
       cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
 #endif
@@ -346,9 +349,6 @@ int main(int argc, char* argv[])
    if(mpirank>0 && k != ((size_t) tempk)) { cout << "PROBLEM LOADING DATA" << endl; MPI_Finalize(); return 0;}
    k=(size_t)tempk;
 #endif
-
-   //Make finfo
-   makefinfo(k,n,&f[0],fi);
    }
    //--------------------------------------------------
    //dinfo
@@ -878,6 +878,8 @@ return 0;
          probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
          &chgv  //initialize the change of variable correlation matrix.
          );
+   //Set sigma for model mixing to be prior mean -- overrides the definition from reading in s data, which is not needed 
+   //for(size_t i=0;i<di.n;i++){ if(overallnu>2) {sig[i]=overalllambda*(overallnu)/(overallnu-2);}else{sig[i]=1.0;}}
    //Set prior information
    axb.setci(tau,beta0,sig); //conditioning info for mu prior
    axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
@@ -903,7 +905,13 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-      axb.drawsigma(gen);
+      if(mpirank==0){axb.drawsigma(gen);} else {axb.drawsigma(gen);}
+      //axb.drawsigma(gen);
+      if(i == 10){
+         //cout << "mpirank" << mpirank << " \n----------------------------------" << endl;
+         axb.pr_vec();
+      }
+
 #else
       axb.drawvec(gen); //Draw tree and parameter vector
       axb.drawsigma(gen); //Draw variance
