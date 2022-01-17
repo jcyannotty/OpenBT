@@ -32,6 +32,10 @@ void array_to_matrix(Eigen::MatrixXd &M, double *b){
     }
 }
 
+void test_pbr(double &x){
+    cout << x << endl;
+}
+
 int main(){
     //Define an Eigen matirx of dimension 4x4
     MatrixXd A(4,4);
@@ -124,6 +128,14 @@ int main(){
 
     cout << "C = \n" << C << endl; 
 
+    //test pass by reference -- can delete later
+    double xx = 3.2;
+    test_pbr(xx);
+
+    double *yy;
+    double zz = 6.7;
+    yy = &zz;
+    cout << *yy << endl;
     /*
     //Important Eigen storage example. Shows ways to work with eigen pointers/references
     Eigen::MatrixXd A(2,2);

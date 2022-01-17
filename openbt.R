@@ -148,7 +148,7 @@ if(model=="mixbart")
   modeltype=MODEL_MIXBART
   if(is.null(ntree)) ntree=200
   if(is.null(ntreeh)) ntreeh=1
-  if(is.null(k)) k=2
+  if(is.null(k)) k=1
   if(is.null(overallsd)) overallsd=sd(y.train)
   if(is.null(overallnu)) overallnu=10
   pbd=c(pbd,0.0)
@@ -179,9 +179,9 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 }
 if(modeltype==MODEL_MIXBART)
 {
-  y.train=y.train-fmean
-  f.train=f.train-fmean
-  fmean.out=paste(0.0)  
+  #y.train=y.train-fmean
+  #f.train=f.train-fmean
+  fmean.out=paste(fmean)  
 }
 #--------------------------------------------------
 #cutpoints
@@ -455,11 +455,11 @@ xproot="xp"
 fproot="fp"
 
 if(fit$modeltype==MODEL_MIXBART){
-  if(is.null(f.test)) stop("No function output specified for model mixing!\n")
+  if(is.null(f.test)){stop("No function output specified for model mixing!\n")}
   k=ncol(f.test) #Number of models
 }
 
-if(fit$modeltype==MODEL_BART || fit$modeltype==MODEL_HBART || fit$modeltype==MODEL_MERCK_TRUNCATED || fit$modeltype==MODEL_MIXBART)
+if(fit$modeltype==MODEL_BART || fit$modeltype==MODEL_HBART || fit$modeltype==MODEL_MERCK_TRUNCATED)
 {
    fmean.out=paste(fmean)
 }
@@ -467,7 +467,11 @@ if(fit$modeltype==MODEL_PROBIT || fit$modeltype==MODEL_MODIFIEDPROBIT)
 {
    fmean.out=paste(qnorm(fmean))
 }
-
+if(fit$modeltype==MODEL_MIXBART)
+{
+  #Assuming we do not center the data
+  fmean.out=paste(0.0)
+}
 
 #--------------------------------------------------
 #write out config file
@@ -486,6 +490,7 @@ for(i in 1:nslv) write(t(xlist[[i]]),file=paste(fit$folder,"/",xproot,i-1,sep=""
 for(i in 1:p) write(fit$xicuts[[i]],file=paste(fit$folder,"/",fit$xiroot,i,sep=""))
 
 if(fit$modeltype==MODEL_MIXBART){
+  #for(i in 1:k) write(f.test[,i],file=paste(fit$folder,"/",fproot,i,sep=""))
   flist=split(as.data.frame(f.test),(seq(n)-1) %/% (n/nslv))
   for(i in 1:nslv) write(t(flist[[i]]),file=paste(fit$folder,"/",fproot,i-1,sep=""))  
 }

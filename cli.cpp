@@ -880,10 +880,19 @@ return 0;
          );
    //Set sigma for model mixing to be prior mean -- overrides the definition from reading in s data, which is not needed 
    //for(size_t i=0;i<di.n;i++){ if(overallnu>2) {sig[i]=overalllambda*(overallnu)/(overallnu-2);}else{sig[i]=1.0;}}
+   
    //Set prior information
-   axb.setci(tau,beta0,sig); //conditioning info for mu prior
-   axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
-
+   if(mpirank==0){
+      double* sigr0;
+      double sigr0_val = 1.0;
+      sigr0 = &sigr0_val;
+      axb.setci(tau,beta0,sigr0); //conditioning info for mu prior
+      axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
+   }else{
+      axb.setci(tau,beta0,sig); //conditioning info for mu prior
+      axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
+   }
+   
    //--------------------------------------------------
    //run mcmc
    std::vector<int> onn(nd*m,1);
@@ -891,7 +900,14 @@ return 0;
    std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
+   //std::vector<double> osig(nd);
+   //std::vector<double> ofit(1,0);
+   //if(mpirank>0){ofit.resize(n); for(size_t l =0;l<n;l++){ofit[l] = 0.0;}}
+
    brtMethodWrapper faxb(&brt::f,axb);
+
+   //std::ofstream osf(folder + modelname + ".sigpost");
+   //osf.close();
 
    #ifdef _OPENMPI
    double tstart=0.0,tend=0.0;
@@ -905,13 +921,7 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-      if(mpirank==0){axb.drawsigma(gen);} else {axb.drawsigma(gen);}
-      //axb.drawsigma(gen);
-      if(i == 10){
-         //cout << "mpirank" << mpirank << " \n----------------------------------" << endl;
-         axb.pr_vec();
-      }
-
+      axb.drawsigma(gen);
 #else
       axb.drawvec(gen); //Draw tree and parameter vector
       axb.drawsigma(gen); //Draw variance
@@ -936,7 +946,20 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
-       axb.drawsigma(gen);
+      axb.drawsigma(gen);
+      if(mpirank ==0 && (i%3)==0){cout << axb.getsigma() << endl;}
+      /*
+      if(mpirank > 0 && (i % printevery) == 0){
+         cout << "-----------------------------------" << endl;
+         for(size_t j = 0; j<n; j++){cout << axb.f(j) << " ";}
+         cout << endl; 
+      }
+      */
+      //if(mpirank == 0 && i == (nd-1)){axb.pr_vec();}
+      //if(mpirank>0 && (i%3)==0) {for(size_t j=0;j<n;j++) cout << axb.f(j) << ", ";}
+      //if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j]= ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
+      //if(mpirank>0 && i == (nd-1) ){for(size_t j=0;j<n;j++) {cout << ofit[j] << " ";} cout << endl;}
+      
 #else
       axb.drawvec(gen);
       axb.drawsigma(gen);
@@ -946,6 +969,16 @@ return 0;
       axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta);  
    }
 
+   //save variance to vector form -- remove later
+   /*
+   if(mpirank == 0){
+      //Write sigma values to file
+      osf.open(folder + modelname + ".sigpost", std::ios_base::app);
+      osf << axb.getsigma() << endl;
+      osf.close();
+   }
+   */
+   
 }
 
 #ifdef _OPENMPI
@@ -990,6 +1023,16 @@ return 0;
 
       cout << " done." << endl;
    }
+   /*
+   if(mpirank>0){
+      //Write fitted values to file
+      std::ofstream off(folder + modelname + std::to_string(mpirank) + ".fitvals");
+      for(size_t i=0;i<n;i++){
+         off << ofit[i] << endl;
+      }
+      off.close();
+   }
+   */
 
    // summary statistics
    if(summarystats) {

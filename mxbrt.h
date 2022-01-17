@@ -108,6 +108,10 @@ public:
     //Method for sampling homoscedastic variance for paramter sigma^2 -- not sure if this works
     void setvi(double nu, double lambda) {ci.nu = nu; ci.lambda = lambda; } //Use to change the defualt parameters  
     void drawsigma(rn& gen); //Gibbs Sampler
+    void getsumr2(double &sumr2, int &n); //get resiudal sum of squares 
+    void local_getsumr2(double &sumr2, int &n);
+    void local_mpi_getsumr2(double &sumr2, int &n);
+    void local_mpi_reduce_getsumr2(double &sumr2, int &n);
     double getsigma() { return ci.sigma[0];}
 
     //Consider adding covariance inversion to local_subsuff-----******

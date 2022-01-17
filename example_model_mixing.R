@@ -71,7 +71,7 @@ plot_exp(g_grid, ns = 2, nl = 4)
 #Generate training data
 #Set parameters
 n_train = 40 
-n_test = 300
+n_test = 10
 s = 0.03 #s = 0.03
 
 set.seed(44332211)
@@ -124,6 +124,22 @@ x_test = as.matrix(x_test, ncol = 1)
 # Load the R wrapper functions to the OpenBT library.
 source("/home/johnyannotty/Documents/Open BT Project SRC/openbt.R")
 
-# Model Mixing BART model
-fit=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),ntree = 10,ntreeh=1,numcut=100,tc=4,model="mixbart",modelname="physics_model")
+#Model Mixing BART model
+fit=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),ntree = 20,ntreeh=1,numcut=100,tc=4,model="mixbart",modelname="physics_model",
+           ndpost = 1000, nskip = 200, nadapt = 1000, adaptevery = 200, printevery = 500,
+           base = 0.75)
+str(fit)
 
+#Save posterior
+openbt.save(fit,"test")
+#fit2 = openbt.load("/home/johnyannotty/Documents/Open BT Test Data/test")
+fit2 = openbt.load("test")
+
+#Predictions
+fitp=predict.openbt(fit2,x.test = x_test,f.test = f_test,tc=4)
+
+trees=openbt.scanpost(fit)
+trees$mt[[1]][[1]]
+trees$st[[1]][[1]]
+
+plot(x_test,fitp$mmean,xlab="x_test",ylab="f")

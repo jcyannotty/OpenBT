@@ -117,7 +117,6 @@ double mxbrt::lm(sinfo& si){
     sumq = mxsi.sumyyw - (mxsi.sumfyw + beta/t2).transpose()*Sig_inv*(mxsi.sumfyw + beta/t2) + k*ci.beta0*ci.beta0/t2;
   
     //print the mxinfo
-    //mxsi.print_mx();
     return -0.5*(suml + sumq + k*log(t2));
 
 }
@@ -141,19 +140,12 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     fy = (*fi).row(*diter).transpose()*diter.gety();
     yy = diter.gety()*diter.gety();
 
-    //std::cout << "---------------------" << std::endl;
-    //std::cout << "Obs i = " << *diter << std::endl;
-    //std::cout << "y = " << diter.gety() << std::endl;
-    //std::cout << "fi = " << (*fi).row(*diter) << std::endl;
-
     //Update sufficient stats for nodes
     mxsi.n+=1;
     mxsi.sumffw+=w*ff;
     mxsi.sumfyw+=w*fy;
     mxsi.sumyyw+=w*yy;
 
-    //Print to check
-    //mxsi.print_mx();
 }
 
 //--------------------------------------------------
@@ -163,76 +155,86 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
    mxsinfo& msil=static_cast<mxsinfo&>(sil);
    mxsinfo& msir=static_cast<mxsinfo&>(sir);
    if(rank==0) { // MPI receive all the answers from the slaves
-      MPI_Status status;
-      mxsinfo& tsil = (mxsinfo&) *newsinfo();
-      mxsinfo& tsir = (mxsinfo&) *newsinfo();
-      char buffer[SIZE_UINT6*2];
-      int position=0;
-      unsigned int ln,rn;
-      
-      //Cast the matrices and vectors to arrays
-      double sumffw_rarray[k*k], sumffw_larray[k*k]; //arrays for right and left matrix suff stats
-      double sumfyw_rarray[k], sumfyw_larray[k]; //arrays for right and left vector suff stats
-      matrix_to_array(tsil.sumffw, &sumffw_larray[0]); //function defined in brtfuns
-      matrix_to_array(tsir.sumffw, &sumffw_rarray[0]); //function defined in brtfuns
-      vector_to_array(tsil.sumfyw, &sumfyw_larray[0]); //function defined in brtfuns
-      vector_to_array(tsir.sumfyw, &sumfyw_rarray[0]); //function defined in brtfuns
-      
-      //std::copy(std::begin(tsil.sumfyw.array()), std::end(tsil.sumfyw.array()), std::begin(sumfyw_larray)); //use std functions for vectors
-      //std::copy(std::begin(tsir.sumfyw.array()), std::end(tsir.sumfyw.array()), std::begin(sumfyw_rarray));
+        MPI_Status status;
+        mxsinfo& tsil = (mxsinfo&) *newsinfo();
+        mxsinfo& tsir = (mxsinfo&) *newsinfo();
+        char buffer[SIZE_UINT6*2];
+        int position=0;
+        unsigned int ln,rn;
+        
+        //Cast the matrices and vectors to arrays
+        double sumffw_rarray[k*k], sumffw_larray[k*k]; //arrays for right and left matrix suff stats
+        double sumfyw_rarray[k], sumfyw_larray[k]; //arrays for right and left vector suff stats
+        matrix_to_array(tsil.sumffw, &sumffw_larray[0]); //function defined in brtfuns
+        matrix_to_array(tsir.sumffw, &sumffw_rarray[0]); //function defined in brtfuns
+        vector_to_array(tsil.sumfyw, &sumfyw_larray[0]); //function defined in brtfuns
+        vector_to_array(tsir.sumfyw, &sumfyw_rarray[0]); //function defined in brtfuns
+        
+        //std::copy(std::begin(tsil.sumfyw.array()), std::end(tsil.sumfyw.array()), std::begin(sumfyw_larray)); //use std functions for vectors
+        //std::copy(std::begin(tsir.sumfyw.array()), std::end(tsir.sumfyw.array()), std::begin(sumfyw_rarray));
+         
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            position=0;
+            MPI_Recv(buffer,SIZE_UINT6*2,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumffw_larray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumffw_rarray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumfyw_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumfyw_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
-      for(size_t i=1; i<=(size_t)tc; i++) {
-         position=0;
-         MPI_Recv(buffer,SIZE_UINT6*2,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumffw_larray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumffw_rarray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumfyw_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumfyw_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-         MPI_Unpack(buffer,SIZE_UINT6*2,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            //convert sumffw_larray/sumffw_rarray to a matrix defined in tsil/tsir
+            array_to_matrix(tsil.sumffw,&sumffw_larray[0]);
+            array_to_matrix(tsir.sumffw,&sumffw_rarray[0]);
 
-         tsil.n=(size_t)ln;
-         tsir.n=(size_t)rn;
-         msil+=tsil;
-         msir+=tsir;
-      }
+            //convert sumfyw_larray/sumfyw_rarray to a vector defined in tsil/tsir
+            vxd tempsumfywl(k), tempsumfywr(k);
+            tempsumfywl = vxd::Zero(k);
+            tempsumfywr = vxd::Zero(k);
+            for(size_t l=0;l<k;l++){
+                tempsumfywl(l) = sumfyw_larray[l];
+                tempsumfywr(l) = sumfyw_rarray[l];
+            }
+            tsil.sumfyw = tempsumfywl;
+            tsir.sumfyw = tempsumfywr;
+
+            tsil.n=(size_t)ln;
+            tsir.n=(size_t)rn;
+            msil+=tsil;
+            msir+=tsir;
+
+        }
       delete &tsil;
       delete &tsir;
    }
    else // MPI send all the answers to root
    {
-      char buffer[SIZE_UINT6*2];
-      int position=0;  
-      unsigned int ln,rn;
+    char buffer[SIZE_UINT6*2];
+    int position=0;  
+    unsigned int ln,rn;
 
-      //Cast the matrices and vectors to arrays
-      double sumffw_rarray[k*k], sumffw_larray[k*k]; //arrays for right and left matrix suff stats
-      double sumfyw_rarray[k], sumfyw_larray[k]; //arrays for right and left vector suff stats
-      matrix_to_array(msil.sumffw, &sumffw_larray[0]); //function defined in brtfuns
-      matrix_to_array(msir.sumffw, &sumffw_rarray[0]); //function defined in brtfuns
-      vector_to_array(msil.sumfyw, &sumfyw_larray[0]); //function defined in brtfuns
-      vector_to_array(msir.sumfyw, &sumfyw_rarray[0]); //function defined in brtfuns
-      
-      //std::copy(std::begin(msil.sumfyw.array()), std::end(msil.sumfyw.array()), std::begin(sumfyw_larray)); //use std functions for vectors
-      //std::copy(std::begin(msir.sumfyw.array()), std::end(msir.sumfyw.array()), std::begin(sumfyw_rarray));
+    //Cast the matrices and vectors to arrays
+    double sumffw_rarray[k*k], sumffw_larray[k*k]; //arrays for right and left matrix suff stats
+    double sumfyw_rarray[k], sumfyw_larray[k]; //arrays for right and left vector suff stats
+    matrix_to_array(msil.sumffw, &sumffw_larray[0]); //function defined in brtfuns
+    matrix_to_array(msir.sumffw, &sumffw_rarray[0]); //function defined in brtfuns
+    vector_to_array(msil.sumfyw, &sumfyw_larray[0]); //function defined in brtfuns
+    vector_to_array(msir.sumfyw, &sumfyw_rarray[0]); //function defined in brtfuns
+    
+    ln=(unsigned int)msil.n;
+    rn=(unsigned int)msir.n;
+    MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumffw_larray,k*k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumffw_rarray,k*k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumfyw_larray,k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumfyw_rarray,k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
 
-      ln=(unsigned int)msil.n;
-      rn=(unsigned int)msir.n;
-      MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      //std::cout << "Error Here1" << std::endl;
-      MPI_Pack(&sumffw_larray,k*k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      MPI_Pack(&sumffw_rarray,k*k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      //std::cout << "Error Here2" << SIZE_UINT6 << std::endl;
-      MPI_Pack(&sumfyw_larray,k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      MPI_Pack(&sumfyw_rarray,k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      //std::cout << "Error Here3" << std::endl;
-      MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-      MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-
-      MPI_Send(buffer,SIZE_UINT6*2,MPI_PACKED,0,0,MPI_COMM_WORLD);
+    MPI_Send(buffer,SIZE_UINT6*2,MPI_PACKED,0,0,MPI_COMM_WORLD);
    }
 #endif   
 }
@@ -311,7 +313,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
             mxsi->sumyyw=sumyywvec[i];
-            //std::cout << "Sumyyw[" << i << "] = " << sumyywvec[i] << std::endl;
+            //std::cout << "sumyyw[" << i << "] = " << sumyywvec[i] << std::endl;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
@@ -338,7 +340,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
             for(size_t l=0; l<k; l++){
                 tempsumfyw(l) = sumfywvec[i*siv.size()+l]; 
             }
-            //std::cout << "tempsumfyw = \n" << tempsumfyw << std::endl;
+            //std::cout << "tempsumfyw = \n" << tempsumfyw.transpose() << std::endl;
             mxsi->sumfyw=tempsumfyw;
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
@@ -399,6 +401,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         for(size_t i=0;i<siv.size();i++) {
             mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
             mxsi->sumyyw=sumyywvec[i];
+            //std::cout << "sumyy["<<i<<"] = "<<sumyywvec[i]<<std::endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
@@ -418,6 +421,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
                 tempsumfyw(l) = sumfywvec[i*siv.size()+l]; 
             }
             mxsi->sumfyw=tempsumfyw;
+            //std::cout << "tempsumfy["<<i<<"] = "<<tempsumfyw.transpose()<<std::endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
@@ -433,9 +437,9 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
             //cast the specific k*k elements from the array into the suff stat matrix
             array_to_matrix(tempsumffw, &sumffwvec[i*k*k]); 
             mxsi->sumffw=tempsumffw;
+            //std::cout << "tempsumffw["<<i<<"] = \n"<<tempsumffw<<std::endl;
         }
     }
-
     // cout << "reduced:" << siv[0]->n << " " << siv[1]->n << endl;
 #endif
 }
@@ -456,20 +460,36 @@ void mxbrt::pr_vec()
 }
 
 //--------------------------------------------------
-//Sample from the variance posterior -- using Gibbs sampler under a homscedastic variance assumption
+//Sample from the std deviation posterior -- using Gibbs sampler under a homscedastic variance assumption
 void mxbrt::drawsigma(rn& gen){
-    double sumr2 = 0;
-    int n;
+    double sumr2 = 0.0;
+    int n; 
+    int ntot=0;
     n = resid.size();
-
+    if(n == 0){n = 1;} //used for root node when using mpi
+    getsumr2(sumr2,ntot);
+    /*
     //Get sum of residuals squared
     for(int i = 0; i<n;i++){
         sumr2 = sumr2 + resid[i]*resid[i];
         //std::cout << resid[i] << " --- " << resid[i]*resid[i] << std::endl;
     }
+    
+    std::cout <<  "n = " << n << endl;
+    std::cout <<  "ntot = " << ntot << endl;
+    std::cout <<  "sumr2 = " << sumr2 << endl;
+    */
+   
     //Get nu*lambda and nu
     double nulampost=ci.nu*ci.lambda+sumr2;
-    double nupost = n + (int)ci.nu;
+    double nupost = ntot + (int)ci.nu;
+
+    //When MPI is active -- reset so we draw the same sigma for every processor
+    #ifdef _OPENMPI
+        mpi_resetrn(gen);
+    #endif
+
+    //std::cout << "Before --- *ci.sigma = " <<  *(ci.sigma) << std::endl;
 
     //Generate new inverse scaled chi2 rv
     gen.set_df(nupost); //set df's
@@ -477,10 +497,9 @@ void mxbrt::drawsigma(rn& gen){
     for(int i = 0;i<n;i++){
         ci.sigma[i] = newsig; 
     }
-
+    
     /*
     std::cout << "n=" << n << " -- sumr2=" << sumr2 << std::endl;
-    std::cout << "Before --- *ci.sigma = " <<  *(ci.sigma) << std::endl;
     std::cout << "Chi2 = " <<  gen.chi_square() << std::endl;
     std::cout << "nulambda post = " <<  nulampost << std::endl;
     std::cout << "Value = " << sqrt((nulampost)/gen.chi_square()) << std::endl;
@@ -490,4 +509,128 @@ void mxbrt::drawsigma(rn& gen){
 
 }
 
+//--------------------------------------------------
+//getsumr2 -- calls local functions similar to allsuff
+void mxbrt::getsumr2(double &sumr2, int &n){
+    #ifdef _OPENMPI
+        local_mpi_getsumr2(sumr2,n);
+    #else
+        local_getsumr2(sumr2,n); //will resize siv
+    #endif
+}
 
+//--------------------------------------------------
+//local_getsumr2 -- performs the calculation for getting the resid sum of squares
+void mxbrt::local_getsumr2(double &sumr2, int &n){
+    //get n
+    n = resid.size();
+
+    //Get sum of residuals squared
+    for(int i = 0; i<n;i++){
+        sumr2 = sumr2 + resid[i]*resid[i];
+        //std::cout << resid[i] << " --- " << resid[i]*resid[i] << std::endl;
+    }
+} 
+
+//--------------------------------------------------
+//local_mpi_getsumr2 -- performs the calculation for getting the resid sum of squares
+void mxbrt::local_mpi_getsumr2(double &sumr2, int &n){
+#ifdef _OPENMPI
+    if(rank==0) {
+        //reduce all the sumr2  across the processes (nodes)
+        local_mpi_reduce_getsumr2(sumr2, n);
+    }
+    else
+    {
+        //compute the sumr2 for this process 
+        local_getsumr2(sumr2,n);
+        //std::cout << "local_getsumr2 --- mpirank = " << rank << " --- sumr2,n = " << sumr2 << "," << n << std::endl; 
+
+        //reduce all the sumr2  across the processes (nodes)
+        local_mpi_reduce_getsumr2(sumr2, n);
+    }
+    //std::cout << "After MPI Comm--- mpirank = " << rank << " --- sumr2,n = " << sumr2 << "," << n << std::endl;
+#endif
+}
+
+//--------------------------------------------------
+//local_mpi_reduce_getsumr2 -- the MPI communication part of local_mpi_getsrumr2.
+void mxbrt::local_mpi_reduce_getsumr2(double &sumr2, int &n)
+{
+#ifdef _OPENMPI
+    double sr2 = sumr2; //this should be zero on root 
+    int nval = n; //this is zero on the root
+    if(rank==0) {
+        MPI_Status status;
+        double tempsr2;
+        unsigned int tempnval;
+        
+        //Receive, Send, and update sr2
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempsr2,1,MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            sr2 += tempsr2;
+        }
+
+        MPI_Request *request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&sr2,1,MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+
+        //set sumr2 to the value
+        sumr2 = sr2;
+
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+
+        //Receive, Send and update nval
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempnval,1,MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            nval += tempnval;
+        }
+
+        request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&nval,1,MPI_UNSIGNED,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+
+        //set nval to the value
+        n = (int)nval;
+
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+    }
+    else {
+
+        //Send and receive sumr2
+        MPI_Request *request=new MPI_Request;
+        MPI_Status status;
+
+        MPI_Isend(&sr2,1,MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+
+        MPI_Recv(&sr2,1,MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        
+        //send nval
+        request=new MPI_Request[tc];
+        MPI_Isend(&nval,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD,request);
+        
+        //update sumr2 to the value
+        sumr2 = sr2;
+        
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+
+        //Receive nval
+        MPI_Recv(&nval,1,MPI_UNSIGNED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        
+        //set sumr2 to the value
+        n = nval;
+    }
+
+    // cast back to size_t
+    // for(size_t i=0;i<siv.size();i++)
+    //    siv[i]->n=(size_t)nvec[i];
+// cout << "reduced:" << siv[0]->n << " " << siv[1]->n << endl;
+#endif
+}

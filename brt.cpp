@@ -1711,6 +1711,7 @@ void brt::predict_mix(dinfo* dipred, finfo* fipred) {
 }
 void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
 {
+   //std::cout << "Enter omp" << std::endl;
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
    int thread_count = omp_get_num_threads();

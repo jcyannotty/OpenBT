@@ -415,7 +415,9 @@ mxbrt.lo: mxbrt.cpp /usr/include/stdc-predef.h \
  crn.h rn.h /usr/include/c++/9/random /usr/include/c++/9/bits/random.h \
  /usr/include/x86_64-linux-gnu/c++/9/bits/opt_random.h \
  /usr/include/c++/9/bits/random.tcc /usr/include/c++/9/numeric \
- /usr/include/c++/9/bits/stl_numeric.h mxbrt.h \
+ /usr/include/c++/9/bits/stl_numeric.h mxbrt.h brtfuns.h \
+ /usr/include/c++/9/list /usr/include/c++/9/bits/stl_list.h \
+ /usr/include/c++/9/bits/allocated_ptr.h /usr/include/c++/9/bits/list.tcc \
  /usr/local/include/Eigen/StdVector \
  /usr/local/include/Eigen/src/StlSupport/StdVector.h \
  /usr/local/include/Eigen/src/StlSupport/details.h
@@ -1393,6 +1395,16 @@ rn.h:
 /usr/include/c++/9/bits/stl_numeric.h:
 
 mxbrt.h:
+
+brtfuns.h:
+
+/usr/include/c++/9/list:
+
+/usr/include/c++/9/bits/stl_list.h:
+
+/usr/include/c++/9/bits/allocated_ptr.h:
+
+/usr/include/c++/9/bits/list.tcc:
 
 /usr/local/include/Eigen/StdVector:
 
