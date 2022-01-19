@@ -17,6 +17,7 @@ class mxsinfo : public sinfo{
     public:
         //Constructors:
         mxsinfo():sinfo(),k(2),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(2)), sumyyw(0.0) {} //Initialize mxinfo with default settings
+        mxsinfo(size_t ik):sinfo(),k(ik),sumffw(mxd::Zero(ik,ik)), sumfyw(vxd::Zero(ik)), sumyyw(0.0) {} //Initialize mxinfo with number of columns in fi matrix 
         mxsinfo(sinfo& is, int k0, mxd sff, vxd sfy, double syy):sinfo(is), k(k0), sumffw(sff), sumfyw(sfy), sumyyw(syy) {} //Construct mxinfo instance with values -- need to use references
         mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw){} //Input object of mxinfro (is) and instantiate new mxinfo 
 
@@ -43,12 +44,12 @@ class mxsinfo : public sinfo{
         //Compound assignment operator for sufficient statistics
         virtual sinfo& operator=(const sinfo& rhs){
             if(&rhs != this){
-                sinfo::operator=(rhs); //--Figure out what this line does
+                sinfo::operator=(rhs); 
                 const mxsinfo& mrhs=static_cast<const mxsinfo&>(rhs);
                 this->sumffw = mrhs.sumffw; 
                 this->sumfyw = mrhs.sumfyw;
                 this->sumyyw = mrhs.sumyyw;
-                this->k = mrhs.k; //May not need this assignment
+                this->k = mrhs.k; 
                 return *this; 
             }
             return *this; //returning *this should indicate that we return updated sumffw and sumfr while also using a pointer
@@ -59,6 +60,15 @@ class mxsinfo : public sinfo{
             mxsinfo result = *this;
             result += other;
             return result;
+        }
+
+        //Resize matrix and vector -- used when static casting
+        void resize(size_t ik){
+            if(ik != this->k){
+                this->sumfyw = vxd::Zero(ik);
+                this->sumffw = mxd::Zero(ik,ik);
+                this->k = ik;    
+            }  
         }
 
         //Print mxinfo instance
@@ -98,9 +108,9 @@ public:
     virtual vxd drawnodethetavec(sinfo& si, rn& gen);
     virtual double lm(sinfo& si);
     virtual void add_observation_to_suff(diterator& diter, sinfo& si);
-    virtual sinfo* newsinfo() { return new mxsinfo; }
+    virtual sinfo* newsinfo() { return new mxsinfo(k); }
     virtual std::vector<sinfo*>& newsinfovec() { std::vector<sinfo*>* si= new std::vector<sinfo*>; return *si; }
-    virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mxsinfo); return *si; }
+    virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mxsinfo(k)); return *si; }
     virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
     virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
     void pr_vec();

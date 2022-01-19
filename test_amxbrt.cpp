@@ -304,10 +304,10 @@ int main(){
     //Initialize prior parameters
     int m = 20;
     double *sig = new double[di.n];
-    double beta0 = 0.0258; //0.55/double(m);
-    double tau = 0.0227;//0.5/sqrt(double(m));
+    double beta0 = 0.022; //0.55/double(m);
+    double tau = 0.0388;//0.5/sqrt(double(m));
     double nu = 10.0;//5.0;
-    double lambda = 0.036;//0.01;
+    double lambda = 0.024;//0.01;
     for(size_t i=0;i<di.n;i++) sig[i]=0.1;
         
     //First mix bart object with basic constructor
@@ -327,7 +327,7 @@ int main(){
     axb.setmi(
             0.5,  //probability of birth/death
             0.5,  //probability of birth
-            1,    //minimum number of observations in a bottom node
+            3,    //minimum number of observations in a bottom node
             true, //do perturb/change variable proposal?
             0.01,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             0.01,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -351,7 +351,7 @@ int main(){
     
     di_predict.n=n_test;di_predict.p=p,di_predict.x = &x_test[0];di_predict.tc=tc;di_predict.y = &predicted[0];
     for(size_t i=0;i<nadapt;i++) { axb.drawvec(gen); axb.drawsigma(gen); if((i+1)%adaptevery==0) axb.adapt(); }
-    for(size_t i=0;i<nburn;i++) axb.drawvec(gen); axb.drawsigma(gen); 
+    for(size_t i=0;i<nburn;i++) {axb.drawvec(gen); axb.drawsigma(gen); }
     
     //Initialize the sigma posterior txt file
     std::ofstream outsig;
@@ -367,7 +367,7 @@ int main(){
     cout << "Collecting statistics" << endl;
     axb.setstats(true);
     for(int i = 0; i<nd; i++){
-        if((i % 1000) ==0){cout << "***Draw " << i << "\n" << endl;}
+        if((i % 1000) == 0){cout << "***Draw " << i << "\n" << endl;}
         
         //Draw tree and theta -- then get fitted values
         axb.drawvec(gen);
@@ -420,6 +420,7 @@ int main(){
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
 
+    /*
     cout << "Print Fitted Values" << endl;
     for(int i = 0; i<n; i++){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
@@ -429,6 +430,7 @@ int main(){
     for(int i = 0; i<n_test; i++){
         cout << i <<" -- Predicted " << predicted[i] << endl;
     }
+    */
 
     //Print the Last Tree
     axb.pr_vec();

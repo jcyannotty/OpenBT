@@ -14,6 +14,7 @@
 //--------------------------------------------------
 //a single iteration of the MCMC for brt model
 void mxbrt::drawvec(rn& gen){
+    //cout << "enter drawvec" << endl; 
     //All the usual steps
     brt::drawvec(gen);
 
@@ -87,7 +88,8 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     std::cout << "\n Sp = \n" << Sp << std::endl;
     std::cout << "\n thetavec = " << std::endl;
     */
-
+    //if(rank == 0){mxsi.print_mx();}
+    //mxsi.print_mx();
     //--Generate the MVN vector
     return muhat + Sp*stdnorm;
 }
@@ -130,6 +132,7 @@ double mxbrt::lm(sinfo& si){
 void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     //Declare variables 
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
+    //mxsi.resize(k);
     double w, yy;
     mxd ff(k,k);
     vxd fy(k);
@@ -145,6 +148,7 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     mxsi.sumffw+=w*ff;
     mxsi.sumfyw+=w*fy;
     mxsi.sumyyw+=w*yy;
+    //mxsi.print_mx();
 
 }
 
@@ -515,7 +519,7 @@ void mxbrt::getsumr2(double &sumr2, int &n){
     #ifdef _OPENMPI
         local_mpi_getsumr2(sumr2,n);
     #else
-        local_getsumr2(sumr2,n); //will resize siv
+        local_getsumr2(sumr2,n);
     #endif
 }
 

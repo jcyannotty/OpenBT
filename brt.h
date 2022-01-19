@@ -203,7 +203,7 @@ public:
 
    //Set the data, the vector of predicted values, and residuals
    void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix(); }
-   void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k;} //sets the pointer for the f matrix and k as members of brt 
+   void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the pointer for the f matrix and k as members of brt 
    void setf_mix();
    void setr_mix(); 
    void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x  
