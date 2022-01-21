@@ -339,6 +339,7 @@ int main(int argc, char* argv[])
       
       //Make finfo on the slave node
       makefinfo(k,n,&f[0],fi);
+      cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
 #ifndef SILENT
       cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
 #endif
@@ -901,8 +902,8 @@ return 0;
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
    //std::vector<double> osig(nd);
-   //std::vector<double> ofit(1,0);
-   //if(mpirank>0){ofit.resize(n); for(size_t l =0;l<n;l++){ofit[l] = 0.0;}}
+   std::vector<double> ofit(1,0);
+   if(mpirank>0){ofit.resize(n); for(size_t l =0;l<n;l++){ofit[l] = 0.0;}}
 
    brtMethodWrapper faxb(&brt::f,axb);
 
@@ -921,10 +922,14 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-      axb.drawsigma(gen);
 #else
-      axb.drawvec(gen); //Draw tree and parameter vector
-      axb.drawsigma(gen); //Draw variance
+      axb.drawvec(gen);
+#endif
+
+#ifdef _OPENMPI
+      axb.drawsigma(gen); 
+#else
+      axb.drawsigma(gen); 
 #endif
       if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
    }
@@ -933,9 +938,12 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){ axb.drawvec(gen);}else {axb.drawvec_mpislave(gen);}
-      axb.drawsigma(gen);
 #else
       axb.drawvec(gen);
+#endif
+#ifdef _OPENMPI
+      axb.drawsigma(gen);
+#else
       axb.drawsigma(gen);
 #endif
    }
@@ -946,22 +954,19 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
-      axb.drawsigma(gen);
-      if(mpirank ==0 && (i%3)==0){cout << axb.getsigma() << endl;}
-      /*
-      if(mpirank > 0 && (i % printevery) == 0){
-         cout << "-----------------------------------" << endl;
-         for(size_t j = 0; j<n; j++){cout << axb.f(j) << " ";}
-         cout << endl; 
-      }
-      */
       //if(mpirank == 0 && i == (nd-1)){axb.pr_vec();}
       //if(mpirank>0 && (i%3)==0) {for(size_t j=0;j<n;j++) cout << axb.f(j) << ", ";}
-      //if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j]= ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
+      if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j]= ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
       //if(mpirank>0 && i == (nd-1) ){for(size_t j=0;j<n;j++) {cout << ofit[j] << " ";} cout << endl;}
       
 #else
       axb.drawvec(gen);
+#endif
+#ifdef _OPENMPI
+      axb.drawsigma(gen);
+      if(mpirank ==0 && (i%printevery)==0){cout << axb.getsigma() << endl;}
+      if(mpirank ==0 && axb.getsigma() > 15.0){cout << axb.getsigma() << endl;}
+#else
       axb.drawsigma(gen);
 #endif
    //save tree to vec format
@@ -980,6 +985,7 @@ return 0;
    */
    
 }
+if(mpirank == 0){axb.pr_vec();}
 
 #ifdef _OPENMPI
    if(mpirank==0) {
@@ -1023,7 +1029,7 @@ return 0;
 
       cout << " done." << endl;
    }
-   /*
+   
    if(mpirank>0){
       //Write fitted values to file
       std::ofstream off(folder + modelname + std::to_string(mpirank) + ".fitvals");
@@ -1032,7 +1038,7 @@ return 0;
       }
       off.close();
    }
-   */
+   
 
    // summary statistics
    if(summarystats) {

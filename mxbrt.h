@@ -24,7 +24,7 @@ class mxsinfo : public sinfo{
         virtual ~mxsinfo() {} 
 
         //Initialize sufficient stats
-        int k; //number of models, so equal to number of columns in sumffw. This is needed in order to initialize Zero matrix/vector in eigen
+        size_t k; //number of models, so equal to number of columns in sumffw. This is needed in order to initialize Zero matrix/vector in eigen
         Eigen::MatrixXd sumffw; //Computes F^t*F/sig2 by summing over fi*fi^t for the observations in each tnode (fi = vector of dimension K)
         Eigen::VectorXd sumfyw; //Computes F^t*Y/sig2 by summing over fi*yi for observations in each tnode (fi = vector and yi = scalar) 
         double sumyyw; //computes Y^t*Y/sig2 by summing over yi*yi for observations in each tnode
@@ -100,6 +100,7 @@ public:
     //--------------------
     //constructors/destructors
     mxbrt():brt() {}
+    mxbrt(size_t ik):brt(ik) {}
     //--------------------
     //methods
     void drawvec(rn& gen);

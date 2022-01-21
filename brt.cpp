@@ -1277,15 +1277,19 @@ void mpislave_bd(rn& gen)
 void brt::drawvec(rn& gen)
 {
    // Structural/topological proposal(s)
-   if(gen.uniform()<mi.pbd)
+   if(gen.uniform()<mi.pbd){
 //   if(mi.pbd>0.0)
+      //std::cout << "bd" << std::endl;
       bd_vec(gen);
+   }
    else
    {
       //std::cout << "Rotate" << std::endl; 
       tree::tree_p tnew;
       tnew=new tree(t); //copy of current to make life easier upon rejection
+      //t.pr_vec();
       rot(tnew,t,gen);
+      //t.pr_vec();
       delete tnew;
    }
 

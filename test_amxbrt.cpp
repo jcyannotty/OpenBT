@@ -58,7 +58,7 @@ int main(){
     std::vector<double> f;
     double ftemp;
     size_t k; //number of columns in f
-    k=2;
+    k=3;
 
     std::ifstream ff("f.txt");
     while(ff >> ftemp){
@@ -305,9 +305,9 @@ int main(){
     int m = 20;
     double *sig = new double[di.n];
     double beta0 = 0.022; //0.55/double(m);
-    double tau = 0.0388;//0.5/sqrt(double(m));
+    double tau = 0.026;//0.5/sqrt(double(m));
     double nu = 10.0;//5.0;
-    double lambda = 0.024;//0.01;
+    double lambda = 0.048;//0.01;
     for(size_t i=0;i<di.n;i++) sig[i]=0.1;
         
     //First mix bart object with basic constructor

@@ -135,6 +135,7 @@ public:
    //--------------------
    //constructors/destructors
    brt():t(0.0),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
+   brt(size_t ik):t(vxd::Zero(ik)),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
    virtual ~brt() { if(mi.varcount) delete[] mi.varcount; }
    //--------------------
    //methods

@@ -17,6 +17,7 @@ public:
    //constructors/destructors
    amxbrt(): mxbrt(),st(0),m(200),mb(m),notjmus(m),divec(m) {}
    amxbrt(size_t im): mxbrt(),st(0),m(im),mb(m),notjmus(m),divec(m) {}
+   amxbrt(size_t im, size_t ik): mxbrt(ik),st(0),m(im),mb(m),notjmus(m),divec(m) {}
    virtual ~amxbrt() {
       if(!notjmus.empty()) {
          for(size_t j=0;j<m;j++) notjmus[j].clear();

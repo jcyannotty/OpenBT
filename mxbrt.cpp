@@ -158,11 +158,12 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
 #ifdef _OPENMPI
    mxsinfo& msil=static_cast<mxsinfo&>(sil);
    mxsinfo& msir=static_cast<mxsinfo&>(sir);
+   int buffer_size = SIZE_UINT6*k;
    if(rank==0) { // MPI receive all the answers from the slaves
         MPI_Status status;
         mxsinfo& tsil = (mxsinfo&) *newsinfo();
         mxsinfo& tsir = (mxsinfo&) *newsinfo();
-        char buffer[SIZE_UINT6*2];
+        char buffer[buffer_size];
         int position=0;
         unsigned int ln,rn;
         
@@ -179,15 +180,15 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
          
         for(size_t i=1; i<=(size_t)tc; i++) {
             position=0;
-            MPI_Recv(buffer,SIZE_UINT6*2,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumffw_larray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumffw_rarray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumfyw_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&sumfyw_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6*2,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Recv(buffer,buffer_size,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
+            MPI_Unpack(buffer,buffer_size,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&sumffw_larray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&sumffw_rarray,k*k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&sumfyw_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&sumfyw_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
             //convert sumffw_larray/sumffw_rarray to a matrix defined in tsil/tsir
             array_to_matrix(tsil.sumffw,&sumffw_larray[0]);
@@ -215,7 +216,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
    }
    else // MPI send all the answers to root
    {
-    char buffer[SIZE_UINT6*2];
+    char buffer[buffer_size];
     int position=0;  
     unsigned int ln,rn;
 
@@ -229,16 +230,16 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     
     ln=(unsigned int)msil.n;
     rn=(unsigned int)msir.n;
-    MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&sumffw_larray,k*k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&sumffw_rarray,k*k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&sumfyw_larray,k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&sumfyw_rarray,k,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
-    MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,SIZE_UINT6*2,&position,MPI_COMM_WORLD);
+    MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumffw_larray,k*k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumffw_rarray,k*k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumfyw_larray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&sumfyw_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+    MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
 
-    MPI_Send(buffer,SIZE_UINT6*2,MPI_PACKED,0,0,MPI_COMM_WORLD);
+    MPI_Send(buffer,buffer_size,MPI_PACKED,0,0,MPI_COMM_WORLD);
    }
 #endif   
 }

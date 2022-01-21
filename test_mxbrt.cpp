@@ -379,7 +379,7 @@ int main(){
     size_t nburn=1000;
 
     for(size_t i=0;i<nadapt;i++) { mxb.drawvec(gen); mxb.drawsigma(gen); if((i+1)%adaptevery==0) mxb.adapt(); }
-    for(size_t i=0;i<nburn;i++) mxb.drawvec(gen); mxb.drawsigma(gen); 
+    for(size_t i=0;i<nburn;i++) {mxb.drawvec(gen); mxb.drawsigma(gen); }
     
     //Initialize the sigma posterior txt file
     std::ofstream outsig;

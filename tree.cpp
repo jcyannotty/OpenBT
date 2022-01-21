@@ -639,7 +639,19 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
       oid[i]=(int)nds[i]->nid();
       ov[i]=(int)nds[i]->getv();
       oc[i]=(int)nds[i]->getc();
+      //std::cout <<  nds[i]->getthetavec().transpose() << std::endl;
       thetavec_temp = nds[i]->getthetavec();
+
+      //Temporary fix for annoyance caused in rotation step -- check to see if any of the internal theta's are a zero vector of dimension 2
+      //Right now, k = 2 by default, so when assigning a new theta to a rotated internal node, it gets a zero vec of dim 2. If we have more than 2 models then this is an issue
+      if(thetavec_temp.size() != k){
+         if(thetavec_temp == vxd::Zero(2)){
+            thetavec_temp = vxd::Zero(k);
+         }else{
+            std::cout << "You have an error with rotate that is not fixed" << std::endl;
+         }
+      }
+
       for(int j = 0; j<k; j++){
          othetavec[i*k+j]=thetavec_temp(j); 
       }
