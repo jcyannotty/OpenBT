@@ -1715,7 +1715,6 @@ void brt::predict_mix(dinfo* dipred, finfo* fipred) {
 }
 void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
 {
-   //std::cout << "Enter omp" << std::endl;
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
    int thread_count = omp_get_num_threads();
@@ -1736,6 +1735,42 @@ void brt::local_predict_mix(diterator& diter, finfo& fipred){
       thetavec_temp = bn->getthetavec();
       diter.sety(fipred.row(*diter)*thetavec_temp);
    }
+}
+
+//--------------------------------------------------
+//Get modeling mixing weights
+void brt::get_mix_wts(dinfo* dipred, mxd *wts){
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompget_mix_wts(*dipred, *wts); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_get_mix_wts(diter, *wts);
+   #endif   
+}
+
+void brt::local_get_mix_wts(diterator &diter, mxd &wts){
+   tree::tree_p bn;
+   vxd thetavec_temp(k); 
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
+   }
+}
+
+void brt::local_ompget_mix_wts(dinfo dipred, mxd wts){
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = dipred.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&dipred,beg,end);
+   local_get_mix_wts(diter, wts);
+#endif
 }
 
 //--------------------------------------------------

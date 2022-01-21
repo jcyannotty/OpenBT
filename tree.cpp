@@ -639,7 +639,6 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
       oid[i]=(int)nds[i]->nid();
       ov[i]=(int)nds[i]->getv();
       oc[i]=(int)nds[i]->getc();
-      //std::cout <<  nds[i]->getthetavec().transpose() << std::endl;
       thetavec_temp = nds[i]->getthetavec();
 
       //Temporary fix for annoyance caused in rotation step -- check to see if any of the internal theta's are a zero vector of dimension 2
@@ -665,14 +664,12 @@ void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, 
    size_t itid,ipid;                     //itid: id of current node, ipid: parent's id
    std::map<size_t,tree::tree_p> pts;  //pointers to nodes indexed by node id
    vxd thetavec_temp(k);
-
    this->tonull(); // obliterate old tree (if there)
-   
+
    //Populate the first theta vector 
    for(int j = 0; j<k; j++){
       thetavec_temp(j) = (double)ithetavec[j];
    }
-
    //first node has to be the top one
    pts[1] = this; //careful! this is not the first pts, it is pointer of id 1.
    this->setv((size_t)iv[0]); this->setc((size_t)ic[0]); this->setthetavec(thetavec_temp);

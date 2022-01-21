@@ -135,7 +135,7 @@ public:
    //--------------------
    //constructors/destructors
    brt():t(0.0),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
-   brt(size_t ik):t(vxd::Zero(ik)),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
+   //brt(size_t ik):t(vxd::Zero(ik)),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
    virtual ~brt() { if(mi.varcount) delete[] mi.varcount; }
    //--------------------
    //methods
@@ -205,10 +205,12 @@ public:
    //Set the data, the vector of predicted values, and residuals
    void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix(); }
    void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the pointer for the f matrix and k as members of brt 
+   void setk(size_t k){this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the number of models for mixing--used in programs that do not need to read in function data (ex: mixingwts.cpp))
    void setf_mix();
    void setr_mix(); 
-   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x  
-
+   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
+   void get_mix_wts(dinfo* dipred, mxd* wts);
+    
    //Print brt object with vector parameters
    void pr_vec(); 
 
@@ -300,6 +302,7 @@ protected:
    virtual void local_setf_mix(diterator& diter);
    virtual void local_setr_mix(diterator& diter);
    virtual void local_predict_mix(diterator& diter, finfo& fipred);
+   virtual void local_get_mix_wts(diterator& diter, mxd& wts);
    
    // #ifdef _OPENMP
    //void local_ompgetsuff_mix(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir);
@@ -309,6 +312,7 @@ protected:
    void local_ompsetf_mix(dinfo di);
    void local_ompsetr_mix(dinfo di);
    void local_omppredict_mix(dinfo dipred, finfo fipred);
+   void local_ompget_mix_wts(dinfo dipred, mxd wts);
 
    //Save and Load tree with vector parameters
    void local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,

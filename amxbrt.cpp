@@ -142,18 +142,35 @@ void amxbrt::local_predict_mix(diterator& diter, finfo& fipred){
 }
 
 //--------------------------------------------------
+//extract model weights
+void amxbrt::local_get_mix_wts(diterator& diter, mxd& wts){
+    tree::tree_p bn;
+    vxd thetavec_temp(k);
+    for(;diter<diter.until();diter++) {
+        //Initialize to zero 
+        thetavec_temp = vxd::Zero(k);
+        //Get sum of trees for the model weights
+        for(size_t j=0;j<m;j++) {
+            bn = mb[j].t.bn(diter.getxp(),*xi);
+            thetavec_temp = thetavec_temp + bn->getthetavec();
+        }
+        wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
+    }
+}
+
+//--------------------------------------------------
 //Local Save tree
 void amxbrt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
-     std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta){
-  size_t indx=iter*m;
-  for(size_t i=(indx+(size_t)beg);i<(indx+(size_t)end);i++) {
-    nn[i]=mb[i-indx].t.treesize();
-    id[i].resize(nn[i]);
-    v[i].resize(nn[i]);
-    c[i].resize(nn[i]);
-    theta[i].resize(k*nn[i]);
-    mb[i-indx].t.treetovec(&id[i][0],&v[i][0],&c[i][0],&theta[i][0],k);
-  }
+    std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta){
+    size_t indx=iter*m;
+    for(size_t i=(indx+(size_t)beg);i<(indx+(size_t)end);i++) {
+        nn[i]=mb[i-indx].t.treesize();
+        id[i].resize(nn[i]);
+        v[i].resize(nn[i]);
+        c[i].resize(nn[i]);
+        theta[i].resize(k*nn[i]);
+        mb[i-indx].t.treetovec(&id[i][0],&v[i][0],&c[i][0],&theta[i][0],k);
+    }
 }
 
 //--------------------------------------------------

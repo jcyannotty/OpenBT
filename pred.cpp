@@ -534,10 +534,7 @@ if(modeltype!=MODEL_MIXBART){
       axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
       // draw realization
       axb.predict_mix(&dip, &fi_test);
-      for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
-      if(i == 0 && mpirank == 0){
-         cout << "Prediction at 1st point in process" << tedraw[i][0] << endl;
-      } 
+      for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean; 
    }
    #ifdef _OPENMPI
    if(mpirank==0) {
@@ -545,7 +542,6 @@ if(modeltype!=MODEL_MIXBART){
       cout << "Posterior predictive draw time was " << (tend-tstart)/60.0 << " minutes." << endl;
    }
 #endif
-   //cout << "Here 8 --- " << mpirank << endl;
    // Save the draws.
    if(mpirank==0) cout << "Saving posterior predictive draws...";
    std::ofstream omf(folder + modelname + ".mdraws" + std::to_string(mpirank));

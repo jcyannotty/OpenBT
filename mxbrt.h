@@ -100,7 +100,7 @@ public:
     //--------------------
     //constructors/destructors
     mxbrt():brt() {}
-    mxbrt(size_t ik):brt(ik) {}
+    //mxbrt(size_t ik):brt(ik) {}
     //--------------------
     //methods
     void drawvec(rn& gen);

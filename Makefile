@@ -94,7 +94,7 @@ build_triplet = x86_64-pc-linux-gnu
 host_triplet = x86_64-pc-linux-gnu
 bin_PROGRAMS = openbtcli$(EXEEXT) openbtpred$(EXEEXT) \
 	openbtvartivity$(EXEEXT) openbtsobol$(EXEEXT) \
-	openbtmopareto$(EXEEXT)
+	openbtmopareto$(EXEEXT) openbtmixingwts$(EXEEXT)
 check_PROGRAMS = testcrn$(EXEEXT) testtree$(EXEEXT) testbrt$(EXEEXT) \
 	testbrtvp$(EXEEXT) testmbrt$(EXEEXT) testsbrt$(EXEEXT) \
 	testmxbrt$(EXEEXT) testambrt$(EXEEXT) testpsbrt$(EXEEXT) \
@@ -190,6 +190,12 @@ openbtcli_OBJECTS = $(am_openbtcli_OBJECTS)
 openbtcli_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
 	libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la \
 	libtree.la libcrn.la libamxbrt.la libmxbrt.la
+am_openbtmixingwts_OBJECTS = mixingwts.$(OBJEXT)
+openbtmixingwts_OBJECTS = $(am_openbtmixingwts_OBJECTS)
+openbtmixingwts_DEPENDENCIES = libsinglebinomial.la \
+	libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la \
+	libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la \
+	libmxbrt.la
 am_openbtmopareto_OBJECTS = mopareto.$(OBJEXT)
 openbtmopareto_OBJECTS = $(am_openbtmopareto_OBJECTS)
 openbtmopareto_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
@@ -271,8 +277,9 @@ am__depfiles_remade = ./$(DEPDIR)/ambrt.Plo ./$(DEPDIR)/amxbrt.Plo \
 	./$(DEPDIR)/brt.Plo ./$(DEPDIR)/brtfuns.Plo \
 	./$(DEPDIR)/brtmoves.Plo ./$(DEPDIR)/cli.Po \
 	./$(DEPDIR)/crn.Plo ./$(DEPDIR)/mbrt.Plo \
-	./$(DEPDIR)/mopareto.Po ./$(DEPDIR)/mxbrt.Plo \
-	./$(DEPDIR)/pred.Po ./$(DEPDIR)/psbrt.Plo ./$(DEPDIR)/sbrt.Plo \
+	./$(DEPDIR)/mixingwts.Po ./$(DEPDIR)/mopareto.Po \
+	./$(DEPDIR)/mxbrt.Plo ./$(DEPDIR)/pred.Po \
+	./$(DEPDIR)/psbrt.Plo ./$(DEPDIR)/sbrt.Plo \
 	./$(DEPDIR)/singlebinomial.Plo ./$(DEPDIR)/singlepoisson.Plo \
 	./$(DEPDIR)/sobol.Po ./$(DEPDIR)/test_ambrt.Po \
 	./$(DEPDIR)/test_amxbrt.Po ./$(DEPDIR)/test_brt.Po \
@@ -326,11 +333,12 @@ SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(libpsbrt_la_SOURCES) $(libsbrt_la_SOURCES) \
 	$(libsinglebinomial_la_SOURCES) $(libsinglepoisson_la_SOURCES) \
 	$(libtree_la_SOURCES) $(openbtcli_SOURCES) \
-	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
-	$(openbtsobol_SOURCES) $(openbtvartivity_SOURCES) \
-	$(testambrt_SOURCES) $(testamxbrt_SOURCES) $(testbrt_SOURCES) \
-	$(testbrtvp_SOURCES) $(testcrn_SOURCES) $(testmbrt_SOURCES) \
-	$(testmxbrt_SOURCES) $(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
+	$(openbtmixingwts_SOURCES) $(openbtmopareto_SOURCES) \
+	$(openbtpred_SOURCES) $(openbtsobol_SOURCES) \
+	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
+	$(testamxbrt_SOURCES) $(testbrt_SOURCES) $(testbrtvp_SOURCES) \
+	$(testcrn_SOURCES) $(testmbrt_SOURCES) $(testmxbrt_SOURCES) \
+	$(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
 	$(testsinglebinomial_SOURCES) $(testsinglepoisson_SOURCES) \
 	$(testtree_SOURCES)
 DIST_SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
@@ -339,11 +347,12 @@ DIST_SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(libpsbrt_la_SOURCES) $(libsbrt_la_SOURCES) \
 	$(libsinglebinomial_la_SOURCES) $(libsinglepoisson_la_SOURCES) \
 	$(libtree_la_SOURCES) $(openbtcli_SOURCES) \
-	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
-	$(openbtsobol_SOURCES) $(openbtvartivity_SOURCES) \
-	$(testambrt_SOURCES) $(testamxbrt_SOURCES) $(testbrt_SOURCES) \
-	$(testbrtvp_SOURCES) $(testcrn_SOURCES) $(testmbrt_SOURCES) \
-	$(testmxbrt_SOURCES) $(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
+	$(openbtmixingwts_SOURCES) $(openbtmopareto_SOURCES) \
+	$(openbtpred_SOURCES) $(openbtsobol_SOURCES) \
+	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
+	$(testamxbrt_SOURCES) $(testbrt_SOURCES) $(testbrtvp_SOURCES) \
+	$(testcrn_SOURCES) $(testmbrt_SOURCES) $(testmxbrt_SOURCES) \
+	$(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
 	$(testsinglebinomial_SOURCES) $(testsinglepoisson_SOURCES) \
 	$(testtree_SOURCES)
 am__can_run_installinfo = \
@@ -530,6 +539,8 @@ openbtsobol_SOURCES = sobol.cpp
 openbtsobol_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la
 openbtmopareto_SOURCES = mopareto.cpp
 openbtmopareto_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la
+openbtmixingwts_SOURCES = mixingwts.cpp
+openbtmixingwts_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 testcrn_SOURCES = test_crn.cpp
 testcrn_LDADD = libcrn.la
 testtree_SOURCES = test_tree.cpp
@@ -737,6 +748,10 @@ openbtcli$(EXEEXT): $(openbtcli_OBJECTS) $(openbtcli_DEPENDENCIES) $(EXTRA_openb
 	@rm -f openbtcli$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(openbtcli_OBJECTS) $(openbtcli_LDADD) $(LIBS)
 
+openbtmixingwts$(EXEEXT): $(openbtmixingwts_OBJECTS) $(openbtmixingwts_DEPENDENCIES) $(EXTRA_openbtmixingwts_DEPENDENCIES) 
+	@rm -f openbtmixingwts$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(openbtmixingwts_OBJECTS) $(openbtmixingwts_LDADD) $(LIBS)
+
 openbtmopareto$(EXEEXT): $(openbtmopareto_OBJECTS) $(openbtmopareto_DEPENDENCIES) $(EXTRA_openbtmopareto_DEPENDENCIES) 
 	@rm -f openbtmopareto$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(openbtmopareto_OBJECTS) $(openbtmopareto_LDADD) $(LIBS)
@@ -815,6 +830,7 @@ include ./$(DEPDIR)/brtmoves.Plo # am--include-marker
 include ./$(DEPDIR)/cli.Po # am--include-marker
 include ./$(DEPDIR)/crn.Plo # am--include-marker
 include ./$(DEPDIR)/mbrt.Plo # am--include-marker
+include ./$(DEPDIR)/mixingwts.Po # am--include-marker
 include ./$(DEPDIR)/mopareto.Po # am--include-marker
 include ./$(DEPDIR)/mxbrt.Plo # am--include-marker
 include ./$(DEPDIR)/pred.Po # am--include-marker
@@ -1158,6 +1174,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/cli.Po
 	-rm -f ./$(DEPDIR)/crn.Plo
 	-rm -f ./$(DEPDIR)/mbrt.Plo
+	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
 	-rm -f ./$(DEPDIR)/pred.Po
@@ -1237,6 +1254,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/cli.Po
 	-rm -f ./$(DEPDIR)/crn.Plo
 	-rm -f ./$(DEPDIR)/mbrt.Plo
+	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
 	-rm -f ./$(DEPDIR)/pred.Po

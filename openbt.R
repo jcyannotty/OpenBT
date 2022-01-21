@@ -710,6 +710,9 @@ class(res)="OpenBT_vartivity"
 return(res)
 }
 
+#--------------------------------------------------
+#Sobol function
+#--------------------------------------------------
 
 sobol.openbt = function(
 fit=NULL,
@@ -845,8 +848,9 @@ class(res)="OpenBT_sobol"
 return(res)
 }
 
-
-
+#--------------------------------------------------
+#Pareto function
+#--------------------------------------------------
 # Pareto Front Multiobjective Optimization using 2 fitted BART models
 mopareto.openbt = function(
 fit1=NULL,
@@ -1499,4 +1503,126 @@ setvarcuts<-function(xi,id,cutvec)
    }
    xi[[id]]=cutvec
    return(xi)
+}
+
+
+#--------------------------------------------------
+#Get model mixing weights
+#--------------------------------------------------
+openbt.mixingwts = function(
+  fit=NULL,
+  x.test=NULL,
+  tc=2,
+  numwts=NULL,
+  q.lower=0.025,
+  q.upper=0.975
+)  
+{
+  # model type definitions
+  MODEL_BT=1
+  MODEL_BINOMIAL=2
+  MODEL_POISSON=3
+  MODEL_BART=4
+  MODEL_HBART=5
+  MODEL_PROBIT=6
+  MODEL_MODIFIEDPROBIT=7
+  MODEL_MERCK_TRUNCATED=8
+  MODEL_MIXBART=9
+  
+  #--------------------------------------------------
+  # params
+  if(is.null(fit)) stop("No fitted model specified!\n")
+  if(is.null(x.test)) stop("No prediction points specified!\n")
+  if(fit$modeltype!=MODEL_MIXBART){stop("Wrong model type! This function is for mixbart.\n")}
+  if(is.null(numwts)){stop("Missing number of model weights parameter numwts.\n")}
+  nslv=tc
+  x.test=as.matrix(x.test)
+  p=ncol(x.test)
+  n=nrow(x.test)
+  xwroot="xw"
+  
+  #--------------------------------------------------
+  #write out config file
+  fout=file(paste(fit$folder,"/config.mxwts",sep=""),"w")
+  writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xwroot,
+               paste(fit$nd),paste(fit$m),
+               paste(fit$mh),paste(p),paste(numwts),paste(tc)), fout)
+  close(fout)
+ 
+  #--------------------------------------------------
+  #write out data subsets
+  #folder=paste(".",fit$modelname,"/",sep="")
+  xlist=split(as.data.frame(x.test),(seq(n)-1) %/% (n/nslv))
+  for(i in 1:nslv) write(t(xlist[[i]]),file=paste(fit$folder,"/",xwroot,i-1,sep=""))
+  for(i in 1:p) write(fit$xicuts[[i]],file=paste(fit$folder,"/",fit$xiroot,i,sep=""))
+  
+  #--------------------------------------------------
+  #run prediction program
+  cmdopt=100 #default to serial/OpenMP
+  runlocal=FALSE
+  cmd="openbtcli --conf"
+  if(Sys.which("openbtcli")[[1]]=="") # not installed in a global location, so assume current directory
+    runlocal=TRUE
+  
+  if(runlocal) cmd="./openbtcli --conf"
+  
+  cmdopt=system(cmd)
+  
+  if(cmdopt==101) # MPI
+  {
+    cmd=paste("mpirun -np ",tc," openbtmixingwts ",fit$folder,sep="")
+  }
+  
+  if(cmdopt==100)  # serial/OpenMP
+  { 
+    if(runlocal)
+      cmd=paste("./openbtmixingwts ",fit$folder,sep="")
+    else
+      cmd=paste("openbtmixingwts ",fit$folder,sep="")
+  }
+  
+  system(cmd)
+  system(paste("rm -f ",fit$folder,"/config.mxwts",sep=""))
+  
+  
+  #--------------------------------------------------
+  #format and return
+  res=list()
+  wt_list = list()
+  mean_matrix = sd_matrix = ub_matrix = lb_matrix = med_matrix = matrix(0, nrow = n, ncol = numwts)
+  
+  #Get the file names for the model weights 
+  #--file name for model weight j using processor p is ".wjdrawsp"
+  for(j in 1:numwts){
+    #Get the files for weight j
+    tagname = paste0(".w", j,"draws*")
+    fnames=list.files(fit$folder,pattern=paste(fit$modelname,tagname,sep=""),full.names=TRUE)
+    
+    #Bind the posteriors for weight j across all x points -- npost X n data 
+    wt_list[[j]] = do.call(cbind,sapply(fnames,data.table::fread))
+    
+    #Now populate the summary stat matrices -- n X k matrices
+    mean_matrix[,j] = apply(wt_list[[j]], 2, mean)
+    sd_matrix[,j] = apply(wt_list[[j]], 2, sd)
+    med_matrix[,j] = apply(wt_list[[j]], 2, median)
+    lb_matrix[,j] = apply(wt_list[[j]], 2, quantile,q.lower)
+    ub_matrix[,j] = apply(wt_list[[j]], 2, quantile,q.upper)
+  }
+  
+  #Save the list of posterior draws -- each list element is an npost X n dataframe 
+  res$wdraws = wt_list 
+  
+  #Get model mixing results
+  res$wmean=mean_matrix
+  res$wsd=sd_matrix
+  res$w.5=med_matrix
+  res$w.lower=lb_matrix
+  res$w.upper=ub_matrix
+
+  res$q.lower=q.lower
+  res$q.upper=q.upper
+  res$modeltype=fit$modeltype
+  
+  class(res)="OpenBT_mixingwts"
+  return(res)  
 }

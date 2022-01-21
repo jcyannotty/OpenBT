@@ -72,19 +72,17 @@
 
     //--------------------------------------------------
     //process args
-    std::ifstream conf(folder+"config.pred");
+    std::ifstream conf(folder+"config.mxwts");
     std::string modelname;
     int modeltype;
     std::string xicore;
-    std::string xpcore;
-    std::string fpcore;
+    std::string xwcore;
 
     //model name, xi and xp
     conf >> modelname;
     conf >> modeltype;
     conf >> xicore;
-    conf >> xpcore;
-    conf >> fpcore;
+    conf >> xwcore;
 
     //number of saved draws and number of trees
     size_t nd;
@@ -99,14 +97,10 @@
     size_t p, k;
     conf >> p;
     conf >> k;
-
+  
     //thread count
     int tc;
     conf >> tc;
-
-    //mean offset
-    double fmean;
-    conf >> fmean;
     conf.close();
 
     //MPI initialization
@@ -126,7 +120,7 @@
         return 0; //need at least 2 processes! 
     } 
     if(tc!=mpitc) {
-        cout << "Error: tc does not match mpitc" << endl;
+        cout << "Error: tc does not match mpitc" <<  endl;
         MPI_Finalize();
         return 0; //mismatch between how MPI was started and how the data is prepared according to tc.
     }
@@ -140,7 +134,7 @@
     if(mpirank==0) {
         cout << endl;
         cout << "-----------------------------------" << endl;
-        cout << "OpenBT prediction CLI" << endl;
+        cout << "OpenBT extract mixing weights CLI" << endl;
         cout << "Loading config file at " << folder << endl;
     }
 
@@ -152,7 +146,7 @@
     //   std::string folder("."+modelname+"/");
     std::stringstream xfss;
     std::string xfs;
-    xfss << folder << xpcore << mpirank;
+    xfss << folder << xwcore << mpirank;
     xfs=xfss.str();
     std::ifstream xf(xfs);
     while(xf >> xtemp)
@@ -161,7 +155,7 @@
     #ifndef SILENT
     cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << p << " from " << xfs << endl;
     #endif
-    cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << p << " from " << xfs << endl;
+    
     //--------------------------------------------------
     //make xinfo
     xinfo xi;
@@ -196,9 +190,10 @@
 
     //--------------------------------------------------
     // set up amxbrt object
-    amxbrt axb(m,k); //Sets number of trees and number of models for model mixing
+    amxbrt axb(m); //Sets number of trees
+    axb.setk(k);
     axb.setxi(&xi); //set the cutpoints for this model object
-
+    
     //load from file
     #ifndef SILENT
     if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
@@ -246,15 +241,15 @@
     double *fp = new double[np];
     dinfo dip;
     dip.x = &xp[0]; dip.y=fp; dip.p = p; dip.n=np; dip.tc=1;
-    
+
     //Create Eigen objects to store the weight posterior draws -- these are just the thetas for each bottom node
     mxd wts_iter(k,np); //Eigen matrix to store the weights at each iteration -- will be reset to zero prior to running get wts method  
     mxd wts_draw(nd,np); //Eigen matrix to hold posterior draws for each model weight -- used when writing to the file for ease of notation
     std::vector<mxd, Eigen::aligned_allocator<mxd>> wts_list(k); //An std vector of dim k -- each element is an nd X np eigen matrix
-    
+
     //Initialize wts_list -- the vector of eigen matrices which will hold the nd X np weight draws
     for(size_t i=0; i<k; i++){
-        wts_list[k] = mxd::Zero(nd,np);
+        wts_list[i] = mxd::Zero(nd,np);
     }
 
     // Temporary vectors used for loading one model realization at a time.
@@ -263,7 +258,7 @@
     std::vector<std::vector<int> > ov(m, std::vector<int>(1));
     std::vector<std::vector<int> > oc(m, std::vector<int>(1));
     std::vector<std::vector<double> > otheta(m, std::vector<double>(1));
-
+    
     // Draw realizations of the posterior predictive.
     size_t curdx=0;
     size_t cumdx=0;
@@ -273,7 +268,7 @@
     #endif
 
     // Mean trees first
-    if(mpirank==0) cout << "Drawing mean response from posterior predictive" << endl;
+    if(mpirank==0) cout << "Collecting posterior model weights" << endl;
     for(size_t i=0;i<nd;i++) {
         curdx=0;
         for(size_t j=0;j<m;j++) {
@@ -288,7 +283,6 @@
             oc[j][l]=e_oc.at(cumdx+curdx+l);
             for(size_t r=0;r<k;r++){
                 otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
-                //cout << "Theta_i = " << otheta[j][l*k+r] << endl;;
             }
             
             }
@@ -298,7 +292,8 @@
 
         //Load the current tree structure by using the above vectors
         axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
-        
+        //if(mpirank == 0) axb.pr_vec();
+
         //Get the current posterior draw of the weights
         wts_iter = mxd::Zero(k,np);
         axb.get_mix_wts(&dip, &wts_iter);
@@ -316,9 +311,9 @@
     }
     #endif
     // Save the draws.
-    if(mpirank==0) cout << "Saving posterior predictive draws...";
+    if(mpirank==0) cout << "Saving posterior weight draws...";
     for(size_t l = 0; l<k; l++){
-        std::ofstream omf(folder + modelname + ".w" + std::to_string(l) + "draws" + std::to_string(mpirank));
+        std::ofstream omf(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
         wts_draw = wts_list[l];
         for(size_t i=0;i<nd;i++) {
             for(size_t j=0;j<np;j++)

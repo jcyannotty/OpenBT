@@ -17,7 +17,7 @@ public:
    //constructors/destructors
    amxbrt(): mxbrt(),st(0),m(200),mb(m),notjmus(m),divec(m) {}
    amxbrt(size_t im): mxbrt(),st(0),m(im),mb(m),notjmus(m),divec(m) {}
-   amxbrt(size_t im, size_t ik): mxbrt(ik),st(0),m(im),mb(m),notjmus(m),divec(m) {}
+   //amxbrt(size_t im, size_t ik): mxbrt(ik),st(0),m(im),mb(m),notjmus(m),divec(m) {}
    virtual ~amxbrt() {
       if(!notjmus.empty()) {
          for(size_t j=0;j<m;j++) notjmus[j].clear();
@@ -37,7 +37,8 @@ public:
    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.sigma=sigma; ci.beta0=beta0; for(size_t j=0;j<m;j++) mb[j].setci(tau,beta0,sigma); }
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
-   void setfi(finfo *fi, int k) {this->fi = fi; this->k = k; for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
+   void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
+   void setk(size_t k) {this->k = k; for(size_t j=0;j<m;j++) mb[j].setk(k); }
    void setdata_mix(dinfo *di);
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }
    tree::tree_p gettree(size_t i) { return &mb[i].t; }
@@ -78,6 +79,7 @@ protected:
     virtual void local_setf_mix(diterator& diter);  //set the vector of predicted values
     virtual void local_setr_mix(diterator& diter);  //set the vector of residuals
     virtual void local_predict_mix(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
+    virtual void local_get_mix_wts(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
     virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
     virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
