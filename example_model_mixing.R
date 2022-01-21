@@ -43,6 +43,11 @@ fsg(0.1, 4)
 fg(0.3)
 flg(0.3, 5)
 
+
+fg = function(x){return(8*(x-0.25)^2)}
+flg = function(x,nl){return(0.5-nl*x)}
+fsg = function(x,ns){return(-0.5+ns*x)}
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Graph the expansions and the true function.
 #Create a grid of g's
@@ -58,19 +63,19 @@ plot_exp = function(g_grid, ns, nl){
   fs = sapply(g_grid, fsg, ns = ns)
   fl = sapply(g_grid, flg, nl = nl)
   plot(g_grid, f, main = 'F(g) and Exansions vs. g', xlab = 'g', ylab = 'F(g)', 
-       ylim = c(0,4), type = 'l', panel.first = {grid(col = 'lightgrey')})
+       ylim = c(1.8,2.6), type = 'l', panel.first = {grid(col = 'lightgrey')})
   lines(g_grid, fs, col = 'red', lty = 'dashed')
   lines(g_grid, fl, col = 'blue', lty = 'dashed')
   legend('bottomright', legend = c('F(g)', fs_name, fl_name), cex = 0.75, 
          lty = c(1, 2, 2), col = c('black', 'red', 'blue'))
 }
 
-plot_exp(g_grid, ns = 2, nl = 4)
+plot_exp(g_grid, ns = 2, nl = 2)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Generate training data
 #Set parameters
-n_train = 40 
+n_train = 15 
 n_test = 10
 s = 0.03 #s = 0.03
 
@@ -81,6 +86,8 @@ y_train = fg(x_train) + rnorm(n_train, 0, s)
 #Set a grid of test points
 x_test = seq(0.01, 0.5, length = n_test)
 fg_test = fg(x_test)
+fs_test = sapply(x_test, fsg, 2)
+fl_test = sapply(x_test, flg, 4)
 
 #Plot the training data
 plot(x_train, y_train, pch = 16, cex = 0.8, main = 'Training data')
@@ -91,7 +98,7 @@ lines(g_grid, fg(g_grid))
 #small_g = c(2,4,6)
 #large_g = c(3,6,9)
 small_g = 2 #Which small-g expansions to use
-large_g = 6 #Which large-g expansions to use
+large_g = 2 #Which large-g expansions to use
 g_exp = c(small_g, large_g) #Mix both small and large g
 K = length(g_exp) 
 Ks = length(small_g) #Number of small-g models
@@ -124,11 +131,26 @@ x_test = as.matrix(x_test, ncol = 1)
 # Load the R wrapper functions to the OpenBT library.
 source("/home/johnyannotty/Documents/Open BT Project SRC/openbt.R")
 
+fit=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),ntree = 1,ntreeh=1,numcut=100,tc=4,model="mixbart",modelname="physics_model",
+           ndpost = 1, nskip = 0, nadapt = 0, adaptevery = 0, printevery = 1)
+
+
 #Model Mixing BART model
 fit=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),ntree = 20,ntreeh=1,numcut=100,tc=4,model="mixbart",modelname="physics_model",
-           ndpost = 1000, nskip = 200, nadapt = 1000, adaptevery = 200, printevery = 500,
-           base = 0.75)
-str(fit)
+           ndpost = 10000, nskip = 1000, nadapt = 5000, adaptevery = 100, printevery = 500,
+           power = 0.75, minnumbot = 3, overallsd = sd(y_train)/sqrt(8))
+#str(fit)
+
+fv1 = read.table(paste0(fit$folder, "/physics_model1.fitvals"))
+fv2 = read.table(paste0(fit$folder, "/physics_model2.fitvals"))
+fv3 = read.table(paste0(fit$folder, "/physics_model3.fitvals"))
+fv = unlist(c(fv1,fv2,fv3))
+plot(g_grid, fg(g_grid), pch = 16, cex = 0.8, main = 'Fits', type = 'l', ylim = c(-0.25,0.75))
+points(x_train, y_train, pch = 3)
+lines(g_grid, sapply(g_grid,fsg, 2), col = 'blue', lty = 2)
+lines(g_grid, sapply(g_grid,flg, 2), col = 'red', lty = 2)
+points(x_train, fv, col = 'green4')
+
 
 #Save posterior
 openbt.save(fit,"test")
@@ -143,3 +165,4 @@ trees$mt[[1]][[1]]
 trees$st[[1]][[1]]
 
 plot(x_test,fitp$mmean,xlab="x_test",ylab="f")
+points(x_train, y_train)

@@ -199,6 +199,20 @@ if(!is.null(xicuts)) # use xicuts
       xi[[i]]=(1:numcut)*xinc+minx[i]
    }
 }
+
+if(modeltype==MODEL_MIXBART){
+  xi=vector("list",p)
+  minx_temp=apply(x,1,min)
+  maxx_temp=apply(x,1,max)
+  
+  maxx = round(maxx_temp,1) + ifelse((round(maxx_temp,1)-maxx_temp)>0,0,0.1)
+  minx = round(minx_temp,1) - ifelse((minx_temp - round(minx_temp,1))>0,0,0.1)
+  for(i in 1:p)
+  {
+    xinc=(maxx[i]-minx[i])/(numcut+1)
+    xi[[i]]=(1:numcut)*xinc+minx[i]
+  }
+}
 #--------------------------------------------------
 if(modeltype==MODEL_BART || modeltype==MODEL_HBART || modeltype==MODEL_MERCK_TRUNCATED || modeltype==MODEL_MIXBART)
 {
@@ -217,7 +231,7 @@ if(modeltype==MODEL_MIXBART){
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m*sumfmed2)*k)
   
   #prior mean
-  beta0 = median(y.train)/(m*sum(fmed))
+  beta0 = ifelse(sum(fmed)!=0,median(y.train)/(m*sum(fmed)),0)
 }else{
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
   beta0=0
