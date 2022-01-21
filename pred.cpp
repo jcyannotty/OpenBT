@@ -482,7 +482,7 @@ if(modeltype!=MODEL_MIXBART){
    imf >> temp;
    std::vector<double> e_otheta(temp);
    for(size_t i=0;i<temp;i++) imf >> std::scientific >> e_otheta.at(i);
-   
+
    imf.close();
 
    //objects where we'll store the realizations
@@ -522,7 +522,8 @@ if(modeltype!=MODEL_MIXBART){
             ov[j][l]=e_ovar.at(cumdx+curdx+l);
             oc[j][l]=e_oc.at(cumdx+curdx+l);
             for(size_t r=0;r<k;r++){
-               otheta[j][l*k+r]=e_otheta.at(cumdx+curdx+l*k+r);
+               otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
+               //cout << "Theta_i = " << otheta[j][l*k+r] << endl;;
             }
             
          }
@@ -530,20 +531,14 @@ if(modeltype!=MODEL_MIXBART){
       }
       cumdx+=curdx;
 
-      axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta);
-      if((i % 500) == 0){
-         //cout << "Here 5" << endl;
-         //axb.pr_vec();
-      } 
+      axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
       // draw realization
       axb.predict_mix(&dip, &fi_test);
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
-      if((i % 500) == 0){
-         //cout << "Here 6" << endl;
-         //cout << tedraw[i][0] << endl;;
+      if(i == 0 && mpirank == 0){
+         cout << "Prediction at 1st point in process" << tedraw[i][0] << endl;
       } 
    }
-   //cout << "Here 7" << endl;
    #ifdef _OPENMPI
    if(mpirank==0) {
       tend=MPI_Wtime();

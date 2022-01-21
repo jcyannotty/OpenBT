@@ -956,7 +956,7 @@ return 0;
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
       //if(mpirank == 0 && i == (nd-1)){axb.pr_vec();}
       //if(mpirank>0 && (i%3)==0) {for(size_t j=0;j<n;j++) cout << axb.f(j) << ", ";}
-      if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j]= ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
+      if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j] = ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
       //if(mpirank>0 && i == (nd-1) ){for(size_t j=0;j<n;j++) {cout << ofit[j] << " ";} cout << endl;}
       
 #else

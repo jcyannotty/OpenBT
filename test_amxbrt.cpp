@@ -58,7 +58,7 @@ int main(){
     std::vector<double> f;
     double ftemp;
     size_t k; //number of columns in f
-    k=3;
+    k=2;
 
     std::ifstream ff("f.txt");
     while(ff >> ftemp){
@@ -298,6 +298,7 @@ int main(){
     //-------------------------------------------------------
     //Example 3 -- Test MCMC with unknown constant variance
     //-------------------------------------------------------
+    /*
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 3: Work with a mxbrt object \n" << endl;
     
@@ -431,7 +432,7 @@ int main(){
         cout << i <<" -- Predicted " << predicted[i] << endl;
     }
     */
-
+    /*
     //Print the Last Tree
     axb.pr_vec();
 
@@ -458,11 +459,11 @@ int main(){
         outpred << predicted[i] << endl;
     }
     outpred.close();
-
+    */
     //-------------------------------------------------------
     //Example 4 -- Save and Load amxbrt objects
     //-------------------------------------------------------
-    /*
+    
     //Initialize prior parameters
     double *sig = new double[di.n];
     double tau = 0.5; 
@@ -526,7 +527,7 @@ int main(){
     b11.pr_vec();
     cout << "\n~~~Print brt 2~~~" << endl;
     b22.pr_vec();
-    */
+    
     return 0;
 
 }
