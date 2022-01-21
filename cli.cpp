@@ -902,9 +902,6 @@ return 0;
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
    //std::vector<double> osig(nd);
-   std::vector<double> ofit(1,0);
-   if(mpirank>0){ofit.resize(n); for(size_t l =0;l<n;l++){ofit[l] = 0.0;}}
-
    brtMethodWrapper faxb(&brt::f,axb);
 
    //std::ofstream osf(folder + modelname + ".sigpost");
@@ -954,10 +951,7 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
-      //if(mpirank == 0 && i == (nd-1)){axb.pr_vec();}
-      //if(mpirank>0 && (i%3)==0) {for(size_t j=0;j<n;j++) cout << axb.f(j) << ", ";}
-      if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j] = ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
-      //if(mpirank>0 && i == (nd-1) ){for(size_t j=0;j<n;j++) {cout << ofit[j] << " ";} cout << endl;}
+      //if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j] = ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
       
 #else
       axb.drawvec(gen);
@@ -1030,16 +1024,6 @@ if(mpirank == 0){axb.pr_vec();}
       cout << " done." << endl;
    }
    
-   if(mpirank>0){
-      //Write fitted values to file
-      std::ofstream off(folder + modelname + std::to_string(mpirank) + ".fitvals");
-      for(size_t i=0;i<n;i++){
-         off << ofit[i] << endl;
-      }
-      off.close();
-   }
-   
-
    // summary statistics
    if(summarystats) {
       cout << "Calculating summary statistics" << endl;
