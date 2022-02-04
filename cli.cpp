@@ -95,11 +95,10 @@ int main(int argc, char* argv[])
    conf >> modeltype;
 
    // core filenames for x,y,f input --- f input is for model mixing
-   std::string xcore,ycore,fcore;
+   std::string xcore,ycore;
    conf >> xcore;
    conf >> ycore;
-   conf >> fcore;
-
+   
    //offset -- used in probit, but not in bart for instance.
    double off;
    conf >> off;
@@ -152,6 +151,24 @@ int main(int argc, char* argv[])
    std::string chgvcore;
    conf >> chgvcore;
 
+   //function output 
+   std::string fcore;
+   conf >> fcore;
+
+   //Discrepancy mean and standard deviation matrices
+   std::string fdmcore;
+   std::string fdscore;
+   conf >> fdmcore;
+   conf >> fdscore;
+   
+
+   //Function output discrepancy True/False - read in as a string (reading is as a bool prevented the rest of the values from being read, not sure why)
+   std::string fdiscrepancy_str;
+   bool fdiscrepancy = false;
+   conf >> fdiscrepancy_str;
+   if(fdiscrepancy_str == "TRUE"){ fdiscrepancy = true; }
+   
+   
    //control
    double pbd;
    double pb;
@@ -184,8 +201,8 @@ int main(int argc, char* argv[])
    bool doperth=true;
    if(probchv<0) dopert=false;
    if(probchvh<0) doperth=false;
-
-
+   
+   cout << pbd << endl;
    //summary statistics yes/no
    bool summarystats;
    conf >> summarystats;
@@ -351,6 +368,50 @@ int main(int argc, char* argv[])
    k=(size_t)tempk;
 #endif
    }
+
+   //--------------------------------------------------
+   //Initialize f mean and std discrepancy information -- used only for model mixing when fdiscrepancy = TRUE 
+   std::vector<double> fdm, fds;
+   double fdmtemp, fdstemp;
+   if(modeltype==MODEL_MIXBART && fdiscrepancy){   
+   #ifdef _OPENMPI
+      if(mpirank>0) {
+   #endif
+         size_t kdm = 0; 
+         size_t kds = 0;
+         
+         std::stringstream fdmfss;
+         std::string fdmfs;
+         fdmfss << folder << fdmcore << mpirank;
+         fdmfs=fdmfss.str();
+         std::ifstream fdmf(fdmfs);
+         while(fdmf >> fdmtemp)
+            fdm.push_back(fdmtemp);
+         kdm = fdm.size()/n;
+
+         std::stringstream fdsfss;
+         std::string fdsfs;
+         fdsfss << folder << fdscore << mpirank;
+         fdsfs=fdsfss.str();
+         std::ifstream fdsf(fdsfs);
+         while(fdsf >> fdstemp)
+            fds.push_back(fdstemp);
+         kds = fds.size()/n; 
+   
+   #ifndef SILENT
+         cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << kdm << " from " << fdmfs << endl;
+         cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << kds << " from " << fdsfs << endl;
+   #endif
+   #ifdef _OPENMPI
+      }
+      int tempp = (unsigned int) p;
+      MPI_Allreduce(MPI_IN_PLACE,&tempp,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+      if(mpirank>0 && p != ((size_t) tempp)) { cout << "PROBLEM LOADING DATA" << endl; MPI_Finalize(); return 0;}
+      p=(size_t)tempp;
+   #endif   
+   }   
+
+
    //--------------------------------------------------
    //dinfo
    dinfo di;
