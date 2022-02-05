@@ -92,7 +92,7 @@ public:
     // tprior and mcmcinfo are same as in brt
         class cinfo{
         public:
-            cinfo():beta0(1.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
+            cinfo():beta0(0.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
             double beta0, tau;
             double* sigma; //use pointer since this will be changed as mcmc iterates
             double nu, lambda;
@@ -125,7 +125,8 @@ public:
     void local_mpi_reduce_getsumr2(double &sumr2, int &n);
     double getsigma() { return ci.sigma[0];}
 
-    //Consider adding covariance inversion to local_subsuff-----******
+    //Methods for working with individual model discrepacny
+    virtual void drawdelta(rn& gen);  
 
     //--------------------
     //data

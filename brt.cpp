@@ -1659,7 +1659,11 @@ void brt::local_setf_mix(diterator& diter)
    for(;diter<diter.until();diter++) {
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec(); 
-      yhat[*diter] = (*fi).row(*diter)*thetavec_temp; 
+      yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
+      if(fdiscrep){
+         yhat[*diter] = yhat[*diter] + (*fdelta).row(*diter)*thetavec_temp;
+      }
+
    }
 }
 
@@ -1698,6 +1702,9 @@ void brt::local_setr_mix(diterator& diter)
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec();
       resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
+      if(fdiscrep){
+         resid[*diter] = resid[*diter] - (*fdelta).row(*diter)*thetavec_temp;
+      }
       //resid[*diter] = 0.0 - (*fi).row(*diter)*thetavec_temp;
    }
 }
@@ -1713,6 +1720,8 @@ void brt::predict_mix(dinfo* dipred, finfo* fipred) {
          local_predict_mix(diter, *fipred);
    #endif
 }
+
+//Local predictions for model mixing over omp
 void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
 {
 #ifdef _OPENMP
@@ -1727,6 +1736,8 @@ void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
    local_predict_mix(diter, fipred);
 #endif
 }
+
+//Local preditions for model mixing
 void brt::local_predict_mix(diterator& diter, finfo& fipred){
    tree::tree_p bn;
    vxd thetavec_temp(k); 
@@ -1735,6 +1746,29 @@ void brt::local_predict_mix(diterator& diter, finfo& fipred){
       thetavec_temp = bn->getthetavec();
       diter.sety(fipred.row(*diter)*thetavec_temp);
    }
+}
+
+//Mix using the discrepancy
+void brt::predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen) {
+   size_t np = (*fpdmean).rows();
+   finfo fdpred(np,k);
+   double z;
+   //Update the fdpred matrix to sum the point estimates + random discrepancy: fipred + fidelta 
+   for(size_t i = 0; i<np; i++){
+        for(size_t j=0; j<k;j++){
+           z = gen.normal();
+           fdpred(i,j) = (*fipred)(i,j) + (*fpdmean)(i,j) + (*fpdsd)(i,j)*z; 
+        }
+    }
+   //cout << fdpred << endl;
+   //Run the same functions -- just now using the updated prediction matrix
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_omppredict_mix(*dipred, fdpred); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_predict_mix(diter, fdpred);
+   #endif
 }
 
 //--------------------------------------------------

@@ -202,7 +202,6 @@ int main(int argc, char* argv[])
    if(probchv<0) dopert=false;
    if(probchvh<0) doperth=false;
    
-   cout << pbd << endl;
    //summary statistics yes/no
    bool summarystats;
    conf >> summarystats;
@@ -373,13 +372,13 @@ int main(int argc, char* argv[])
    //Initialize f mean and std discrepancy information -- used only for model mixing when fdiscrepancy = TRUE 
    std::vector<double> fdm, fds;
    double fdmtemp, fdstemp;
+   finfo fdeltamean, fdeltasd;
+   size_t kdm = 0; 
+   size_t kds = 0;
    if(modeltype==MODEL_MIXBART && fdiscrepancy){   
    #ifdef _OPENMPI
       if(mpirank>0) {
-   #endif
-         size_t kdm = 0; 
-         size_t kds = 0;
-         
+   #endif      
          std::stringstream fdmfss;
          std::string fdmfs;
          fdmfss << folder << fdmcore << mpirank;
@@ -389,6 +388,9 @@ int main(int argc, char* argv[])
             fdm.push_back(fdmtemp);
          kdm = fdm.size()/n;
 
+         //Make finfo on the slave node
+         makefinfo(k,n,&fdm[0],fdeltamean);
+
          std::stringstream fdsfss;
          std::string fdsfs;
          fdsfss << folder << fdscore << mpirank;
@@ -397,6 +399,9 @@ int main(int argc, char* argv[])
          while(fdsf >> fdstemp)
             fds.push_back(fdstemp);
          kds = fds.size()/n; 
+
+         //Make finfo on the slave node
+         makefinfo(k,n,&fds[0],fdeltasd);
    
    #ifndef SILENT
          cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << kdm << " from " << fdmfs << endl;
@@ -404,10 +409,10 @@ int main(int argc, char* argv[])
    #endif
    #ifdef _OPENMPI
       }
-      int tempp = (unsigned int) p;
-      MPI_Allreduce(MPI_IN_PLACE,&tempp,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
-      if(mpirank>0 && p != ((size_t) tempp)) { cout << "PROBLEM LOADING DATA" << endl; MPI_Finalize(); return 0;}
-      p=(size_t)tempp;
+      int tempkd = (unsigned int) k;
+      MPI_Allreduce(MPI_IN_PLACE,&tempkd,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+      if(mpirank>0 && kdm != ((size_t) tempkd)) { cout << "PROBLEM LOADING DISCREPANCY DATA" << endl; MPI_Finalize(); return 0;}
+      if(mpirank>0 && kds != ((size_t) tempkd)) { cout << "PROBLEM LOADING DISCREPANCY DATA" << endl; MPI_Finalize(); return 0;}
    #endif   
    }   
 
@@ -917,6 +922,8 @@ return 0;
    axb.setxi(&xi);    //set the cutpoints for this model object
    //function output information
    axb.setfi(&fi, k);
+   //set individual function discrepacnies if provided 
+   if(fdiscrepancy) {axb.setfdelta(&fdeltamean, &fdeltasd);}
    //data objects
    axb.setdata_mix(&di);  //set the data
    //thread count
@@ -979,6 +986,12 @@ return 0;
    for(size_t i=0;i<nadapt;i++) { 
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
+      if(mpirank>0 && fdiscrepancy){axb.drawdelta(gen);}
+#else
+      if(fdiscrepancy){axb.drawdelta(gen);}
+#endif
+
+#ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
 #else
       axb.drawvec(gen);
@@ -994,6 +1007,12 @@ return 0;
    
    for(size_t i=0;i<burn;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
+#ifdef _OPENMPI
+      if(mpirank>0 && fdiscrepancy){axb.drawdelta(gen);}
+#else
+      if(fdiscrepancy){axb.drawdelta(gen);}
+#endif
+
 #ifdef _OPENMPI
       if(mpirank==0){ axb.drawvec(gen);}else {axb.drawvec_mpislave(gen);}
 #else
@@ -1011,9 +1030,14 @@ return 0;
    for(size_t i=0;i<nd;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
+      if(mpirank>0 && fdiscrepancy){axb.drawdelta(gen);}
+#else
+      if(fdiscrepancy){axb.drawdelta(gen);}
+#endif
+
+#ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
       //if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j] = ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
-      
 #else
       axb.drawvec(gen);
 #endif
@@ -1040,7 +1064,7 @@ return 0;
    */
    
 }
-if(mpirank == 0){axb.pr_vec();}
+if(mpirank == 1){axb.pr_vec();}
 
 #ifdef _OPENMPI
    if(mpirank==0) {

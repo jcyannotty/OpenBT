@@ -37,7 +37,10 @@ public:
    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.sigma=sigma; ci.beta0=beta0; for(size_t j=0;j<m;j++) mb[j].setci(tau,beta0,sigma); }
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
-   void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
+   void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> fdiscrep = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
+   void setfdelta(finfo *fdeltamean, finfo *fdeltasd) {
+      this->fdelta = fdeltamean; this->fdelta_mean = fdeltamean; this->fdelta_sd = fdeltasd; this->fdiscrep = true; 
+      for(size_t j=0;j<m;j++) mb[j].setfdelta(fdeltamean, fdeltasd);}
    void setk(size_t k) {this->k = k; for(size_t j=0;j<m;j++) mb[j].setk(k); }
    void setdata_mix(dinfo *di);
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }

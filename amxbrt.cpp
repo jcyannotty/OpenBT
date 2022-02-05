@@ -18,7 +18,7 @@ void amxbrt::drawvec(rn& gen){
 
         //Draw parameter vector in the jth tree
         mb[j].drawvec(gen);
-    
+        
         // Update the in-sample predicted vector
         setf_mix();
 
@@ -46,7 +46,7 @@ void amxbrt::drawvec_mpislave(rn& gen){
 
         // do the draw for jth component
         mb[j].drawvec_mpislave(gen);
-
+        
         // Update the in-sample predicted vector
         setf_mix();
 
@@ -68,7 +68,7 @@ void amxbrt::adapt(){
 }
 
 //--------------------------------------------------
-//setdata for ambrt
+//setdata for amxbrt
 void amxbrt::setdata_mix(dinfo *di) {
     this->di=di;
         
@@ -157,6 +157,7 @@ void amxbrt::local_get_mix_wts(diterator& diter, mxd& wts){
         wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
     }
 }
+
 
 //--------------------------------------------------
 //Local Save tree

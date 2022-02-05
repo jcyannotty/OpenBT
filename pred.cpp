@@ -20,6 +20,7 @@
 //     Matthew T. Pratola: mpratola@gmail.com
 
 
+#include <chrono>
 #include <iostream>
 #include <string>
 #include <ctime>
@@ -69,6 +70,12 @@ int main(int argc, char* argv[])
       folder=folder+"/";
    }
 
+   //-----------------------------------------------------------
+   //random number generation -- only used in model mixing with function discrepancy right now
+   crn gen;
+   gen.set_seed(static_cast<long long>(std::chrono::high_resolution_clock::now()
+                                   .time_since_epoch()
+                                   .count()));
 
    //--------------------------------------------------
    //process args
@@ -78,6 +85,8 @@ int main(int argc, char* argv[])
    std::string xicore;
    std::string xpcore;
    std::string fpcore;
+   std::string fpdmcore;
+   std::string fpdscore;
 
    //model name, xi and xp
    conf >> modelname;
@@ -85,6 +94,8 @@ int main(int argc, char* argv[])
    conf >> xicore;
    conf >> xpcore;
    conf >> fpcore;
+   conf >> fpdmcore;
+   conf >> fpdscore;
 
    //number of saved draws and number of trees
    size_t nd;
@@ -99,6 +110,12 @@ int main(int argc, char* argv[])
    size_t p, k;
    conf >> p;
    conf >> k;
+
+   //model mixing fdiscrepancy
+   std::string fdiscrepancy_str;
+   conf >> fdiscrepancy_str;
+   bool fdiscrepancy = false;
+   if(fdiscrepancy_str == "TRUE"){ fdiscrepancy = true;}
 
    //thread count
    int tc;
@@ -213,6 +230,33 @@ int main(int argc, char* argv[])
 #ifndef SILENT
    cout << "&&& made finfo for test data\n";
 #endif
+   }
+
+   //--------------------------------------------------
+   //Initialize f mean and std discrepancy information -- used only for model mixing when fdiscrepancy = TRUE 
+   std::vector<double> fdm, fds;
+   double fdmtemp, fdstemp;
+   finfo fdeltamean(np,k), fdeltasd(np,k);
+   if(modeltype==MODEL_MIXBART && fdiscrepancy){   
+         std::stringstream fdmfss;
+         std::string fdmfs;
+         fdmfss << folder << fpdmcore << mpirank;
+         fdmfs=fdmfss.str();
+         std::ifstream fdmf(fdmfs);
+         while(fdmf >> fdmtemp)
+            fdm.push_back(fdmtemp);
+         Eigen::Map<Eigen::MatrixXd, Eigen::RowMajor> fdm_temp(fdm.data(),k,np);
+         fdeltamean = fdm_temp.transpose();
+         
+         std::stringstream fdsfss;
+         std::string fdsfs;
+         fdsfss << folder << fpdscore << mpirank;
+         fdsfs=fdsfss.str();
+         std::ifstream fdsf(fdsfs);
+         while(fdsf >> fdstemp)
+            fds.push_back(fdstemp);
+         Eigen::Map<Eigen::MatrixXd, Eigen::RowMajor> fds_temp(fdm.data(),k,np);
+         fdeltasd = fds_temp.transpose();
    }
    
 if(modeltype!=MODEL_MIXBART){
@@ -440,8 +484,8 @@ if(modeltype!=MODEL_MIXBART){
    // set up amxbrt object
    amxbrt axb(m);
    axb.setxi(&xi); //set the cutpoints for this model object
-   axb.setfi(&fi_test, k); //set the function output for this model object -- main use is to set k
-   
+   axb.setfi(&fi_test, k); //set the function output for this model object -- main use is to set k 
+   if(fdiscrepancy) {axb.setfdelta(&fdeltamean, &fdeltasd);}  //set individual function discrepacnies if provided -- main use is to set fdiscrepancy to TRUE
    //load from file
 #ifndef SILENT
    if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
@@ -533,8 +577,12 @@ if(modeltype!=MODEL_MIXBART){
 
       axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
       // draw realization
-      axb.predict_mix(&dip, &fi_test);
-      for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean; 
+      if(fdiscrepancy){
+         axb.predict_mix_fd(&dip, &fi_test, &fdeltamean, &fdeltasd, gen);
+      }else{
+         axb.predict_mix(&dip, &fi_test);
+      }
+      for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
    }
    #ifdef _OPENMPI
    if(mpirank==0) {

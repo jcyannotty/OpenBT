@@ -138,11 +138,18 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     vxd fy(k);
     
     //Assign values
-    w=1.0/(ci.sigma[*diter]*ci.sigma[*diter]);
-    ff = (*fi).row(*diter).transpose()*(*fi).row(*diter);
-    fy = (*fi).row(*diter).transpose()*diter.gety();
-    yy = diter.gety()*diter.gety();
-
+    if(!fdiscrep){
+        w=1.0/(ci.sigma[*diter]*ci.sigma[*diter]);
+        ff = (*fi).row(*diter).transpose()*(*fi).row(*diter);
+        fy = (*fi).row(*diter).transpose()*diter.gety();
+        yy = diter.gety()*diter.gety();
+    }else{
+        w=1.0/(ci.sigma[*diter]*ci.sigma[*diter]);
+        ff = ((*fi).row(*diter).transpose() + (*fdelta).row(*diter).transpose())*((*fi).row(*diter) + (*fdelta).row(*diter));
+        fy = ((*fi).row(*diter).transpose() + (*fdelta).row(*diter).transpose())*diter.gety(); 
+        yy = diter.gety()*diter.gety();
+    }
+    
     //Update sufficient stats for nodes
     mxsi.n+=1;
     mxsi.sumffw+=w*ff;
@@ -479,10 +486,6 @@ void mxbrt::drawsigma(rn& gen){
         sumr2 = sumr2 + resid[i]*resid[i];
         //std::cout << resid[i] << " --- " << resid[i]*resid[i] << std::endl;
     }
-    
-    std::cout <<  "n = " << n << endl;
-    std::cout <<  "ntot = " << ntot << endl;
-    std::cout <<  "sumr2 = " << sumr2 << endl;
     */
    
     //Get nu*lambda and nu
@@ -498,11 +501,30 @@ void mxbrt::drawsigma(rn& gen){
 
     //Generate new inverse scaled chi2 rv
     gen.set_df(nupost); //set df's
-    double newsig = sqrt((nulampost)/gen.chi_square());
+    double newsig = sqrt((nulampost)/gen.chi_square()); 
+    
     for(int i = 0;i<n;i++){
         ci.sigma[i] = newsig; 
     }
     
+    /*
+    std::vector<double> newsigvec(n,newsig);
+    
+    double* newsigptrvec; 
+    double* newsigptr;
+    newsigptrvec = &newsigvec[0];
+    newsigptr = &newsig;  
+
+    //Set the sigma value -- n = 0 on node 0 hence we need this conditional
+    if(n>0){
+        setci(ci.tau, ci.beta0, newsigptrvec);
+    }else{
+        setci(ci.tau, ci.beta0, newsigptr);
+    }
+    */    
+
+    
+
     /*
     std::cout << "n=" << n << " -- sumr2=" << sumr2 << std::endl;
     std::cout << "Chi2 = " <<  gen.chi_square() << std::endl;
@@ -638,4 +660,23 @@ void mxbrt::local_mpi_reduce_getsumr2(double &sumr2, int &n)
     //    siv[i]->n=(size_t)nvec[i];
 // cout << "reduced:" << siv[0]->n << " " << siv[1]->n << endl;
 #endif
+}
+
+//--------------------------------------------------
+//Model Discrepancy
+//--------------------------------------------------
+//draw individual model discrepancy
+void mxbrt::drawdelta(rn& gen){
+    //Get the number of obs on this node
+    size_t n = (*fdelta_mean).rows();
+
+    //Reset fdelta to zero
+    *fdelta = mxd::Zero(n,k);
+
+    //Draw random variables and update delta
+    for(size_t i = 0; i<n; i++){
+        for(size_t j=0; j<k;j++){
+           (*fdelta)(i,j) = (*fdelta_mean)(i,j) + (*fdelta_sd)(i,j)*gen.normal(); 
+        }
+    }
 }
