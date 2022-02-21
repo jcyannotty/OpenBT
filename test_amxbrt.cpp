@@ -298,7 +298,7 @@ int main(){
     //-------------------------------------------------------
     //Example 3 -- Test MCMC with unknown constant variance
     //-------------------------------------------------------
-    /*
+    
     cout << "\n\n-----------------------------------------" << endl;
     cout << "Example 3: Work with a mxbrt object \n" << endl;
     
@@ -421,7 +421,7 @@ int main(){
     for(size_t i=0;i<p;i++) cout << " " << ((double)varcount[i])/((double)totvarcount)*100.0 << " ";
     cout << endl;
 
-    /*
+    
     cout << "Print Fitted Values" << endl;
     for(int i = 0; i<n; i++){
         cout << "X = " << x[i] << " -- Y = " << y[i] <<" -- Fitted " << fitted[i] << " -- Error = " << fitted[i] - y[i] << endl;
@@ -431,8 +431,8 @@ int main(){
     for(int i = 0; i<n_test; i++){
         cout << i <<" -- Predicted " << predicted[i] << endl;
     }
-    */
-    /*
+    
+    
     //Print the Last Tree
     axb.pr_vec();
 
@@ -459,7 +459,7 @@ int main(){
         outpred << predicted[i] << endl;
     }
     outpred.close();
-    */
+    
     //-------------------------------------------------------
     //Example 4 -- Save and Load amxbrt objects
     //-------------------------------------------------------

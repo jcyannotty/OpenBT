@@ -43,6 +43,8 @@ k=NULL,
 power=2.0, base=.95,
 tc=2,
 sigmav=rep(1,length(y.train)),
+f.discrep.mean = NULL,
+f.discrep.sd = NULL,
 fmean=mean(y.train),
 overallsd = NULL,
 overallnu= NULL,
@@ -177,11 +179,23 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
    if(length(uniqy)>2) stop("Invalid y.train: Probit requires dichotomous response coded 0/1")
    if(uniqy[1]!=0 || uniqy[2]!=1) stop("Invalid y.train: Probit requires dichotomous response coded 0/1")
 }
+
+#Set mix discrepancy to FALSE if we use a different model
+fdiscrepancy = FALSE
+
 if(modeltype==MODEL_MIXBART)
 {
-  #y.train=y.train-fmean
-  #f.train=f.train-fmean
-  fmean.out=paste(fmean)  
+  #Center the response
+  #y.train=(y.train-fmean)
+  fmean.out=paste(0.0) 
+  
+  #Center the function output by the mean of data
+  #f.train=apply(f.train, 2, function(x) (x - fmean))
+  
+  #Check to see if any discrepancy data has been passed into the function -- if so, we will use the discrepancy model mixing
+  if(!is.null(f.discrep.mean)&!is.null(f.discrep.sd)){
+    fdiscrepancy = TRUE    
+  }
 }
 #--------------------------------------------------
 #cutpoints
@@ -224,14 +238,8 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 }
 
 if(modeltype==MODEL_MIXBART){
-  fmed = apply(f.train, 2, median) 
-  sumfmed2 = sum(fmed^2)
-  
-  #Prior standard deviation
-  tau =  (rgy[2]-rgy[1])/(2*sqrt(m*sumfmed2)*k)
-  
-  #prior mean
-  beta0 = ifelse(sum(fmed)!=0,median(y.train)/(m*sum(fmed)),0)
+  tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
+  beta0 = 0
 }else{
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
   beta0=0
@@ -320,9 +328,11 @@ if(length(minnumbot)>1) {
 #write out config file
 xroot="x"
 yroot="y"
-froot="f"
 sroot="s"
 chgvroot="chgv"
+froot="f"
+fdmroot="fdm"
+fdsroot="fds"
 xiroot="xi"
 folder=tempdir(check=TRUE)
 if(!dir.exists(folder)) dir.create(folder)
@@ -332,14 +342,15 @@ tmpsubfolder=paste("openbt",tmpsubfolder,sep="")
 folder=paste(folder,"/",tmpsubfolder,sep="")
 if(!dir.exists(folder)) dir.create(folder)
 fout=file(paste(folder,"/config",sep=""),"w")
-writeLines(c(paste(modeltype),xroot,yroot,froot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
+writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
-            paste(tc),paste(sroot),paste(chgvroot),paste(pbd),paste(pb),
-            paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
+            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fdmroot),paste(fdsroot),paste(fdiscrepancy),
+            paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
             paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
 close(fout)
+
 # folder=paste(".",modelname,"/",sep="")
 # system(paste("rm -rf ",folder,sep=""))
 # system(paste("mkdir ",folder,sep=""))
@@ -363,7 +374,16 @@ rm(chv)
 #Write the function output if using model mixing
 if(modeltype == MODEL_MIXBART){
   flist=split(as.data.frame(f.train),(seq(n)-1) %/% (n/nslv))
-  for(i in 1:nslv) write(t(flist[[i]]),file=paste(folder,"/",froot,i,sep=""))  
+  for(i in 1:nslv) write(t(flist[[i]]),file=paste(folder,"/",froot,i,sep=""))
+  
+  if(fdiscrepancy){
+    fdmlist=split(as.data.frame(f.discrep.mean),(seq(n)-1) %/% (n/nslv))
+    for(i in 1:nslv) write(t(fdmlist[[i]]),file=paste(folder,"/",fdmroot,i,sep=""))
+    
+    fdslist=split(as.data.frame(f.discrep.sd),(seq(n)-1) %/% (n/nslv))
+    for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(folder,"/",fdsroot,i,sep=""))
+  }
+  
 }
 
 if(modeltype==MODEL_MERCK_TRUNCATED)
@@ -409,10 +429,11 @@ system(paste("rm -f ",folder,"/config",sep=""))
 res=list()
 res$modeltype=modeltype
 res$model=model
-res$xroot=xroot; res$yroot=yroot; res$froot=froot; res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
+res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
 res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
 res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
-res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot; res$pbd=pbd; res$pb=pb
+res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fdmroot=fdmroot;res$fdsroot=fdsroot; 
+res$fdiscrepancy = fdiscrepancy; res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
 res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
 res$printevery=printevery; res$xiroot=xiroot; res$minx=minx; res$maxx=maxx;
@@ -437,6 +458,8 @@ predict.openbt = function(
 fit=NULL,
 x.test=NULL,
 f.test=matrix(1,nrow = 1, ncol = 2),
+f.discrep.mean = NULL,
+f.discrep.sd = NULL,
 tc=2,
 fmean=fit$fmean,
 q.lower=0.025,
@@ -467,10 +490,13 @@ n=nrow(x.test)
 k=2 #Default number of models for model mixing
 xproot="xp"
 fproot="fp"
+fpdmroot="fpdm"
+fpdsroot="fpds"
 
 if(fit$modeltype==MODEL_MIXBART){
   if(is.null(f.test)){stop("No function output specified for model mixing!\n")}
   k=ncol(f.test) #Number of models
+  if(is.null(f.discrep.mean) & fit$fdiscrepancy){stop("No function discrepancy mean and/or standard deviation was provided, but model was trained with functional discrepancy.") } 
 }
 
 if(fit$modeltype==MODEL_BART || fit$modeltype==MODEL_HBART || fit$modeltype==MODEL_MERCK_TRUNCATED)
@@ -483,16 +509,20 @@ if(fit$modeltype==MODEL_PROBIT || fit$modeltype==MODEL_MODIFIEDPROBIT)
 }
 if(fit$modeltype==MODEL_MIXBART)
 {
-  #Assuming we do not center the data
+  #Ussed to add the mean back in for predictions in pred.cpp
+  #fmean.out=paste(fmean)
   fmean.out=paste(0.0)
+  #Center the function output in the test set by the ymean
+  #f.test = apply(f.test, 2, function(x) x - fmean)
+  
 }
 
 #--------------------------------------------------
 #write out config file
 fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
-writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,
+writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,fpdmroot, fpdsroot,
             paste(fit$nd),paste(fit$m),
-            paste(fit$mh),paste(p),paste(k),paste(tc),
+            paste(fit$mh),paste(p),paste(k),paste(fit$fdiscrepancy),paste(tc),
             fmean.out), fout)
 close(fout)
 
@@ -506,7 +536,15 @@ for(i in 1:p) write(fit$xicuts[[i]],file=paste(fit$folder,"/",fit$xiroot,i,sep="
 if(fit$modeltype==MODEL_MIXBART){
   #for(i in 1:k) write(f.test[,i],file=paste(fit$folder,"/",fproot,i,sep=""))
   flist=split(as.data.frame(f.test),(seq(n)-1) %/% (n/nslv))
-  for(i in 1:nslv) write(t(flist[[i]]),file=paste(fit$folder,"/",fproot,i-1,sep=""))  
+  for(i in 1:nslv) write(t(flist[[i]]),file=paste(fit$folder,"/",fproot,i-1,sep=""))
+  
+  if(fit$fdiscrepancy){
+    fdmlist=split(as.data.frame(f.discrep.mean),(seq(n)-1) %/% (n/nslv))
+    for(i in 1:nslv) write(t(fdmlist[[i]]),file=paste(fit$folder,"/",fpdmroot,i-1,sep=""))
+    
+    fdslist=split(as.data.frame(f.discrep.sd),(seq(n)-1) %/% (n/nslv))
+    for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(fit$folder,"/",fpdsroot,i-1,sep=""))
+  }
 }
 
 #--------------------------------------------------

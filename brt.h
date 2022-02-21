@@ -212,6 +212,7 @@ public:
    void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
    void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // predict y at the (npred x p) settings *di.x with functional discrepancy mean & sd
    void get_mix_wts(dinfo* dipred, mxd* wts);
+   void get_mix_theta(dinfo* dipred, mxd* wts);
     
    //Print brt object with vector parameters
    void pr_vec(); 
@@ -309,6 +310,7 @@ protected:
    virtual void local_setr_mix(diterator& diter);
    virtual void local_predict_mix(diterator& diter, finfo& fipred);
    virtual void local_get_mix_wts(diterator& diter, mxd& wts);
+   virtual void local_get_mix_theta(diterator& diter, mxd& wts);
    
    // #ifdef _OPENMP
    //void local_ompgetsuff_mix(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir);
@@ -319,6 +321,7 @@ protected:
    void local_ompsetr_mix(dinfo di);
    void local_omppredict_mix(dinfo dipred, finfo fipred);
    void local_ompget_mix_wts(dinfo dipred, mxd wts);
+   void local_ompget_mix_theta(dinfo dipred, mxd wts);
 
    //Save and Load tree with vector parameters
    void local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,

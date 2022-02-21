@@ -165,7 +165,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
 #ifdef _OPENMPI
    mxsinfo& msil=static_cast<mxsinfo&>(sil);
    mxsinfo& msir=static_cast<mxsinfo&>(sir);
-   int buffer_size = SIZE_UINT6*k;
+   int buffer_size = SIZE_UINT6*k*k;
    if(rank==0) { // MPI receive all the answers from the slaves
         MPI_Status status;
         mxsinfo& tsil = (mxsinfo&) *newsinfo();

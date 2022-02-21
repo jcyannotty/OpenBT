@@ -1808,6 +1808,47 @@ void brt::local_ompget_mix_wts(dinfo dipred, mxd wts){
 }
 
 //--------------------------------------------------
+//Get modeling mixing weights per tree
+void brt::get_mix_theta(dinfo* dipred, mxd *wts){
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompget_mix_theta(*dipred, *wts); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_get_mix_theta(diter, *wts);
+   #endif   
+}
+
+void brt::local_get_mix_theta(diterator &diter, mxd &wts){
+   tree::tree_p bn;
+   vxd thetavec_temp(k);
+   bool enter = true; 
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      if(enter){
+         wts.col(0) = thetavec_temp; //sets the thetavec to be the 1st column of the wts eigen matrix.
+         enter = false;
+      }
+   }
+}
+
+void brt::local_ompget_mix_theta(dinfo dipred, mxd wts){
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = dipred.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&dipred,beg,end);
+   local_get_mix_theta(diter, wts);
+#endif
+}
+
+
+//--------------------------------------------------
 //Print for brt with vector parameters
 void brt::pr_vec(){
    std::cout << "***** brt object:\n";

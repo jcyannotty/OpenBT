@@ -158,6 +158,27 @@ void amxbrt::local_get_mix_wts(diterator& diter, mxd& wts){
     }
 }
 
+//--------------------------------------------------
+//extract terminal node parameters for a specific point
+void amxbrt::local_get_mix_theta(diterator& diter, mxd& wts){
+    tree::tree_p bn;
+    vxd thetavec_temp(k);
+    bool enter = true;
+    for(;diter<diter.until();diter++) {
+        //Initialize to zero 
+        thetavec_temp = vxd::Zero(k);
+        //Get sum of trees for the model weights
+        if(enter){
+            for(size_t j=0;j<m;j++) {
+                bn = mb[j].t.bn(diter.getxp(),*xi);
+                thetavec_temp = bn->getthetavec();
+                wts.col(j) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix.
+            }
+            enter = false;
+        }
+        
+    }
+}
 
 //--------------------------------------------------
 //Local Save tree
