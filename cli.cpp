@@ -168,7 +168,14 @@ int main(int argc, char* argv[])
    conf >> fdiscrepancy_str;
    if(fdiscrepancy_str == "TRUE"){ fdiscrepancy = true; }
    
-   
+   //Model Mixing Prior Mean and variance root and true/false denoting if the priors are the same for each model
+   std::string fprcore;
+   conf >> fprcore;
+   std::string fprior_str;
+   bool fprior = false;
+   conf >> fprior_str;
+   if(fprior_str == "TRUE"){ fprior = true; }
+
    //control
    double pbd;
    double pb;
@@ -416,6 +423,41 @@ int main(int argc, char* argv[])
    #endif   
    }   
 
+   //--------------------------------------------------
+   //Initialize f prior mean and sd information -- used only for model mixing when fprior = TRUE 
+   //std::vector<std::vector<double>> fpr;
+   std::vector<double> fprvtemp;
+   double fprtemp;
+   std::ifstream fprf(folder + fprcore);
+   Eigen::MatrixXd prior_precision(k,k);
+   Eigen::VectorXd prior_mean(k);
+
+   prior_precision = mxd::Identity(k,k);
+   prior_mean = vxd::Zero(k);
+   if(modeltype==MODEL_MIXBART && fprior){
+      //Get the means first
+      for(size_t j=0;j<k;j++) {
+         fprf >> fprtemp;
+         prior_mean(j) = fprtemp;
+      }
+      
+      //Get the sd's second and turn into precision matrix
+      for(size_t j=0;j<k;j++) {
+         fprf >> fprtemp;
+         prior_precision(j,j) = 1/(fprtemp*fprtemp);
+      }      
+
+      if(mpirank == 0){
+         cout << "Prior mean vector = " << prior_mean.transpose() << endl;
+         cout << "Prior Precision matrix = \n" << prior_precision << endl;
+      }
+   
+   #ifndef SILENT
+         cout << "node " << mpirank << " loaded prior mean and std deviations." << endl;
+   #endif
+   }
+   
+   
 
    //--------------------------------------------------
    //dinfo
@@ -962,6 +1004,10 @@ return 0;
       axb.setvi(overallnu, overalllambda); //conditioning info for variance prior
    }
    
+   //Sets the model priors for the functions if they are different
+   if(fprior){
+      axb.setci(prior_precision, prior_mean);
+   }
    //--------------------------------------------------
    //run mcmc
    std::vector<int> onn(nd*m,1);
@@ -986,12 +1032,6 @@ return 0;
    for(size_t i=0;i<nadapt;i++) { 
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank>0 && fdiscrepancy){axb.drawdelta(gen);}
-#else
-      if(fdiscrepancy){axb.drawdelta(gen);}
-#endif
-
-#ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
 #else
       axb.drawvec(gen);
@@ -1008,12 +1048,6 @@ return 0;
    for(size_t i=0;i<burn;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
 #ifdef _OPENMPI
-      if(mpirank>0 && fdiscrepancy){axb.drawdelta(gen);}
-#else
-      if(fdiscrepancy){axb.drawdelta(gen);}
-#endif
-
-#ifdef _OPENMPI
       if(mpirank==0){ axb.drawvec(gen);}else {axb.drawvec_mpislave(gen);}
 #else
       axb.drawvec(gen);
@@ -1029,12 +1063,6 @@ return 0;
    }
    for(size_t i=0;i<nd;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
-#ifdef _OPENMPI
-      if(mpirank>0 && fdiscrepancy){axb.drawdelta(gen);}
-#else
-      if(fdiscrepancy){axb.drawdelta(gen);}
-#endif
-
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
       //if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j] = ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later

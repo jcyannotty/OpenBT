@@ -418,7 +418,7 @@ CXXCPP = mpic++ -E -std=c++11
 CXXDEPMODE = depmode=gcc3
 CXXFLAGS =  -D_OPENMPI -DSILENT -Wall -pipe -g -O3 -std=c++0x -DNOR
 CYGPATH_W = echo
-DEFS = -DPACKAGE_NAME=\"openbt\" -DPACKAGE_TARNAME=\"openbt\" -DPACKAGE_VERSION=\"current\" -DPACKAGE_STRING=\"openbt\ current\" -DPACKAGE_BUGREPORT=\"mpratola@gmail.com\" -DPACKAGE_URL=\"\" -DPACKAGE=\"openbt\" -DVERSION=\"current\" -DHAVE_MPI=1 -DHAVE_MPI=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_DLFCN_H=1 -DLT_OBJDIR=\".libs/\" -DHAVE_CXX11=1 -DHAVE_FLOOR=1 -DHAVE_POW=1 -DHAVE_SQRT=1
+DEFS = -DPACKAGE_NAME=\"openbt\" -DPACKAGE_TARNAME=\"openbt\" -DPACKAGE_VERSION=\"current-32-g5ae6bdb\" -DPACKAGE_STRING=\"openbt\ current-32-g5ae6bdb\" -DPACKAGE_BUGREPORT=\"mpratola@gmail.com\" -DPACKAGE_URL=\"\" -DPACKAGE=\"openbt\" -DVERSION=\"current-32-g5ae6bdb\" -DHAVE_MPI=1 -DHAVE_MPI=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_DLFCN_H=1 -DLT_OBJDIR=\".libs/\" -DHAVE_CXX11=1 -DHAVE_FLOOR=1 -DHAVE_POW=1 -DHAVE_SQRT=1
 DEPDIR = .deps
 DLLTOOL = false
 DSYMUTIL = 
@@ -460,17 +460,17 @@ OTOOL64 =
 PACKAGE = openbt
 PACKAGE_BUGREPORT = mpratola@gmail.com
 PACKAGE_NAME = openbt
-PACKAGE_STRING = openbt current
+PACKAGE_STRING = openbt current-32-g5ae6bdb
 PACKAGE_TARNAME = openbt
 PACKAGE_URL = 
-PACKAGE_VERSION = current
+PACKAGE_VERSION = current-32-g5ae6bdb
 PATH_SEPARATOR = :
 RANLIB = ranlib
 SED = /usr/bin/sed
 SET_MAKE = 
 SHELL = /bin/bash
 STRIP = strip
-VERSION = current
+VERSION = current-32-g5ae6bdb
 abs_builddir = /home/johnyannotty/Documents/Open BT Project SRC
 abs_srcdir = /home/johnyannotty/Documents/Open BT Project SRC
 abs_top_builddir = /home/johnyannotty/Documents/Open BT Project SRC

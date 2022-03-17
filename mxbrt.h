@@ -16,10 +16,11 @@
 class mxsinfo : public sinfo{
     public:
         //Constructors:
-        mxsinfo():sinfo(),k(2),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(2)), sumyyw(0.0) {} //Initialize mxinfo with default settings
-        mxsinfo(size_t ik):sinfo(),k(ik),sumffw(mxd::Zero(ik,ik)), sumfyw(vxd::Zero(ik)), sumyyw(0.0) {} //Initialize mxinfo with number of columns in fi matrix 
-        mxsinfo(sinfo& is, int k0, mxd sff, vxd sfy, double syy):sinfo(is), k(k0), sumffw(sff), sumfyw(sfy), sumyyw(syy) {} //Construct mxinfo instance with values -- need to use references
-        mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw){} //Input object of mxinfro (is) and instantiate new mxinfo 
+        mxsinfo():sinfo(),k(2),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(2)), sumyyw(0.0), sump(mxd::Zero(2,2)) {} //Initialize mxinfo with default settings
+        mxsinfo(size_t ik):sinfo(),k(ik),sumffw(mxd::Zero(ik,ik)), sumfyw(vxd::Zero(ik)), sumyyw(0.0), sump(mxd::Zero(ik,ik)) {} //Initialize mxinfo with number of columns in fi matrix
+        mxsinfo(sinfo& is, int k0, mxd sff, vxd sfy, double syy):sinfo(is), k(k0), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(mxd::Zero(k0,k0)) {} //Construct mxinfo instance with values -- need to use references 
+        mxsinfo(sinfo& is, int k0, mxd sff, vxd sfy, double syy, mxd sp):sinfo(is), k(k0), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(sp) {} //Construct mxinfo instance with values with input for discrepancy -- need to use references
+        mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw), sump(is.sump){} //Input object of mxinfro (is) and instantiate new mxinfo 
 
         virtual ~mxsinfo() {} 
 
@@ -28,7 +29,7 @@ class mxsinfo : public sinfo{
         Eigen::MatrixXd sumffw; //Computes F^t*F/sig2 by summing over fi*fi^t for the observations in each tnode (fi = vector of dimension K)
         Eigen::VectorXd sumfyw; //Computes F^t*Y/sig2 by summing over fi*yi for observations in each tnode (fi = vector and yi = scalar) 
         double sumyyw; //computes Y^t*Y/sig2 by summing over yi*yi for observations in each tnode
-        
+        Eigen::MatrixXd sump; //Computes prior precision using the discrepancy information 
 
         //Define Operators -- override from sinfo class
         //Compound addition operator - used when adding sufficient statistics
@@ -38,6 +39,7 @@ class mxsinfo : public sinfo{
             sumffw += mrhs.sumffw;
             sumfyw += mrhs.sumfyw;
             sumyyw += mrhs.sumyyw;
+            sump += mrhs.sump;
             return *this; //returning *this should indicate that we return updated sumffw and sumfyw while also using a pointer
         }
 
@@ -49,6 +51,7 @@ class mxsinfo : public sinfo{
                 this->sumffw = mrhs.sumffw; 
                 this->sumfyw = mrhs.sumfyw;
                 this->sumyyw = mrhs.sumyyw;
+                this->sump = mrhs.sump;
                 this->k = mrhs.k; 
                 return *this; 
             }
@@ -67,6 +70,7 @@ class mxsinfo : public sinfo{
             if(ik != this->k){
                 this->sumfyw = vxd::Zero(ik);
                 this->sumffw = mxd::Zero(ik,ik);
+                this->sump = mxd::Zero(ik,ik);
                 this->k = ik;    
             }  
         }
@@ -92,10 +96,15 @@ public:
     // tprior and mcmcinfo are same as in brt
         class cinfo{
         public:
-            cinfo():beta0(0.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
+            cinfo():beta0(0.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0), invtau2_matrix(mxd::Identity(2,2)), beta_vec(vxd::Zero(2)), diffpriors(false) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
             double beta0, tau;
             double* sigma; //use pointer since this will be changed as mcmc iterates
             double nu, lambda;
+            
+            //Added for more flexible priors
+            mxd invtau2_matrix; //Used if we have different prior means for the weights of each function
+            vxd beta_vec; //Used if we have different prior varainces for the weights of each functionbool diffpriors; //Are the prior parameters different for each function -- use TRUE when loading vector and matrix parameters (below).
+            bool diffpriors; //Are the prior parameters different for each function -- use TRUE when loading vector and matrix parameters (below).
         };
     //--------------------
     //constructors/destructors
@@ -105,7 +114,9 @@ public:
     //methods
     void drawvec(rn& gen);
     void drawvec_mpislave(rn& gen);
-    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; } 
+    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; } //Set for using the same prior for each weight
+    void setci(mxd invtau2_matrix, vxd beta_vec) {ci.invtau2_matrix.resize(invtau2_matrix.rows(),invtau2_matrix.rows()); ci.beta_vec.resize(beta_vec.rows());
+        ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.diffpriors = true;} //Set when using prior's that differ by function
     virtual vxd drawnodethetavec(sinfo& si, rn& gen);
     virtual double lm(sinfo& si);
     virtual void add_observation_to_suff(diterator& diter, sinfo& si);

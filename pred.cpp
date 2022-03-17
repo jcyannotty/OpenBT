@@ -577,11 +577,14 @@ if(modeltype!=MODEL_MIXBART){
 
       axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
       // draw realization
+      /*
       if(fdiscrepancy){
          axb.predict_mix_fd(&dip, &fi_test, &fdeltamean, &fdeltasd, gen);
       }else{
          axb.predict_mix(&dip, &fi_test);
       }
+      */
+      axb.predict_mix(&dip, &fi_test);
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
    }
    #ifdef _OPENMPI

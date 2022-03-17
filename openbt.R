@@ -45,6 +45,7 @@ tc=2,
 sigmav=rep(1,length(y.train)),
 f.discrep.mean = NULL,
 f.discrep.sd = NULL,
+f.prior.info = NULL,
 fmean=mean(y.train),
 overallsd = NULL,
 overallnu= NULL,
@@ -182,7 +183,7 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 
 #Set mix discrepancy to FALSE if we use a different model
 fdiscrepancy = FALSE
-
+fprior = FALSE
 if(modeltype==MODEL_MIXBART)
 {
   #Center the response
@@ -195,6 +196,10 @@ if(modeltype==MODEL_MIXBART)
   #Check to see if any discrepancy data has been passed into the function -- if so, we will use the discrepancy model mixing
   if(!is.null(f.discrep.mean)&!is.null(f.discrep.sd)){
     fdiscrepancy = TRUE    
+  }
+  if(!is.null(f.prior.info)){
+    fprior = TRUE
+    if(ncol(f.prior.info) != 2 | nrow(f.prior.info)!=ncol(f.train)) stop("Invalid f.prior.info: Required dimensions of num.models x 2")
   }
 }
 #--------------------------------------------------
@@ -244,7 +249,13 @@ if(modeltype==MODEL_MIXBART){
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
   beta0=0
 }
-  
+
+if(modeltype==MODEL_MIXBART & fdiscrepancy){
+  #tau = 1/(sqrt(m)*k)
+  #tau = 1/(2*sqrt(m)*k)
+  tau = 1/(sqrt(m)*k)
+  beta0 = 1/m
+}  
 
 #--------------------------------------------------
 overalllambda = overallsd^2
@@ -333,6 +344,7 @@ chgvroot="chgv"
 froot="f"
 fdmroot="fdm"
 fdsroot="fds"
+fproot="fpr"
 xiroot="xi"
 folder=tempdir(check=TRUE)
 if(!dir.exists(folder)) dir.create(folder)
@@ -345,7 +357,7 @@ fout=file(paste(folder,"/config",sep=""),"w")
 writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
-            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fdmroot),paste(fdsroot),paste(fdiscrepancy),
+            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fdmroot),paste(fdsroot),paste(fdiscrepancy),paste(fproot),paste(fprior), 
             paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
             paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
@@ -384,6 +396,9 @@ if(modeltype == MODEL_MIXBART){
     for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(folder,"/",fdsroot,i,sep=""))
   }
   
+  if(fprior){
+    write(f.prior.info,file=paste(folder,"/",fproot,sep=""))
+  }
 }
 
 if(modeltype==MODEL_MERCK_TRUNCATED)

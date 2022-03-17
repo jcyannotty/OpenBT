@@ -334,6 +334,7 @@
     }
     
     //Save the terminal node draws for the 1st iteration on each root
+    
     for(size_t l = 0; l<k; l++){
         std::ofstream omf(folder + modelname + ".tnp" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
         theta_draw = theta_list[l];
@@ -344,6 +345,7 @@
         }
         omf.close();
     }
+    
 
     if(mpirank==0) cout << " done." << endl;
 
