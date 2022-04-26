@@ -141,6 +141,7 @@ void makefinfo(size_t k, int n, double *f, finfo &fi);
 void matrix_to_array(Eigen::MatrixXd &M, double *b);
 void vector_to_array(Eigen::VectorXd &V, double *b);
 void array_to_matrix(Eigen::MatrixXd &M, double *b);
+void array_to_vector(Eigen::VectorXd &V, double *b);
 
 //--------------------------------------------------
 //Helper Functions for tree models with vector parameters & model mixing 

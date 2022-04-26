@@ -243,8 +243,9 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 }
 
 if(modeltype==MODEL_MIXBART){
-  tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
-  beta0 = 0
+  #tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
+  tau =  (1)/(2*sqrt(m)*k)
+  beta0 = 1/(2*m)
 }else{
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
   beta0=0
@@ -253,7 +254,7 @@ if(modeltype==MODEL_MIXBART){
 if(modeltype==MODEL_MIXBART & fdiscrepancy){
   #tau = 1/(sqrt(m)*k)
   #tau = 1/(2*sqrt(m)*k)
-  tau = 1/(sqrt(m)*k)
+  tau = 1/(2*(m)*k)
   beta0 = 1/m
 }  
 
@@ -652,18 +653,18 @@ if(fit$modeltype==MODEL_PROBIT || fit$modeltype==MODEL_MODIFIEDPROBIT)
    res$p.upper=apply(res$pdraws,2,quantile,q.upper)
 }
 
-#Get model mixing results
+#Get model mixing results -- using only a constant variance -- change later to match with HBART
 if(fit$modeltype==MODEL_MIXBART){
   res$mmean=apply(res$mdraws,2,mean)
   res$msd=apply(res$mdraws,2,sd)
   res$m.5=apply(res$mdraws,2,quantile,0.5)
   res$m.lower=apply(res$mdraws,2,quantile,q.lower)
   res$m.upper=apply(res$mdraws,2,quantile,q.upper)
-  res$smean=NULL
-  res$ssd=NULL
-  res$s.5=NULL
-  res$s.lower=NULL
-  res$s.upper=NULL
+  res$smean=apply(res$sdraws,2,mean)
+  res$ssd=apply(res$sdraws,2,sd)
+  res$s.5=apply(res$sdraws,2,median)
+  res$s.lower=apply(res$sdraws,2,quantile,q.lower)
+  res$s.upper=apply(res$sdraws,2,quantile,q.lower)
   res$pdraws=NULL
   res$pmean=NULL
   res$psd=NULL

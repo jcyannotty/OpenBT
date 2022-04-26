@@ -210,8 +210,10 @@ int main(int argc, char* argv[])
    if(probchvh<0) doperth=false;
    
    //summary statistics yes/no
-   bool summarystats;
-   conf >> summarystats;
+   bool summarystats = false;
+   std::string summarystats_str;
+   conf >> summarystats_str;
+   if(summarystats_str=="TRUE"){ summarystats = true; }
    conf.close();
 
    //folder
@@ -989,8 +991,6 @@ return 0;
          probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
          &chgv  //initialize the change of variable correlation matrix.
          );
-   //Set sigma for model mixing to be prior mean -- overrides the definition from reading in s data, which is not needed 
-   //for(size_t i=0;i<di.n;i++){ if(overallnu>2) {sig[i]=overalllambda*(overallnu)/(overallnu-2);}else{sig[i]=1.0;}}
    
    //Set prior information
    if(mpirank==0){
@@ -1015,11 +1015,8 @@ return 0;
    std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
-   //std::vector<double> osig(nd);
+   std::vector<double> osig(nd,1);
    brtMethodWrapper faxb(&brt::f,axb);
-
-   //std::ofstream osf(folder + modelname + ".sigpost");
-   //osf.close();
 
    #ifdef _OPENMPI
    double tstart=0.0,tend=0.0;
@@ -1082,14 +1079,9 @@ return 0;
    }
 
    //save variance to vector form -- remove later
-   /*
    if(mpirank == 0){
-      //Write sigma values to file
-      osf.open(folder + modelname + ".sigpost", std::ios_base::app);
-      osf << axb.getsigma() << endl;
-      osf.close();
+      osig.at(i) = axb.getsigma();  
    }
-   */
    
 }
 if(mpirank == 1){axb.pr_vec();}
@@ -1134,6 +1126,10 @@ if(mpirank == 1){axb.pr_vec();}
       for(size_t i=0;i<e_otheta->size();i++) omf << std::scientific << e_otheta->at(i) << endl;
       omf.close();
 
+      //Write standard deviation -- sigma -- files
+      std::ofstream osf(folder + modelname + ".sdraws");
+      for(size_t i=0;i<osig.size();i++) osf << osig.at(i) << endl;
+      osf.close();
       cout << " done." << endl;
    }
    
@@ -1148,10 +1144,10 @@ if(mpirank == 1){axb.pr_vec();}
 
       axb.getstats(&varcount[0],&tavgd,&tmaxd,&tmind);
       tavgd/=(double)(nd*m);
-      cout << "Average tree depth (ambm): " << tavgd << endl;
-      cout << "Maximum tree depth (ambm): " << tmaxd << endl;
-      cout << "Minimum tree depth (ambm): " << tmind << endl;
-      cout << "Vartivity summary (ambm)" << endl;
+      cout << "Average tree depth (amxbrt): " << tavgd << endl;
+      cout << "Maximum tree depth (amxbrt): " << tmaxd << endl;
+      cout << "Minimum tree depth (amxbrt): " << tmind << endl;
+      cout << "Vartivity summary (amxbrt)" << endl;
       for(size_t i=0;i<p;i++)
          cout << "Var " << i << ": " << varcount[i] << endl;
 

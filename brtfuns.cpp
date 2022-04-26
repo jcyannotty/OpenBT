@@ -1237,3 +1237,12 @@ void array_to_matrix(Eigen::MatrixXd &M, double *b){
         }
     }
 }
+
+//--------------------------------------------------
+//Convert an std array to an Eigen Matrix (row by row)
+void array_to_vector(Eigen::VectorXd &V, double *b){
+    size_t nrow = V.size();
+    for(size_t i = 0; i<nrow; i++){
+        V(i) = b[i];
+    }
+}

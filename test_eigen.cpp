@@ -127,7 +127,8 @@ int main(){
     C.col(1) = Eigen::Map<Eigen::VectorXd>(cv2.data(),4);
 
     cout << "C = \n" << C << endl; 
-
+    
+    //-------------------------------------------------------------
     //test pass by reference -- can delete later
     double xx = 3.2;
     test_pbr(xx);
@@ -136,6 +137,14 @@ int main(){
     double zz = 6.7;
     yy = &zz;
     cout << *yy << endl;
+
+    //-------------------------------------------------------------
+    //Elementwise vector multiplication
+    vxd v1(3), v2(3), v3(3);
+    v1 << 1,2,3;
+    v2 << 10,20,30;
+    v3 = v1.cwiseProduct(v2);
+    cout << "Elementwise Product for vectors: v3 = " << v3.transpose() << endl;
     /*
     //Important Eigen storage example. Shows ways to work with eigen pointers/references
     Eigen::MatrixXd A(2,2);
