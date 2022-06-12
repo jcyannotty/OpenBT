@@ -74,13 +74,11 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
                 //double b = 0;
                 /*
                 if(betavec(l) >0.5){
-                    //b = 0.5*(1 + 2*(1-betavec(l)));
                     //Prior_Sig_Inv(l,l) = 1/(t2*b*b);
                     Prior_Sig_Inv(l,l) = 1/(t2*(1-betavec(l))*(1-betavec(l)));
                     //Prior_Sig_Inv(l,l) = 1/(t2*pow((1-betavec(l)),0.25));
                 
                 }else{
-                    //b = 0.5*(1 + 2*(betavec(l)));
                     //Prior_Sig_Inv(l,l) = 1/(t2*b*b);
                     Prior_Sig_Inv(l,l) = 1/(t2*betavec(l)*betavec(l));
                     //Prior_Sig_Inv(l,l) = 1/(t2*pow(betavec(l),4));
