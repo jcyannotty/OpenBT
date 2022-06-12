@@ -122,9 +122,10 @@ n_train = 20
 n_test = 300
 s = 0.005 #s = 0.03
 
-set.seed(54321)
+set.seed(321)
 x_train = seq(0.03, 0.5, length = n_train)
 #x_train = runif(n_train,0.03,0.5)
+#x_train = x_train[order(x_train)]
 y_train = fg(x_train) + rnorm(n_train, 0, s)
 
 #Set a grid of test points
@@ -141,8 +142,8 @@ lines(g_grid, fg(g_grid))
 #Define the Model set -- a matrix where each column is an the output evaluated at the train/test pts
 #small_g = c(2,4,6)
 #large_g = c(3,6,9)
-small_g = 2 #Which small-g expansions to use
-large_g = 4 #Which large-g expansions to use
+small_g = c(2,4,6) #Which small-g expansions to use
+large_g = NULL #Which large-g expansions to use
 g_exp = c(small_g, large_g) #Mix both small and large g
 K = length(g_exp) 
 Ks = length(small_g) #Number of small-g models
@@ -186,7 +187,7 @@ x_test = as.matrix(x_test, ncol = 1)
 #Model Mixing with OpenBT 
 fit=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),ntree = 10,ntreeh=1,numcut=300,tc=4,model="mixbart",modelname="physics_model",
            ndpost = 10000, nskip = 1000, nadapt = 5000, adaptevery = 500, printevery = 500,
-           power = 1.0, minnumbot = 3, overallsd = sd(y_train)/sqrt(300), k = 4)
+           power = 1.0, minnumbot = 2, overallsd = 0.01, k = 3)
 
 #Get mixed mean function
 fitp=predict.openbt(fit,x.test = x_test, f.test = f_test,tc=4)
@@ -209,7 +210,7 @@ lines(x_test, fitw$w.upper[,1], col = 'red', lty = 'dashed')
 lines(x_test, fitw$w.lower[,1], col = 'red', lty = 'dashed')
 lines(x_test, fitw$w.upper[,2], col = 'blue', lty = 'dashed')
 lines(x_test, fitw$w.lower[,2], col = 'blue', lty = 'dashed')
-#points(x_test, fitw$wmean[,3], col = 'green', pch = 16)
+#lines(x_test, fitw$wmean[,3], col = 'green', pch = 16)
 #lines(x_test, fitw$w.upper[,3], col = 'green', lty = 'dashed')
 #lines(x_test, fitw$w.lower[,3], col = 'green', lty = 'dashed')
 
@@ -245,10 +246,10 @@ tnp_trace = list(mu1_matrix = mu1_matrix, mu2_matrix = mu2_matrix)
 
 #Save results
 fitp_out = list(mmean = fitp$mmean,m.lower = fitp$m.lower, m.upper = fitp$m.upper)
-fitw_out = list(wmean = fitw$wmean,w.lower = fitw$w.lower, w.upper = fitw$w.upper, wts_trace = wts_trace)
+fitw_out = list(wmean = fitw$wmean,w.lower = fitw$w.lower, w.upper = fitw$w.upper)
 fittpn_out =  tnp_trace
-#saveRDS(fitp_out, "/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Stationary Prior April 2022/sg2lg4_2bp_0412.rds")
-#saveRDS(fitw_out, "/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Stationary Prior April 2022/sg2lg4_2bw_0412.rds")
+#saveRDS(fitp_out, "/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Stationary Prior April 2022/Stationary Prior 04-26/sg246_1p_0426.rds")
+#saveRDS(fitw_out, "/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Stationary Prior April 2022/Stationary Prior 04-26/sg246_1w_0426.rds")
 #saveRDS(fittpn_out, "/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Stationary BART priors 03-01/sg2sg2_1tnp.rds")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

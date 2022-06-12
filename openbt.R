@@ -219,7 +219,7 @@ if(!is.null(xicuts)) # use xicuts
    }
 }
 
-if(modeltype==MODEL_MIXBART){
+if(is.null(xicuts) & modeltype==MODEL_MIXBART){
   xi=vector("list",p)
   minx_temp=apply(x,1,min)
   maxx_temp=apply(x,1,max)
