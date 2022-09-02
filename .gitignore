@@ -36,3 +36,9 @@
 
 # Rhistory
 .Rhistory
+
+# Other folders
+.deps/*
+.libs/*
+.vscode/*
+autom4te.cache/*
