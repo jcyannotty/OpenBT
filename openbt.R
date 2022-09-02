@@ -243,7 +243,6 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 }
 
 if(modeltype==MODEL_MIXBART){
-  #tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
   tau =  (1)/(2*sqrt(m)*k)
   beta0 = 1/(2*m)
 }else{

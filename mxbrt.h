@@ -16,11 +16,11 @@
 class mxsinfo : public sinfo{
     public:
         //Constructors:
-        mxsinfo():sinfo(),k(2),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(2)), sumyyw(0.0), sump(vxd::Zero(2)), sump2(vxd::Zero(2)) {} //Initialize mxinfo with default settings
-        mxsinfo(size_t ik):sinfo(),k(ik),sumffw(mxd::Zero(ik,ik)), sumfyw(vxd::Zero(ik)), sumyyw(0.0), sump(vxd::Zero(ik)), sump2(vxd::Zero(ik)) {} //Initialize mxinfo with number of columns in fi matrix
-        mxsinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(vxd::Zero(ik)),sump2(vxd::Zero(ik)) {} //Construct mxinfo instance with values -- need to use references 
-        mxsinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy, vxd sp, vxd sp2):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(sp), sump2(sp2) {} //Construct mxinfo instance with values with input for discrepancy -- need to use references
-        mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw), sump(is.sump), sump2(is.sump2){} //Input object of mxinfro (is) and instantiate new mxinfo 
+        mxsinfo():sinfo(),k(2),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(2)), sumyyw(0.0), sump(vxd::Zero(2)) {} //Initialize mxinfo with default settings
+        mxsinfo(size_t ik):sinfo(),k(ik),sumffw(mxd::Zero(ik,ik)), sumfyw(vxd::Zero(ik)), sumyyw(0.0), sump(vxd::Zero(ik)) {} //Initialize mxinfo with number of columns in fi matrix
+        mxsinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(vxd::Zero(ik)) {} //Construct mxinfo instance with values -- need to use references 
+        mxsinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy, vxd sp, vxd sp2):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(sp) {} //Construct mxinfo instance with values with input for discrepancy -- need to use references
+        mxsinfo(const mxsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw), sump(is.sump) {} //Input object of mxinfro (is) and instantiate new mxinfo 
 
         virtual ~mxsinfo() {} 
 
@@ -29,8 +29,7 @@ class mxsinfo : public sinfo{
         Eigen::MatrixXd sumffw; //Computes F^t*F/sig2 by summing over fi*fi^t for the observations in each tnode (fi = vector of dimension K)
         Eigen::VectorXd sumfyw; //Computes F^t*Y/sig2 by summing over fi*yi for observations in each tnode (fi = vector and yi = scalar) 
         double sumyyw; //computes Y^t*Y/sig2 by summing over yi*yi for observations in each tnode
-        Eigen::VectorXd sump; //Computes standardized prior precision using the discrepancy information
-        Eigen::VectorXd sump2; //Computes standardized prior precision squared using the discrepancy information 
+        Eigen::VectorXd sump; //Computes standardized prior precision using the discrepancy information 
 
         //Define Operators -- override from sinfo class
         //Compound addition operator - used when adding sufficient statistics
@@ -41,7 +40,6 @@ class mxsinfo : public sinfo{
             sumfyw += mrhs.sumfyw;
             sumyyw += mrhs.sumyyw;
             sump += mrhs.sump;
-            sump2 += mrhs.sump2;
             return *this; //returning *this should indicate that we return updated sumffw and sumfyw while also using a pointer
         }
 
@@ -54,7 +52,6 @@ class mxsinfo : public sinfo{
                 this->sumfyw = mrhs.sumfyw;
                 this->sumyyw = mrhs.sumyyw;
                 this->sump = mrhs.sump;
-                this->sump2 = mrhs.sump2;
                 this->k = mrhs.k; 
                 return *this; 
             }
@@ -74,7 +71,6 @@ class mxsinfo : public sinfo{
                 this->sumfyw = vxd::Zero(ik);
                 this->sumffw = mxd::Zero(ik,ik);
                 this->sump = vxd::Zero(ik);
-                this->sump2 = vxd::Zero(ik);
                 this->k = ik;    
             }  
         }

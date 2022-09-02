@@ -46,7 +46,6 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     mxd I(k,k), Sig_inv(k,k), Sig(k,k), Ev(k,k), E(k,k), Sp(k,k), Prior_Sig_Inv(k,k);
     vxd muhat(k), evals(k), stdnorm(k), betavec(k), tau2_mean(k);
     double t2 = ci.tau*ci.tau;
-    //double sig2 = (*ci.sigma)*(*ci.sigma); //error variance
     
     I = Eigen::MatrixXd::Identity(k,k); //Set identity matrix
     betavec = ci.beta0*Eigen::VectorXd::Ones(k); //Set the prior mean vector
@@ -57,37 +56,16 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     }else{
         //Assuming the same prior settings for tau2
         if(fdiscrep){
-            //Prior_Sig_Inv = (1.0/(ci.tau*ci.tau))*mxsi.sump; //Original Non-Stationary Prior  
-            Prior_Sig_Inv = mxd::Zero(k,k);
-            betavec = vxd::Zero(k);
-
-            //Compute beta and tau2 means (before scaling by 1/m) 
+            // Compute beta vector and scale by 1/m (stored in c1.beta0) 
             betavec = mxsi.sump/mxsi.n;
-            //tau2_mean = mxsi.sump2/mxsi.n;
-         
-            for(size_t l=0;l<k;l++){
-                Prior_Sig_Inv(l,l) = 1/(t2);
-                //betavec(l) = 1/mxsi.sump(l);
-                //Prior_Sig_Inv(l,l) = 1/(t2*tau2_mean(l));
-                //Prior_Sig_Inv(l,l) = 1/(t2*betavec(l)*betavec(l));
-                //Prior_Sig_Inv(l,l) = (1/t2)*(1/(1+2*abs(betavec(l)-0.5)));
-                //double b = 0;
-                /*
-                if(betavec(l) >0.5){
-                    //Prior_Sig_Inv(l,l) = 1/(t2*b*b);
-                    Prior_Sig_Inv(l,l) = 1/(t2*(1-betavec(l))*(1-betavec(l)));
-                    //Prior_Sig_Inv(l,l) = 1/(t2*pow((1-betavec(l)),0.25));
-                
-                }else{
-                    //Prior_Sig_Inv(l,l) = 1/(t2*b*b);
-                    Prior_Sig_Inv(l,l) = 1/(t2*betavec(l)*betavec(l));
-                    //Prior_Sig_Inv(l,l) = 1/(t2*pow(betavec(l),4));
-                }
-                */   
-            }
-            betavec = betavec*ci.beta0;            
+            betavec = betavec*ci.beta0;
+
+            // Compute the prior precision using the value of t2
+            Prior_Sig_Inv = 1/(t2)*I;
+            
         }else{
-            Prior_Sig_Inv = (1.0/t2)*I;
+            // Compute the prior precision for stationary prior
+            Prior_Sig_Inv = (1/t2)*I;
         }
     }
     
@@ -117,6 +95,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     for(size_t i=0; i<k;i++){
         stdnorm(i) = gen.normal(); 
     }
+    
     //Print out matrix algebra step-by-step
     /*
     std::cout << "\nAll matrix Calculations:" << std::endl;
@@ -129,8 +108,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     std::cout << "\n Sp = \n" << Sp << std::endl;
     std::cout << "\n thetavec = " << std::endl;
     */
-    //if(rank == 0){mxsi.print_mx();}
-    //mxsi.print_mx();
+        
     //--Generate the MVN vector
     return muhat + Sp*stdnorm;
 }
@@ -140,19 +118,18 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
 double mxbrt::lm(sinfo& si){
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
     mxd Sig_inv(k,k), Sig(k,k), I(k,k);
-    vxd beta(k), beta_t2(k); 
+    vxd betavec(k), beta_t2(k); 
     double t2 = ci.tau*ci.tau;
     double suml; //sum of log determinent 
     double sumq; //sum of quadratic term
     double sumpl; //sum of prior precision log determinant
     
     I = mxd::Identity(k,k); //Set identity matrix
-    //beta = ci.beta0*vxd::Ones(k);
-    
+
     //Compute lm value if no discrepancy is specified and each weight has the same prior
     if(!fdiscrep && !ci.diffpriors){
         //prior mean vector
-        beta = ci.beta0*vxd::Ones(k);
+        betavec = ci.beta0*vxd::Ones(k);
 
         //Get covariance matrix
         Sig = mxsi.sumffw + I/t2; //get Sig matrix
@@ -163,77 +140,26 @@ double mxbrt::lm(sinfo& si){
         suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
 
         //Now work on the exponential terms
-        sumq = mxsi.sumyyw - (mxsi.sumfyw + beta/t2).transpose()*Sig_inv*(mxsi.sumfyw + beta/t2) + k*ci.beta0*ci.beta0/t2;
+        sumq = mxsi.sumyyw - (mxsi.sumfyw + betavec/t2).transpose()*Sig_inv*(mxsi.sumfyw + betavec/t2) + k*ci.beta0*ci.beta0/t2;
 
         //Get sum of prior precision log determinant
         sumpl = k*log(t2);
 
     }else if(fdiscrep && !ci.diffpriors){
-        //Compute lm value if a discrepancy is specified -- OUT OF DATE 
-        /*
-        //Original Non-Stationary Prior Code
-        //prior mean vector
-        beta = ci.beta0*vxd::Zero(k); //vxd::Ones(k)
-        
-        //Prior Variance matrix
-        mxd Prior_Sigma_Inv(k,k);
-        Prior_Sigma_Inv = mxsi.sump/t2;
-
-        //Get covariance matrix
-        Sig = mxsi.sumffw + Prior_Sigma_Inv; //get Sig matrix
-        Sig_inv = Sig.llt().solve(I); //Get Sigma_inv
-        
-        //Compute Log determinent
-        mxd L(Sig.llt().matrixL()); //Cholesky decomp and store the L matrix
-        suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
-
-        //Now work on the exponential terms
-        sumq = mxsi.sumyyw - (mxsi.sumf yw + Prior_Sigma_Inv*beta).transpose()*Sig_inv*(mxsi.sumfyw + Prior_Sigma_Inv*beta) + ci.beta0*ci.beta0*mxsi.sump.trace()/t2;
-
-        //Get sum of prior precision log determinant
-        //sumpl = -mxsi.sump.diagonal().array().log().sum(); //add in k*log(t2) term  
-        sumpl = -Prior_Sigma_Inv.diagonal().array().log().sum();
-        */
         
         //Get prior inverse covariance and mean vector
-        double b = 0;
         vxd tau2_mean(k);
-        mxd Prior_Sigma_Inv(k,k);
-        Prior_Sigma_Inv = mxd::Zero(k,k);
+        mxd Prior_Sig_Inv(k,k);
         
-        //Get beta vector (not scaled by 1/m yet) 
-        beta = mxsi.sump/mxsi.n;
-        //tau2_mean = mxsi.sump2/mxsi.n; average pointwise tau2's 
+        //Get beta vector and scale by 1/m 
+        betavec = mxsi.sump/mxsi.n;
+        betavec = betavec*ci.beta0;
 
-        //Update Prior Precision Matrix
-        for(size_t l=0;l<k;l++){
-            Prior_Sigma_Inv(l,l) = 1/t2;
-            //beta(l) = 1/mxsi.sump(l);
-            //Prior_Sigma_Inv(l,l) = 1/(t2*tau2_mean(l)); //averaging pointwise tau2
-            //Prior_Sigma_Inv(l,l) = 1/(t2*beta(l)*beta(l)); //Linear shrinkage
-            //Prior_Sigma_Inv(l,l) = (1/t2)*(1/(1+2*abs(beta(l)-0.5))); //Changing bart k
-            /*
-            if(beta(l) >0.5){
-                //b = 0.5*(1 + 2*(1-beta(l)));
-                //Prior_Sigma_Inv(l,l) = 1/(t2*b*b);
-                Prior_Sigma_Inv(l,l) = 1/(t2*(1-beta(l))*(1-beta(l)));
-                //Prior_Sigma_Inv(l,l) = 1/(t2*pow((1-beta(l)),0.25));
-                
-            }else{
-                //b = 0.5*(1 + 2*beta(l));
-                //Prior_Sigma_Inv(l,l) = 1/(t2*b*b);
-                Prior_Sigma_Inv(l,l) = 1/(t2*beta(l)*beta(l));
-                //Prior_Sigma_Inv(l,l) = 1/(t2*pow(beta(l),4));
-            }
-            */
-              
-        }
-
-        //Scale by 1/m
-        beta = beta*ci.beta0;
-
-        //Get covariance matrix
-        Sig = mxsi.sumffw + Prior_Sigma_Inv; //get Sig matrix
+        //Get the prior precision
+        Prior_Sig_Inv = (1/t2)*I;
+        
+        //Get posterior covariance matrix (Sig_inv)
+        Sig = mxsi.sumffw + Prior_Sig_Inv; //get Sig matrix
         Sig_inv = Sig.llt().solve(I); //Get Sigma_inv
         
         //Compute Log determinent
@@ -241,16 +167,16 @@ double mxbrt::lm(sinfo& si){
         suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
 
         //Now work on the exponential terms
-        beta_t2 = Prior_Sigma_Inv*beta;
-        sumq = mxsi.sumyyw - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2) + beta.transpose()*beta_t2;
+        beta_t2 = Prior_Sig_Inv*betavec;
+        sumq = mxsi.sumyyw - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2) + betavec.transpose()*beta_t2;
 
         //Get sum of prior precision log determinant
-        sumpl = -Prior_Sigma_Inv.diagonal().array().log().sum(); //The negative appears here because we factor out -0.5 in the final sum       
+        sumpl = -Prior_Sig_Inv.diagonal().array().log().sum(); //The negative appears here because we factor out -0.5 in the final sum       
 
     }else if(ci.diffpriors){
         //No discrpeancy and different priors for weights
         //prior mean vector
-        beta = ci.beta_vec;
+        betavec = ci.beta_vec;
 
         //Get covariance matrix
         Sig = mxsi.sumffw + ci.invtau2_matrix; //get Sig matrix
@@ -261,8 +187,8 @@ double mxbrt::lm(sinfo& si){
         suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
 
         //Now work on the exponential terms
-        beta_t2 = ci.invtau2_matrix*beta; //saves on doing this calculation 3 separate times 
-        sumq = mxsi.sumyyw - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2) + beta.transpose()*beta_t2;
+        beta_t2 = ci.invtau2_matrix*betavec; //saves on doing this calculation 3 separate times 
+        sumq = mxsi.sumyyw - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2) + betavec.transpose()*beta_t2;
 
         //Get sum of prior precision log determinant
         sumpl = -ci.invtau2_matrix.diagonal().array().log().sum();    
@@ -300,26 +226,13 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
         }
         //Constrain pv to the simplex and get pv2 using symmetry about 0.5
         pv = pv/pv.sum();
-        for(size_t l = 0; l<k; l++){
-            //pv2(l) = 1;
-            if(pv(l) < 0.5){
-                //pv2(l) = pv(l)*pv(l);
-                pv2(l) = std::max(pv(l)*pv(l), 0.00000001);
-                //pv2(l) = pow(pv2(l),2);
-            }else{
-                //pv2(l) = (1-pv(l))*(1-pv(l));
-                pv2(l) = std::max((1-pv(l))*(1-pv(l)), 0.00000001); //0.000001
-            }
-        }
         
         //Update sufficient stats
         mxsi.sump+=pv;
-        mxsi.sump2+=pv2;
     }else{
         //Set as 1's by default when no discrepancy is used
         mxsi.sump = vxd::Ones(k);
-        mxsi.sump2 = vxd::Ones(k);
-    }
+}
     
     //Update sufficient stats for nodes
     mxsi.n+=1;
@@ -354,16 +267,11 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
         vector_to_array(tsir.sumfyw, &sumfyw_rarray[0]); //function defined in brtfuns
         
         //Cast the prior precision vectors to arrays - if discrepancy is true
-        double sump_rarray[k], sump_larray[k], sump2_rarray[k], sump2_larray[k];
+        double sump_rarray[k], sump_larray[k];
         if(fdiscrep){
             vector_to_array(tsil.sump, &sump_larray[0]); //function defined in brtfuns
             vector_to_array(tsir.sump, &sump_rarray[0]); //function defined in brtfuns
-            vector_to_array(tsil.sump2, &sump2_larray[0]); //function defined in brtfuns
-            vector_to_array(tsir.sump2, &sump2_rarray[0]); //function defined in brtfuns
         }
-
-        //std::copy(std::begin(tsil.sumfyw.array()), std::end(tsil.sumfyw.array()), std::begin(sumfyw_larray)); //use std functions for vectors
-        //std::copy(std::begin(tsir.sumfyw.array()), std::end(tsir.sumfyw.array()), std::begin(sumfyw_rarray));
          
         for(size_t i=1; i<=(size_t)tc; i++) {
             position=0;
@@ -380,14 +288,10 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
                 //Unpack prior precision if specified
                 MPI_Unpack(buffer,buffer_size,&position,&sump_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sump_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,buffer_size,&position,&sump2_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,buffer_size,&position,&sump2_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD); 
 
                 //convert back to a vector
                 array_to_vector(tsil.sump,&sump_larray[0]);    
                 array_to_vector(tsir.sump,&sump_rarray[0]);
-                array_to_vector(tsil.sump2,&sump2_larray[0]);    
-                array_to_vector(tsir.sump2,&sump2_rarray[0]);   
             }
 
 
@@ -399,19 +303,6 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
             array_to_vector(tsil.sumfyw,&sumfyw_larray[0]);    
             array_to_vector(tsir.sumfyw,&sumfyw_rarray[0]);
             
-            /*
-            //Old code -- replaced by array_to_vector
-            vxd tempsumfywl(k), tempsumfywr(k);
-            tempsumfywl = vxd::Zero(k);
-            tempsumfywr = vxd::Zero(k);
-            for(size_t l=0;l<k;l++){
-                tempsumfywl(l) = sumfyw_larray[l];
-                tempsumfywr(l) = sumfyw_rarray[l];
-            }
-            tsil.sumfyw = tempsumfywl;
-            tsir.sumfyw = tempsumfywr;
-            */
-
             tsil.n=(size_t)ln;
             tsir.n=(size_t)rn;
             msil+=tsil;
@@ -436,12 +327,10 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     vector_to_array(msir.sumfyw, &sumfyw_rarray[0]); //function defined in brtfuns
     
     //Cast vectors for prior precision if specified
-    double sump_rarray[k], sump_larray[k], sump2_rarray[k], sump2_larray[k];
+    double sump_rarray[k], sump_larray[k];
     if(fdiscrep){
         vector_to_array(msil.sump, &sump_larray[0]); //function defined in brtfuns
         vector_to_array(msir.sump, &sump_rarray[0]); //function defined in brtfuns
-        vector_to_array(msil.sump2, &sump2_larray[0]); //function defined in brtfuns
-        vector_to_array(msir.sump2, &sump2_rarray[0]); //function defined in brtfuns
     }
 
     ln=(unsigned int)msil.n;
@@ -457,8 +346,6 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     if(fdiscrep){
         MPI_Pack(&sump_larray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
         MPI_Pack(&sump_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
-        MPI_Pack(&sump2_larray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
-        MPI_Pack(&sump2_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     }
 
     MPI_Send(buffer,buffer_size,MPI_PACKED,0,0,MPI_COMM_WORLD);
@@ -476,12 +363,10 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
     double sumffwvec[k*k*siv.size()]; //An array that contains siv.size() matricies of kXk dimension that are flattened (by row).
     double sumfywvec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension.
     double sumpvec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension that are flattened (by row)
-    double sump2vec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension that are flattened (by row)
 
     std::vector<mxd, Eigen::aligned_allocator<mxd>> sumffwvec_em(siv.size()); //Vector of Eigen Matrixes kXk dim
     std::vector<vxd, Eigen::aligned_allocator<vxd>> sumfywvec_ev(siv.size()); //Vector of Eigen Vectors k dim
     std::vector<vxd, Eigen::aligned_allocator<vxd>> sumpvec_em(siv.size()); //Vector of Eigen Vectors k dim
-    std::vector<vxd, Eigen::aligned_allocator<vxd>> sump2vec_em(siv.size()); //Vector of Eigen Vectors k dim
 
     for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
         mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
@@ -490,7 +375,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         sumfywvec_ev[i]=mxsi->sumfyw;
         sumffwvec_em[i]=mxsi->sumffw;
         sumpvec_em[i]=mxsi->sump;
-        sump2vec_em[i]=mxsi->sump2;
 
         //Cast the current matrix to an array -- keep in mind to location given the stat for each node is stacked in the same array
         matrix_to_array(sumffwvec_em[i], &sumffwvec[i*k*k]);
@@ -501,16 +385,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         //cast the current prior precision vector to an array
         vector_to_array(sumpvec_em[i], &sumpvec[i*k]);
 
-        //cast the current prior precision squared vector to an array
-        vector_to_array(sump2vec_em[i], &sump2vec[i*k]);
-
-        /*
-        cout << "sumfywvec[i] = " << sumfywvec_ev[i].transpose() << endl;
-        for(size_t l=0; l<k;l++){
-            cout << "sumfywvec array = " << sumfywvec[i*k+l] << ", ";
-        }
-        cout << endl;
-        */
 
     }
 
@@ -527,7 +401,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         double tempsumffwvec[k*k*siv.size()]; //An array that contains siv.size() matricies of kXk dimension that are flattened (by row).
         double tempsumfywvec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension.
         double tempsumpvec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension that are flattened.
-        double tempsump2vec[k*siv.size()]; //An array that contains siv.size() vectors of k dimension that are flattened.
 
         // receive nvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -650,30 +523,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
             MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
             delete[] request;
 
-            //receive sump2, update, and send back
-            for(size_t i=1; i<=(size_t)tc; i++) {
-                MPI_Recv(&tempsump2vec,k*siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-                for(size_t j=0;j<k*siv.size();j++){
-                    sump2vec[j]+=tempsump2vec[j];
-                }
-            }
-            request=new MPI_Request[tc];
-            for(size_t i=1; i<=(size_t)tc; i++) {
-                MPI_Isend(&sump2vec,k*siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
-            }
-            // cast back to mxsi
-            Eigen::VectorXd tempsump2(k); //temp matrix
-            for(size_t i=0;i<siv.size();i++) {
-                mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-                tempsump2 = Eigen::VectorXd::Zero(k); //initialize as zero vector before populating each node's suff stat
-                
-                //cast the specific k elements from the array into the suff stat vector
-                array_to_vector(tempsump2, &sump2vec[i*k]);
-                //std::cout << "tempsump2 = \n" << tempsump2 << std::endl; 
-                mxsi->sump2=tempsump2;
-            }
-            MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
-            delete[] request;    
         }
     }   
     else {
@@ -757,10 +606,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
             delete request;
             MPI_Recv(&sumpvec,k*siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-            //send sump2vec
-            request=new MPI_Request;
-            MPI_Isend(&sump2vec,k*siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
-
             //cast sumpvec back to mxsi
             Eigen::VectorXd tempsump(k); //temp vector
             for(size_t i=0;i<siv.size();i++) {
@@ -773,22 +618,6 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
                 //std::cout << "tempsump["<<i<<"] = \n"<<tempsump<<std::endl;
             }
 
-            //receive and update sump2vec if using discrepancy
-            MPI_Wait(request,MPI_STATUSES_IGNORE);
-            delete request;
-            MPI_Recv(&sump2vec,k*siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-
-            //cast sump2vec back to mxsi
-            Eigen::VectorXd tempsump2(k); //temp vector
-            for(size_t i=0;i<siv.size();i++) {
-                mxsinfo* mxsi=static_cast<mxsinfo*>(siv[i]);
-                tempsump2 = Eigen::VectorXd::Zero(k); //initialize as zero vector before populating each node's suff stat
-                
-                //cast the specific k elements from the array into the suff stat matrix
-                array_to_vector(tempsump2, &sump2vec[i*k]); 
-                mxsi->sump2=tempsump2;
-                //std::cout << "tempsump2["<<i<<"] = \n"<<tempsump2<<std::endl;
-            }
         }
     }
     // cout << "reduced:" << siv[0]->n << " " << siv[1]->n << endl;
