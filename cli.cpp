@@ -1008,6 +1008,56 @@ return 0;
    if(fprior){
       axb.setci(prior_precision, prior_mean);
    }
+
+   //--------------------------------------------------
+   //setup psbrt object
+   psbrt psbm(mh,overalllambda);
+
+   //make di for psbrt object
+   dinfo dips;
+   dips.n=0; dips.p=p; dips.x=NULL; dips.y=NULL; dips.tc=tc;
+   double *r=NULL;
+#ifdef _OPENMPI
+   if(mpirank>0) {
+#endif
+      r = new double[n];
+      for(size_t i=0;i<n;i++) r[i]=sigmav[i];
+      dips.x=&x[0]; dips.y=r; dips.n=n;
+#ifdef _OPENMPI
+   }
+#endif
+
+   double opm=1.0/((double)mh);
+   double nu=2.0*pow(overallnu,opm)/(pow(overallnu,opm)-pow(overallnu-2.0,opm));
+   double lambda=pow(overalllambda,opm);
+
+   //cutpoints
+   psbm.setxi(&xi);    //set the cutpoints for this model object
+   //data objects
+   psbm.setdata(&dips);  //set the data
+   //thread count
+   psbm.settc(tc-1); 
+   //mpi rank
+#ifdef _OPENMPI
+   psbm.setmpirank(mpirank);  //set the rank when using MPI.
+   psbm.setmpicvrange(lwr,upr); //range of variables each slave node will update in MPI change-of-var proposals.
+#endif
+   //tree prior
+   psbm.settp(alphah, //the alpha parameter in the tree depth penalty prior
+         mybetah     //the beta parameter in the tree depth penalty prior
+         );
+   psbm.setmi(
+         pbdh,  //probability of birth/death
+         pbh,  //probability of birth
+         minnumboth,    //minimum number of observations in a bottom node
+         doperth, //do perturb/change variable proposal?
+         stepwperth,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
+         probchvh,  //probability of doing a change of variable proposal.  perturb prob=1-this.
+         &chgv  //initialize the change of variable correlation matrix.
+         );
+   psbm.setci(nu,lambda);
+
+
    //--------------------------------------------------
    //run mcmc
    std::vector<int> onn(nd*m,1);
@@ -1015,8 +1065,16 @@ return 0;
    std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
-   std::vector<double> osig(nd,1);
+   //std::vector<double> osig(nd,1);
+
+   std::vector<int> snn(nd*mh,1);
+   std::vector<std::vector<int> > sid(nd*mh, std::vector<int>(1));
+   std::vector<std::vector<int> > svar(nd*mh, std::vector<int>(1));
+   std::vector<std::vector<int> > sc(nd*mh, std::vector<int>(1));
+   std::vector<std::vector<double> > stheta(nd*mh, std::vector<double>(1));
+
    brtMethodWrapper faxb(&brt::f,axb);
+   brtMethodWrapper fpsbm(&brt::f,psbm);
 
    #ifdef _OPENMPI
    double tstart=0.0,tend=0.0;
@@ -1034,14 +1092,28 @@ return 0;
       axb.drawvec(gen);
 #endif
 
+      // Update the which are fed into resiudals the variance model
+      dips = di;
+      dips -= faxb;
+      if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+#ifdef _OPENMPI
+      if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
+#else
+      psbm.draw(gen);
+#endif
+      disig = fpsbm;
+      if((i+1)%adaptevery==0 && mpirank==0) psbm.adapt();
+/*
 #ifdef _OPENMPI
       axb.drawsigma(gen); 
 #else
       axb.drawsigma(gen); 
 #endif
-      if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+*/
+ 
    }
-   
+
+   // Enter the burn-in stage    
    for(size_t i=0;i<burn;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
 #ifdef _OPENMPI
@@ -1049,23 +1121,45 @@ return 0;
 #else
       axb.drawvec(gen);
 #endif
+      // Update the which are fed into resiudals the variance model
+      dips = di;
+      dips -= faxb;
+      if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+      // Draw sigma
+#ifdef _OPENMPI
+      if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
+#else
+      psbm.draw(gen);
+#endif
+      disig = fpsbm;
+      if((i+1)%adaptevery==0 && mpirank==0) psbm.adapt(); 
+/*
 #ifdef _OPENMPI
       axb.drawsigma(gen);
 #else
       axb.drawsigma(gen);
 #endif
+*/
    }
    if(summarystats) {
       axb.setstats(true);
+      psbm.setstats(true);
    }
    for(size_t i=0;i<nd;i++) {
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
-      //if(mpirank>0) {for(size_t j=0;j<n;j++) ofit[j] = ofit[j] + axb.f(j)/nd;} //Get fitted values on each slave -- remove later
 #else
       axb.drawvec(gen);
 #endif
+#ifdef _OPENMPI
+      if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
+#else
+      psbm.draw(gen);
+#endif
+      disig = fpsbm;
+      //if(mpirank ==1 && (i%printevery)==0){cout << axb.getsigma() << endl;}
+/*
 #ifdef _OPENMPI
       axb.drawsigma(gen);
       if(mpirank ==0 && (i%printevery)==0){cout << axb.getsigma() << endl;}
@@ -1073,16 +1167,19 @@ return 0;
 #else
       axb.drawsigma(gen);
 #endif
+*/
    //save tree to vec format
    if(mpirank==0) {
-      axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta);  
+      axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
+      psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
    }
 
    //save variance to vector form -- remove later
+   /*
    if(mpirank == 0){
       osig.at(i) = axb.getsigma();  
    }
-   
+   */
 }
 if(mpirank == 1){axb.pr_vec();}
 
@@ -1102,6 +1199,11 @@ if(mpirank == 1){axb.pr_vec();}
       std::vector<int>* e_ovar=new std::vector<int>;
       std::vector<int>* e_oc=new std::vector<int>;
       std::vector<double>* e_otheta=new std::vector<double>;
+      std::vector<int>* e_sts=new std::vector<int>(nd*mh);
+      std::vector<int>* e_sid=new std::vector<int>;
+      std::vector<int>* e_svar=new std::vector<int>;
+      std::vector<int>* e_sc=new std::vector<int>;
+      std::vector<double>* e_stheta=new std::vector<double>;
       for(size_t i=0;i<nd;i++)
          for(size_t j=0;j<m;j++) {
             e_ots->at(i*m+j)=static_cast<int>(oid[i*m+j].size());
@@ -1110,10 +1212,19 @@ if(mpirank == 1){axb.pr_vec();}
             e_oc->insert(e_oc->end(),oc[i*m+j].begin(),oc[i*m+j].end());
             e_otheta->insert(e_otheta->end(),otheta[i*m+j].begin(),otheta[i*m+j].end());
          }
+      for(size_t i=0;i<nd;i++)
+         for(size_t j=0;j<mh;j++) {
+            e_sts->at(i*mh+j)=static_cast<int>(sid[i*mh+j].size());
+            e_sid->insert(e_sid->end(),sid[i*mh+j].begin(),sid[i*mh+j].end());
+            e_svar->insert(e_svar->end(),svar[i*mh+j].begin(),svar[i*mh+j].end());
+            e_sc->insert(e_sc->end(),sc[i*mh+j].begin(),sc[i*mh+j].end());
+            e_stheta->insert(e_stheta->end(),stheta[i*mh+j].begin(),stheta[i*mh+j].end());
+         }
       //write out to file
       std::ofstream omf(folder + modelname + ".fit");
       omf << nd << endl;
       omf << m << endl;
+      omf << mh << endl;
       omf << e_ots->size() << endl;
       for(size_t i=0;i<e_ots->size();i++) omf << e_ots->at(i) << endl;
       omf << e_oid->size() << endl;
@@ -1124,13 +1235,27 @@ if(mpirank == 1){axb.pr_vec();}
       for(size_t i=0;i<e_oc->size();i++) omf << e_oc->at(i) << endl;
       omf << e_otheta->size() << endl;
       for(size_t i=0;i<e_otheta->size();i++) omf << std::scientific << e_otheta->at(i) << endl;
+      
+      omf << e_sts->size() << endl;
+      for(size_t i=0;i<e_sts->size();i++) omf << e_sts->at(i) << endl;
+      omf << e_sid->size() << endl;
+      for(size_t i=0;i<e_sid->size();i++) omf << e_sid->at(i) << endl;
+      omf << e_svar->size() << endl;
+      for(size_t i=0;i<e_svar->size();i++) omf << e_svar->at(i) << endl;
+      omf << e_sc->size() << endl;
+      for(size_t i=0;i<e_sc->size();i++) omf << e_sc->at(i) << endl;
+      omf << e_stheta->size() << endl;
+      for(size_t i=0;i<e_stheta->size();i++) omf << std::scientific << e_stheta->at(i) << endl;
+      
       omf.close();
 
       //Write standard deviation -- sigma -- files
+      /*
       std::ofstream osf(folder + modelname + ".sdraws");
       for(size_t i=0;i<osig.size();i++) osf << osig.at(i) << endl;
       osf.close();
       cout << " done." << endl;
+      */
    }
    
    // summary statistics

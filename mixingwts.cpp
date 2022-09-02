@@ -198,16 +198,19 @@
     #ifndef SILENT
     if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
     #endif
-    size_t ind,im;
+    size_t ind,im,imh;
     std::ifstream imf(folder + modelname + ".fit");
     imf >> ind;
     imf >> im;
+    imf >> imh;
     #ifdef _OPENMPI
     if(nd!=ind) { cout << "Error loading posterior trees"<< "nd = " << nd << " -- ind = " << ind << endl; MPI_Finalize(); return 0; }
     if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; MPI_Finalize(); return 0; }
+    if(mh!=imh) { cout << "Error loading posterior trees" << "mh = " << m << " -- imh = " << imh<< endl; MPI_Finalize(); return 0; }
     #else
     if(nd!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; return 0; }
     if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; return 0; }
+    if(mh!=imh) { cout << "Error loading posterior trees" << "mh = " << mh << " -- imh = " << imh<< endl; return 0; }
     #endif
 
     size_t temp=0;
@@ -247,14 +250,14 @@
     mxd wts_draw(nd,np); //Eigen matrix to hold posterior draws for each model weight -- used when writing to the file for ease of notation
     std::vector<mxd, Eigen::aligned_allocator<mxd>> wts_list(k); //An std vector of dim k -- each element is an nd X np eigen matrix
 
-    mxd theta_iter(k,m); //Eigen matrix to store the terminal node parameters at each iteration for the first obs on the root -- will be reset to zero prior to running get wts method  
-    mxd theta_draw(nd,m); //Eigen matrix to hold posterior draws for each terminal node for first obs on root -- used when writing to the file for ease of notation
-    std::vector<mxd, Eigen::aligned_allocator<mxd>> theta_list(k); //An std vector of dim k -- each element is an nd X m eigen matrix
+    //mxd theta_iter(k,m); //Eigen matrix to store the terminal node parameters at each iteration for the first obs on the root -- will be reset to zero prior to running get wts method  
+    //mxd theta_draw(nd,m); //Eigen matrix to hold posterior draws for each terminal node for first obs on root -- used when writing to the file for ease of notation
+    //std::vector<mxd, Eigen::aligned_allocator<mxd>> theta_list(k); //An std vector of dim k -- each element is an nd X m eigen matrix
 
     //Initialize wts_list -- the vector of eigen matrices which will hold the nd X np weight draws
     for(size_t i=0; i<k; i++){
         wts_list[i] = mxd::Zero(nd,np);
-        theta_list[i] = mxd::Zero(nd,m);
+        //theta_list[i] = mxd::Zero(nd,m);
     }
 
     // Temporary vectors used for loading one model realization at a time.
@@ -304,13 +307,13 @@
         axb.get_mix_wts(&dip, &wts_iter);
         
         //Get terminal node parameters for the 1st pt on the node -- remove later
-        theta_iter = mxd::Zero(k,m);
-        axb.get_mix_theta(&dip, &theta_iter);
+        //theta_iter = mxd::Zero(k,m);
+        //axb.get_mix_theta(&dip, &theta_iter);
         
         //Store these weights into the Vector of Eigen Matrices
         for(size_t j = 0; j<k; j++){
             wts_list[j].row(i) = wts_iter.row(j); //populate the ith row of each wts_list[j] matrix (ith post draw) for model weight j
-            theta_list[j].row(i) = theta_iter.row(j); //populate the ith row of each theta_list[j] matrix (ith post draw) for term node parameter j 
+            //theta_list[j].row(i) = theta_iter.row(j); //populate the ith row of each theta_list[j] matrix (ith post draw) for term node parameter j 
         }
 
     }
@@ -334,7 +337,7 @@
     }
     
     //Save the terminal node draws for the 1st iteration on each root
-    
+    /*
     for(size_t l = 0; l<k; l++){
         std::ofstream omf(folder + modelname + ".tnp" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
         theta_draw = theta_list[l];
@@ -345,7 +348,7 @@
         }
         omf.close();
     }
-    
+    */
 
     if(mpirank==0) cout << " done." << endl;
 

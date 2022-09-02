@@ -486,20 +486,28 @@ if(modeltype!=MODEL_MIXBART){
    axb.setxi(&xi); //set the cutpoints for this model object
    axb.setfi(&fi_test, k); //set the function output for this model object -- main use is to set k 
    if(fdiscrepancy) {axb.setfdelta(&fdeltamean, &fdeltasd);}  //set individual function discrepacnies if provided -- main use is to set fdiscrepancy to TRUE
+   
+   //setup psbrt object
+   psbrt psbm(mh);
+   psbm.setxi(&xi); //set the cutpoints for this model object
+   
    //load from file
 #ifndef SILENT
    if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
 #endif
-   size_t ind,im;
+   size_t ind,im,imh;
    std::ifstream imf(folder + modelname + ".fit");
    imf >> ind;
    imf >> im;
+   imf >> imh;
 #ifdef _OPENMPI
    if(nd!=ind) { cout << "Error loading posterior trees"<< "nd = " << nd << " -- ind = " << ind << endl; MPI_Finalize(); return 0; }
    if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; MPI_Finalize(); return 0; }
+   if(mh!=imh) { cout << "Error loading posterior trees"  << endl; MPI_Finalize(); return 0; }
 #else
    if(nd!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; return 0; }
    if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; return 0; }
+   if(mh!=imh) { cout << "Error loading posterior trees"  << endl; return 0; }
 #endif
 
    size_t temp=0;
@@ -527,10 +535,36 @@ if(modeltype!=MODEL_MIXBART){
    std::vector<double> e_otheta(temp);
    for(size_t i=0;i<temp;i++) imf >> std::scientific >> e_otheta.at(i);
 
+   temp=0;
+   imf >> temp;
+   std::vector<int> e_sts(temp);
+   for(size_t i=0;i<temp;i++) imf >> e_sts.at(i);
+
+   temp=0;
+   imf >> temp;
+   std::vector<int> e_sid(temp);
+   for(size_t i=0;i<temp;i++) imf >> e_sid.at(i);
+
+   temp=0;
+   imf >> temp;
+   std::vector<int> e_svar(temp);
+   for(size_t i=0;i<temp;i++) imf >> e_svar.at(i);
+
+   temp=0;
+   imf >> temp;
+   std::vector<int> e_sc(temp);
+   for(size_t i=0;i<temp;i++) imf >> e_sc.at(i);
+
+   temp=0;
+   imf >> temp;
+   std::vector<double> e_stheta(temp);
+   for(size_t i=0;i<temp;i++) imf >> std::scientific >> e_stheta.at(i);
+
    imf.close();
 
    //objects where we'll store the realizations
    std::vector<std::vector<double> > tedraw(nd,std::vector<double>(np));
+   std::vector<std::vector<double> > tedrawh(nd,std::vector<double>(np));
    std::vector<std::vector<double> > tedrawp(nd,std::vector<double>(np));
    double *fp = new double[np];
    dinfo dip;
@@ -542,7 +576,13 @@ if(modeltype!=MODEL_MIXBART){
    std::vector<std::vector<int> > ov(m, std::vector<int>(1));
    std::vector<std::vector<int> > oc(m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(m, std::vector<double>(1));
-   
+   std::vector<int> snn(mh,1);
+   std::vector<std::vector<int> > sid(mh, std::vector<int>(1));
+   std::vector<std::vector<int> > sv(mh, std::vector<int>(1));
+   std::vector<std::vector<int> > sc(mh, std::vector<int>(1));
+   std::vector<std::vector<double> > stheta(mh, std::vector<double>(1));
+
+
    // Draw realizations of the posterior predictive.
    size_t curdx=0;
    size_t cumdx=0;
@@ -587,6 +627,35 @@ if(modeltype!=MODEL_MIXBART){
       axb.predict_mix(&dip, &fi_test);
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
    }
+
+      // Variance trees second
+   if(mpirank==0) cout << "Drawing sd response from posterior predictive" << endl;
+   cumdx=0;
+   curdx=0;
+   for(size_t i=0;i<nd;i++) {
+      curdx=0;
+      for(size_t j=0;j<mh;j++) {
+         snn[j]=e_sts.at(i*mh+j);
+         sid[j].resize(snn[j]);
+         sv[j].resize(snn[j]);
+         sc[j].resize(snn[j]);
+         stheta[j].resize(snn[j]);
+         for(size_t k=0;k< (size_t)snn[j];k++) {
+            sid[j][k]=e_sid.at(cumdx+curdx+k);
+            sv[j][k]=e_svar.at(cumdx+curdx+k);
+            sc[j][k]=e_sc.at(cumdx+curdx+k);
+            stheta[j][k]=e_stheta.at(cumdx+curdx+k);
+         }
+         curdx+=(size_t)snn[j];
+      }
+      cumdx+=curdx;
+
+      psbm.loadtree(0,mh,snn,sid,sv,sc,stheta);
+      // draw realization
+      psbm.predict(&dip);
+      for(size_t j=0;j<np;j++) tedrawh[i][j] = fp[j];
+   }
+
    #ifdef _OPENMPI
    if(mpirank==0) {
       tend=MPI_Wtime();
@@ -602,6 +671,14 @@ if(modeltype!=MODEL_MIXBART){
       omf << endl;
    }
    omf.close();
+
+   std::ofstream smf(folder + modelname + ".sdraws" + std::to_string(mpirank));
+   for(size_t i=0;i<nd;i++) {
+      for(size_t j=0;j<np;j++)
+         smf << std::scientific << tedrawh[i][j] << " ";
+      smf << endl;
+   }
+   smf.close();
 
    if(mpirank==0) cout << " done." << endl;
 
