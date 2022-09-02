@@ -1,3 +1,13 @@
+# First three commands are used in combination to ignore files without extensions
+# Ignore all 
+*
+
+# Unignore all with extensions
+!*.*
+
+# Unignore all directories
+!*/
+
 # Prerequisites
 *.d
 
