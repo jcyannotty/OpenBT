@@ -12,33 +12,31 @@ from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 # Define Small-g expansion terms -- using coefs and Q(x)
 def fsg_terms(x,k):
     #Get the coefficients -- only even coefficients are non-zero
+    # Get q(x) and yref(x)
     if k % 2 == 0:
-        # sk = np.sqrt(2)*scipy.special.gamma(k + 1/2)*(-4)**(k/2)/math.factorial(k/2)
-        cx = scipy.special.gamma(k + 1/2)*(-4*x)**(k/2)/math.factorial(k/2)
+        sk = np.sqrt(2)*scipy.special.gamma(k + 1/2)*(-4)**(k/2)/math.factorial(k/2)
+        qx = x
+        yref = x*math.factorial(k/2 + 2)/np.sqrt(1-x**2)
     else:
-        sk = 0 
-        cx = 0
-    # Multiply the factor of x^k
-    #ck = sk*(x**k)
-    
-    qx = x
-    yref = np.sqrt(2)
-    tx = yref*cx*qx**(k/2)
-    out = {'cx':cx, 'qx':qx,'yref':yref,'term':tx}
+        sk = 0
+        qx = x
+        yref = 0
+    # Get the polynomial term
+    tx = sk*x**k
+    out = {'tx':tx,'cx':sk,'qx':qx,'yref':yref}
     return out
 
 # Define Large-g expansion terms -- using coefs and Q(x)
 def flg_terms(x,k):
     #Get the coefficients
-    # lk = scipy.special.gamma(k/2 + 0.25)*(-0.5)**(k)/(2*math.factorial(k))
+    lk = scipy.special.gamma(k/2 + 0.25)*(-0.5)**(k)/(2*math.factorial(k))
   
     #Get the expansion coef, q, and term
-    #ck = lk*x**(-k)/np.sqrt(x)
-    cx = scipy.special.gamma(k/2 + 0.25)*((-1)**k)*(x)**(-2*k)/(2*math.factorial(k))
-    yref = 1/np.sqrt(x)
-    qx = 0.5*x
-    tx = yref*cx*qx**k
-    out = {'cx':cx, 'qx':qx,'yref':yref,'term':tx}
+    tx = lk*x**(-k)/np.sqrt(x)
+    yref = (1/(math.factorial(k+1)*x**(k+1.5)))*(0.75/0.5**(2*k+2))
+    qx = 0.5
+    
+    out = {'tx':tx, 'cx':lk, 'qx':qx, 'yref':yref}
     return out
 
 
@@ -48,30 +46,22 @@ def get_terms(x_list,k, model = 'sg'):
     coef_list = []
     qx_list = []
     yref_list = []
-    if model == 'sg':
-        for x in x_list:
+    for x in x_list:
+        if model == 'sg':
             res = fsg_terms(x,k)
-            tx = res['term']
-            cx = res['cx'] 
-            qx = res['qx']
-            yref = res['yref']
-            term_list.append(tx)
-            coef_list.append(cx)
-            qx_list.append(qx)
-            yref_list.append(yref)
-    elif model == 'lg':
-        for x in x_list:
-            res = flg_terms(x,k) 
-            tx = res['term']
-            cx = res['cx']
-            qx = res['qx']
-            yref = res['yref'] 
-            term_list.append(tx)
-            coef_list.append(cx)
-            qx_list.append(qx)
-            yref_list.append(yref)
-    else:
-        raise ValueError('Wrong model specified. Valid arguments are either sg or lg.') 
+        elif model == 'lg':
+            res = flg_terms(x,k)
+        else:
+            raise ValueError('Wrong model specified. Valid arguments are either sg or lg.') 
+        tx = res['tx']
+        cx = res['cx'] 
+        qx = res['qx']
+        yref = res['yref']
+        term_list.append(tx)
+        coef_list.append(cx)
+        qx_list.append(qx)
+        yref_list.append(yref)
+      
     out = {'term_list':term_list, 'coef_list':coef_list, 'qx_list':qx_list, 'yref_list':yref_list}
     return out
 
@@ -98,62 +88,6 @@ def get_exp(x_list,k, model = 'sg'):
             ypred_df.iloc[:,i] = term_df.iloc[:,i]
     out = {'coef_df':coef_df, 'term_df':term_df, 'ypred_df':ypred_df, 'qx_df':qx_df,'yref_df':yref_df}
     return out 
-
-# Posterior Predictions for the EFT model given the finite order expansion evaluations
-def predict_eft(fit_obj, x_train, x_test, k, model = 'sg'):
-    # Sample sizes
-    ntrain = np.array(x_train).size
-    ntest = np.array(x_test).size
-    
-    # Covaraince matrix between vectors
-    R11 = fit1.cov(x_train)
-    R21 = fit1.cov(x_test, x_train)
-    R12 = fit1.cov(x_train, x_test)
-    R22 = fit1.cov(x_test, x_test)
-
-    # Get the expansion info 
-    x_train_list = list(chain(*x_train.tolist()))
-    exp_train = get_exp(x_train_list, k, model)
-    
-    x_test_list = list(chain(*x_test.tolist()))
-    exp_test = get_exp(x_test_list, k, model)
-    
-    # Get matrix of Q's for the test set -- used in discrepancy covaraiance
-    qx = np.array(exp_test['qx_df'])
-    qx_scale = qx**(k+1)/(1-qx)
-    yref = np.array(exp_test['yref_df'])
-    #qx_mat =  qx*qx.transpose()
-    #qx_geom_mat = qx_mat**(k+1)/(1-qx_mat)
-    #yref_mat = yref*yref.transpose()
-
-    # Get predictions and variances
-    cn_pred, cn_std = fit_obj.predict(x_test, return_std = True)
-    
-    # Get the diagonal elements 
-    post_pred_var = yref**2*qx_scale*cn_std**2
-
-    # Return the posterior mean predictions and varainces
-    out = {'fhat':post_pred_mean, 'fvar':post_pred_var, 'fcov':post_pred_cov}
-
-    # Cholesky decomposition inversion of R11:
-    # R11_chol = np.linalg.inv(np.linalg.cholesky(R11))
-    # R11_inv = np.dot(R11_chol.T,R11_chol)
-
-    # Get posterior mean
-    #mean_cf = exp_train['coef_df'].apply(lambda x: x.sum(), axis = 1)
-    #mean_diff =  np.array([mean_cf]).transpose() - fit_obj.center()[0]*np.ones((ntrain,1))
-    # cn_post_mean = fit_obj.center()[0]*np.ones((ntest,1)) + np.matmul(np.matmul(R21,R11_inv),mean_diff) # Post mean of cn's
-    # cn_post_mean = np.sum(fit_obj.predict(x1_test), axis = 1)
-    # delta_post_mean = yref*(qx**k/(1-qx))*cn_post_mean # post mean of discprepancy
- 
-    # post_pred_mean = np.array([exp_test['ypred_df'].iloc[:,k]]).transpose() + delta_post_mean
-    # post_pred_mean = np.array(list(chain(*post_pred_mean.tolist()))) # Reshape the array
-
-    # Get posterior covariance function
-    #cbar2 = fit_obj.cbar_sq_mean_
-    #post_pred_cov = cbar2*yref_mat*qx_geom_mat*(R22 - np.matmul(np.matmul(R21,R11_inv),R12))
-    return out
-
 
 # Checker
 fsg_terms(0.03, 2)
@@ -218,8 +152,9 @@ np.sum(fit1.predict(x1_test,return_std=False),axis = 1)
 
 
 ratio1 = np.array(list(chain(*exp1_res['qx_df'].values.tolist()))) # Reshape the array
+ref1 = np.array(list(chain(*exp1_res['yref_df'].values.tolist()))) # Reshape the array
 
-gp_trunc1 = gm.TruncationGP(kernel = fit1.kernel_, center=center0, disp=disp0, df=df0, scale=scale0, ref = 1, ratio = ratio1)
+gp_trunc1 = gm.TruncationGP(kernel = fit1.kernel_, center=center0, disp=disp0, df=df0, scale=scale0, ref = ref1, ratio = ratio1)
 fit_trunc1 = gp_trunc1.fit(x1_data, y=np.array(exp1_res['ypred_df']), orders=np.arange(0,ns+1))
 fit_trunc1.predict(x1_data, order = 2, return_std = True)
 
@@ -228,6 +163,32 @@ std = fit_trunc1.predict(x1_data, order = 2, return_std = True)[1]
 
 fig, ax = plt.subplots(figsize=(3.2, 3.2))
 fig.plot(x1_test, fhat[5:], zorder = 2)
+ax.fill_between(x1_test[:,0], fhat[5:] + 2*std[5:], fhat[5:] - 2*std[5:], zorder=1)
+plt.show()
+
+
+exp2_res = get_exp(list(chain(*x2_data.tolist())), 4, 'lg')
+y2_df = exp2_res['ypred_df']
+
+ratio2 = np.array(list(chain(*exp2_res['qx_df'].values.tolist()))) # Reshape the array
+ref2 = np.array(list(chain(*exp2_res['yref_df'].values.tolist()))) # Reshape the array
+
+coeffs2 = gm.coefficients(np.array(y2_df),ratio = ref2,orders=np.arange(0,nl+1))
+
+gp2 = gm.ConjugateGaussianProcess(kernel2, center=center0, disp=disp0, df=df0, scale=5, n_restarts_optimizer=10)
+fit2 = gp2.fit(x2_train, coeffs2[:5,])
+fit2.predict(x2_test,return_std=True)
+np.sum(fit2.predict(x2_test,return_std=False),axis = 1)
+
+gp_trunc2 = gm.TruncationGP(kernel = fit2.kernel_, center=center0, disp=disp0, df=df0, scale=scale0, ref = ref2, ratio = ratio2)
+fit_trunc2 = gp_trunc2.fit(x2_data, y=np.array(exp2_res['ypred_df']), orders=np.arange(0,nl+1))
+fit_trunc2.predict(x2_data, order = 4, return_std = True)
+
+fhat = fit_trunc2.predict(x2_data, order = 4, return_std = False)
+std = fit_trunc2.predict(x2_data, order = 4, return_std = True)[1]
+
+fig, ax = plt.subplots(figsize=(3.2, 3.2))
+fig.plot(x2_test, fhat[5:], zorder = 2)
 ax.fill_between(x1_test[:,0], fhat[5:] + 2*std[5:], fhat[5:] - 2*std[5:], zorder=1)
 plt.show()
 
