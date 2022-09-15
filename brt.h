@@ -147,7 +147,7 @@ public:
                             if(this->ncp1<(double)((*xi)[i].size()+1.0))
                               this->ncp1=(double)((*xi)[i].size()+1.0);
                          }
-   void setdata(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf(); setr(); }
+   void setdata(dinfo *di) {this->di=di;resid.resize(di->n);yhat.resize(di->n);setf();setr();}
    void pr();
    void settp(double alpha, double beta) {tp.alpha=alpha;tp.beta=beta;}
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
@@ -213,6 +213,7 @@ public:
    void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // predict y at the (npred x p) settings *di.x with functional discrepancy mean & sd
    void get_mix_wts(dinfo* dipred, mxd* wts);
    void get_mix_theta(dinfo* dipred, mxd* wts);
+   void get_fi(){std::cout << "fi = \n" << *fi << std::endl;}
     
    //Print brt object with vector parameters
    void pr_vec(); 

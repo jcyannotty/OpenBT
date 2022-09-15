@@ -1698,9 +1698,11 @@ probchv=.1,
 minnumbot=5,
 tc=2,
 printevery=100,
+numcut=100,
 xicuts=NULL,
 sigmav_list=NULL,
 chv_list = NULL,
+summarystats = FALSE,
 model=NULL,
 modelname="model"
 #sigmav=rep(1,length(y.train)),
@@ -1709,16 +1711,22 @@ modelname="model"
 {
 #--------------------------------------------------
 # model type definitions and check default arguments
+modeltype=0
 MODEL_MIX_EMULATE=1 #Full problem 
-MODEL_MIX_ORTH=2 # Full problem with orthogonal discrepancy
+MODEL_MIX_ORTHOGONAL=2 # Full problem with orthogonal discrepancy
 
 modeltype_list = c('mix_emulate','mix_orthogonal')
 
-if(modeltype %in% modeltype_list){
+if(is.null(model)){
+  stop(cat("Enter a model type. Valid types include:\n", paste(modeltype_list,collapse = ', ')))
+} 
+
+if(!(model %in% modeltype_list)){
   stop(cat("Invalid model type. Valid types include:\n", paste(modeltype_list,collapse = ', ')))
 }
   
-if(modeltype == 'mix_emulate'){
+if(model == 'mix_emulate'){
+  modeltype = MODEL_MIX_EMULATE
   if(is.null(mix_model_args$overallsd)) ntreeh=1
 }
   
@@ -1743,6 +1751,7 @@ if(!is.matrix(mix_model_data$x_train)){
 # Define terms 
 n = nrow(mix_model_data$x_train)
 p = ncol(mix_model_data$x_train)
+ymean = mean(mix_model_data$y_train)
 
 # Emulation data
 nc_vec = 0
@@ -1777,7 +1786,7 @@ for(l in 1:nummodels){
 col_list1 = colnames(mix_model_data$x_train)
 col_list2 = unique(unlist(lapply(emu_model_data, function(x) colnames(x$x_train))))
 
-if(sort(col_list1) != sort(col_list2)){
+if(sum(sort(col_list1) != sort(col_list2))>0){
   stop(cat("The input variables in model mixing differ from the input variables in emulation.", 
            "\nModel Mixing Inputs: \n", col_list1, 
            "\nAll Emulation Inputs: \n", col_list2))
@@ -1839,17 +1848,17 @@ tau_disc = (rgy[2]-rgy[1])/(2*sqrt(m)*k)
 tau_wts =  (1)/(2*sqrt(m)*k)
 
 # -- Error variance
-if(mix_model_args['overallsd']){
-  mix_model_args['overallsd'] = sd(mix_model_data$y_train)
+if(is.na(mix_model_args$overallsd)){
+  mix_model_args$overallsd = sd(mix_model_data$y_train)
 }
-overalllambda_mix = mix_model_args['overallsd']^2
-overallnu_mix = mix_model_args['overallnu']
+overalllambda_mix = mix_model_args$overallsd^2
+overallnu_mix = mix_model_args$overallnu
 
 # -- Tree prior (mean and variance trees)
-power_mix = mix_model_args['power']
-base_mix = mix_model_args['base']
-powerh_mix = mix_model_args['powerh']
-baseh_mix = mix_model_args['baseh']
+power_mix = mix_model_args$power
+base_mix = mix_model_args$base
+powerh_mix = mix_model_args$powerh
+baseh_mix = mix_model_args$baseh
 
 if(is.na(powerh_mix)){
   powerh_mix=power_mix
@@ -1859,15 +1868,19 @@ if(is.na(baseh_mix)){
 }
 
 # Emulation with BART
+tau_emu = 0
+base_emu = baseh_emu = 0
+power_emu = powerh_emu = 0
+overalllambda_emu = overallnu_emu = 0
 for(l in 1:nummodels){
   # -- Terminal node parameters
-  m = emu_model_args$ntree
-  k = emu_model_args$k
+  m = emu_model_args[l,'ntree']
+  k = emu_model_args[l,'k']
   rgz = range(emu_model_data[[l]]$z_train)
   tau_emu[l] = (rgz[2]-rgz[1])/(2*sqrt(m)*k)
   
   # -- Error variance
-  if(emu_model_args[l,'overallsd']){
+  if(is.na(emu_model_args[l,'overallsd'])){
     emu_model_args[l,'overallsd'] = sd(emu_model_data[[l]]$z_train)
   }
   overalllambda_emu[l] = emu_model_args[l,'overallsd']^2
@@ -1877,13 +1890,13 @@ for(l in 1:nummodels){
   power_emu[l] = emu_model_args[l,'power']
   base_emu[l] = emu_model_args[l,'base']
   powerh_emu[l] = emu_model_args[l,'powerh']
-  baseh_mix[l] = emu_model_args[l,'baseh']
+  baseh_emu[l] = emu_model_args[l,'baseh']
   
-  if(length(power_mix)>1) {
+  if(is.na(powerh_emu[l])) {
     powerh_emu[l] = power_emu[l]
   }
-  if(length(base_mix)>1) {
-    baseh_mix[l]=base_emu[l]
+  if(is.na(baseh_emu[l])) {
+    baseh_emu[l]=base_emu[l]
   }
 }
 
@@ -1900,6 +1913,24 @@ if(length(pb)>1) {
   pb=pb[1]
 }
 
+#--------------------------------------------------
+# Modify the emulation data for KOH Joint analysis
+#--------------------------------------------------
+emu_data_ids = vector(mode = "list", length = nummodels)
+names(emu_data_ids) = names(emu_model_data)
+for(j in 1:nummodels){
+  # Initialize the contributions field observations to each emulator
+  xf_matrix = mix_model_data$x_train[,xc_col_list[[j]]]
+  yf_vec =  mix_model_data$y_train # passing in y's for convenience (essential in c++ program)
+  # Append the information from field obs
+  emu_model_data[[j]]$z_train = c(emu_model_data[[j]]$z_train,yf_vec)
+  emu_model_data[[j]]$x_train = rbind(emu_model_data[[j]]$x_train, xf_matrix)
+  # Update the n info
+  n0 = nc_vec[j] 
+  nc_vec[j] = length(emu_model_data[[j]]$z_train)
+  # Update the id list of computer obs vs field obs 
+  emu_data_ids[[j]] = c(rep('c',n0), rep('f',n))
+}
 
 #--------------------------------------------------
 # Process other arguments
@@ -1926,7 +1957,7 @@ if(length(minnumbot)>1) {
 if(is.null(sigmav_list)){
   for(l in 0:nummodels){
     sigmav_n = ifelse(l == 0, n, nc_vec[l])
-    sigmav_list[l+1] = rep(1,sigmav_n)
+    sigmav_list[[l+1]] = rep(1,sigmav_n)
   }
 }else{
   if(!is.list(sigmav_list)){
@@ -1934,7 +1965,7 @@ if(is.null(sigmav_list)){
   }
   for(l in 0:nummodels){
     sigmav_n = ifelse(l == 0, n, nc_vec[l])
-    if(sigmav_list[l+1] != sigmav_n){
+    if(length(sigmav_list[[l+1]]) != sigmav_n){
       stop(cat("Invalid sigmav_list entry at item",l+1,'.\n Length of sigmav_list[[l]] must match number of model runs.'))  
     }
     
@@ -1944,8 +1975,12 @@ if(is.null(sigmav_list)){
 # Set the default argument for the chvs
 if(is.null(chv_list)){
   for(l in 0:nummodels){
-    chv_data = ifelse(l == 0, mix_model_data$x_train, emu_model_data[[l]]$x_train)
-    chv_list[l+1] = cor(chv_data,method="spearman")
+    if(l == 0){
+      chv_data = mix_model_data$x_train   
+    }else{
+      chv_data = emu_model_data[[l]]$x_train  
+    }
+    chv_list[[l+1]] = cor(chv_data,method="spearman")
   }  
 }else{
   if(!is.list(chv_list)){
@@ -1953,7 +1988,7 @@ if(is.null(chv_list)){
   }
   for(l in 0:nummodels){
     chv_p = ifelse(l == 0, p, pc_vec[l])
-    if(chv_list[l+1] != chv_p){
+    if(chv_list[[l+1]] != chv_p){
       stop(paste0("Invalid chv_list entry at item k = ",l+1,". Number of rows & columns in chv_list[[k]] must match",
           " the number of columns in the design matrix for emulator k-1. If k = 1, then the number of rows & columns in", 
           " chv_list[[1]] must match the number of columns in the design matrix for the field observations."))  
@@ -1975,11 +2010,12 @@ if(modeltype==MODEL_MIX_ORTHOGONAL){
 #write out config file
 #--------------------------------------------------
 # Field data roots
-xroots=c("xf",paste0("xc",1:nummodels))
 yroots="yf"
+xroots=c("xf",paste0("xc",1:nummodels))
 zroots=paste0("zc",1:nummodels)
 sroots=c("sf",paste0("sc",1:nummodels))
 chgvroots=c("chgvf",paste0("chgvc",1:nummodels))
+idroots="id"
 
 # cut points root
 xiroot="xi"
@@ -1997,8 +2033,8 @@ for(l in 1:nummodels){
 # Flatten the model arguments
 m_vec = paste(c(mix_model_args$ntree, emu_model_args[,'ntree']))
 mh_vec = paste(c(mix_model_args$ntreeh, emu_model_args[,'ntreeh']))
-tau_vec = paste(c(tau_disc, tau_wts, tau_emu))
-beta_vec = paste(c(beta_disc, beta_wts))
+tau_vec = paste(c(tau_disc, tau_wts, tau_emu)) #Two mixing parameters, K emu parameters
+beta_vec = paste(c(beta_disc, beta_wts)) #Only mixing parameters
 base_vec = paste(c(base_mix, base_emu))
 baseh_vec = paste(c(baseh_mix, baseh_emu))
 power_vec = paste(c(power_mix, power_emu))
@@ -2006,6 +2042,14 @@ powerh_vec = paste(c(powerh_mix, powerh_emu))
 lambda_vec = paste(c(overalllambda_mix, overalllambda_emu))
 nu_vec = paste(c(overallnu_mix, overallnu_emu))
 
+# Bind all of the K+1 dimensional vectors together into one matrix
+# Then flatten by row -- this makes things easier when reading in the data in c++
+# This way, we read in all data for mixing, then read in the data for each emulator one at a time
+info_matrix = data.frame(xroots, yzroots = c(yroots,zroots),sroots,chgvroots,means = paste(c(ymean,zmean_vec)),
+                         m_vec, mh_vec, base_vec, baseh_vec, power_vec, powerh_vec, lambda_vec, nu_vec)
+
+info_vec = unlist(as.vector(t(info_matrix)))
+  
 # Creating temp directory and config file
 folder=tempdir(check=TRUE)
 if(!dir.exists(folder)) dir.create(folder)
@@ -2017,10 +2061,17 @@ if(!dir.exists(folder)) dir.create(folder)
 fout=file(paste(folder,"/config",sep=""),"w")
 
 # Write lines to the config file fout
-writeLines(c(paste(modeltype),paste(nummodels),
-             xroots,yroot,zroots,sroots,chgvroots,paste(zmean_vec),xc_design_cols,
+# writeLines(c(paste(modeltype),paste(nummodels),
+#              xroots,yroot,zroots,sroots,chgvroots,paste(zmean_vec),xc_design_cols,
+#              paste(nd),paste(burn),paste(nadapt),paste(adaptevery),
+#              m_vec,mh_vec,tau_vec,beta_vec,lambda_vec,nu_vec,base_vec,power_vec,baseh_vec,powerh_vec, 
+#              paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
+#              paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
+#              paste(printevery),paste(xiroot),paste(tc),paste(modelname),paste(summarystats)),fout)
+
+writeLines(c(paste(modeltype),paste(nummodels),info_vec,xc_design_cols,idroots,
              paste(nd),paste(burn),paste(nadapt),paste(adaptevery),
-             m_vec,mh_vec,tau_vec,beta_vec,lambda_vec,nu_vec,base_vec,power_vec,baseh_vec,powerh_vec, 
+             tau_vec,beta_vec,
              paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
              paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
              paste(printevery),paste(xiroot),paste(tc),paste(modelname),paste(summarystats)),fout)
@@ -2038,29 +2089,34 @@ xlist=split(as.data.frame(mix_model_data$x_train),(seq(n)-1) %/% (n/nslv))
 for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[1],i,sep=""))
 
 # Emulation Data
+idlist = vector(mode='list', length = nslv)
 for(l in 1:nummodels){
-  zlist=split(emu_model_data$z_train,(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
-  for(i in 1:nslv) write(zlist[[i]],file=paste(folder,"/",zroot[l],i,sep=""))
+  zlist=split(emu_model_data[[l]]$z_train,(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
+  for(i in 1:nslv) write(zlist[[i]],file=paste(folder,"/",zroots[l],i,sep=""))
   
-  xlist=split(as.data.frame(emu_model_data$x_train),(seq(n)-1) %/% (n/nslv))
+  xlist=split(as.data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
   for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[l+1],i,sep=""))  
+  
+  idlist0=split(emu_data_ids[[l]],(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
+  for(i in 1:nslv) idlist[[i]] = c(idlist[[i]],idlist0[[i]]) 
 }
 
+# Write the ids per mpi
+for(i in 1:nslv) write(t(idlist[[i]]),file=paste(folder,"/",idroots,i,sep=""))
 
 # Variance and rotation data
 for(l in 0:nummodels){
   ntemp = ifelse(l==0, n, nc_vec[l])
-  slist=split(sigmav_list[l+1],(seq(ntemp)-1) %/% (ntemp/nslv))
+  slist=split(sigmav_list[[l+1]],(seq(ntemp)-1) %/% (ntemp/nslv))
   for(i in 1:nslv) write(slist[[i]],file=paste(folder,"/",sroots[l+1],i,sep=""))
   
-  chv[is.na(chv)]=0 # if a var as 0 levels it will have a cor of NA so we'll just set those to 0.
+  chv_list[[l+1]][is.na(chv_list[[l+1]])]=0 # if a var as 0 levels it will have a cor of NA so we'll just set those to 0.
   write(chv_list[[l+1]],file=paste(folder,"/",chgvroots[l+1],sep=""))
-  
 }
 
 # Cutpoints
 for(i in 1:p) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
-rm(chv)
+rm(chv_list)
 
 #--------------------------------------------------
 #run program
@@ -2089,7 +2145,7 @@ if(cmdopt==100)  # serial/OpenMP
 }
 
 system(cmd)
-system(paste("rm -f ",folder,"/config",sep=""))
+#system(paste("rm -f ",folder,"/config",sep=""))
 
 # Collect results
 res=list()

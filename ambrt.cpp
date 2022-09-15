@@ -107,7 +107,7 @@ void ambrt::setdata(dinfo *di) {
 
   for(size_t j=0;j<m;j++)
     divec[j]=new dinfo(this->di->p,this->di->n,this->di->x,&notjmus[j][0],this->di->tc);
-
+ 
   // each mb[j]'s data is the appropriate row in notjmus
   for(size_t j=0;j<m;j++)
     mb[j].setdata(divec[j]);

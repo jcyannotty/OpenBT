@@ -992,6 +992,8 @@ return 0;
          &chgv  //initialize the change of variable correlation matrix.
          );
    
+   axb.setci(tau,beta0,sig);
+   /*
    //Set prior information
    if(mpirank==0){
       double* sigr0;
@@ -1006,8 +1008,9 @@ return 0;
    
    //Sets the model priors for the functions if they are different
    if(fprior){
-      axb.setci(prior_precision, prior_mean);
+      axb.setci(prior_precision, prior_mean, sig);
    }
+   */
 
    //--------------------------------------------------
    //setup psbrt object
@@ -1076,7 +1079,7 @@ return 0;
    brtMethodWrapper faxb(&brt::f,axb);
    brtMethodWrapper fpsbm(&brt::f,psbm);
 
-   #ifdef _OPENMPI
+#ifdef _OPENMPI
    double tstart=0.0,tend=0.0;
    if(mpirank==0) tstart=MPI_Wtime();
    if(mpirank==0) cout << "Starting MCMC..." << endl;

@@ -115,8 +115,8 @@ public:
     void drawvec(rn& gen);
     void drawvec_mpislave(rn& gen);
     void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; } //Set for using the same prior for each weight
-    void setci(mxd invtau2_matrix, vxd beta_vec) {ci.invtau2_matrix.resize(invtau2_matrix.rows(),invtau2_matrix.rows()); ci.beta_vec.resize(beta_vec.rows());
-        ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.diffpriors = true;} //Set when using prior's that differ by function
+    void setci(mxd invtau2_matrix, vxd beta_vec, double* sigma) {ci.invtau2_matrix.resize(invtau2_matrix.rows(),invtau2_matrix.rows()); ci.beta_vec.resize(beta_vec.rows());
+        ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma; ci.diffpriors = true;} //Set when using prior's that differ by function
     virtual vxd drawnodethetavec(sinfo& si, rn& gen);
     virtual double lm(sinfo& si);
     virtual void add_observation_to_suff(diterator& diter, sinfo& si);
