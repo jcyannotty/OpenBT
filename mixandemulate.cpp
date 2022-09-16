@@ -161,8 +161,8 @@ int main(int argc, char* argv[])
     }
 
     // Get the id root computer and field obs ids per emulator
-    std::string idcore;
-    conf >> idcore;
+    // std::string idcore;
+    // conf >> idcore;
 
     // MCMC properties
     size_t nd, nburn, nadapt, adaptevery;
@@ -273,6 +273,11 @@ int main(int argc, char* argv[])
         nvec.push_back(n);
         y_list[i].resize(n);
         y_list[i] = y;
+        // Append the field obs to the computer ouput when i > 0....not this second portion of the vector will be updated each iteration of mcmc
+        if(i>0){
+            y_list[i].insert(y_list[i].end(),y_list[0].begin(),y_list[0].end());    
+        }
+
         //reset stream variables
         yfss.str("");
         yf.close();
@@ -313,6 +318,12 @@ int main(int argc, char* argv[])
         // Store into the vectors
         x_list[i].resize(nvec[i]*pvec[i]);
         x_list[i] = x;
+
+        //Update nvec[i] when i>0 (this accounts for the step of adding field obs to the emulation data sets, which happens later)
+        if(i>0){
+            nvec[i] = nvec[i] + nvec[0];
+        }
+
         //reset stream variables
         xfss.str("");
         xf.close();
@@ -334,13 +345,12 @@ int main(int argc, char* argv[])
     for(int i=0;i<=nummodels;i++){
         dinfo_list[i].n=0;dinfo_list[i].p=pvec[i],dinfo_list[i].x = NULL;dinfo_list[i].y=NULL;dinfo_list[i].tc=tc;
 #ifdef _OPENMPI
-        if(mpirank>0) { 
+        if(mpirank>0){ 
 #endif 
             dinfo_list[i].n=nvec[i]; dinfo_list[i].x = &x_list[i][0]; dinfo_list[i].y = &y_list[i][0];
 #ifdef _OPENMPI
         }
 #endif
-
     }
 
     //--------------------------------------------------
@@ -484,6 +494,7 @@ int main(int argc, char* argv[])
     
     //--------------------------------------------------
     //Load master list of ids for emulators, designates field obs vs computer output
+    /*
     std::vector<std::vector<std::string>> id_list(nummodels);
     std::stringstream idfss;
     std::string idfs;
@@ -499,7 +510,27 @@ int main(int argc, char* argv[])
             id_list[i].push_back(idtemp);
         }
     }
+    
 
+    //--------------------------------------------------
+    //Copy the original z value for all field obs -- do per emulation dataset
+    //This is essential when getting the contribution of the field data for the emulator
+    //By design, the original z's for field obs are the observed y values.
+    std::vector<std::vector<double>> zf_list(nummodels); //Copy of the original observed data
+    std::vector<std::vector<int>> zfidx_list(nummodels); //contains row indexes corresponding to whcih row each field obs belongs in per emu dataset
+    std::vector<std::vector<double>> xf_emu_list(xcore_list.size(), std::vector<double>(1)); //copy of the x's for the field obs
+    for(int i=0;i<nummodels;i++){
+        for(int j=0;j<id_list[i].size();j++){
+            if(id_list[i][j] == "f"){
+                zf_list[i].push_back(y_list[i+1][j]);
+                zfidx_list[i].push_back(j);
+                for(int k=0;k<pvec[i+1];k++){
+                    xf_emu_list[i].push_back(x_list[i][j*pvec[i+1] + k]);
+                }
+            }
+        }
+    }
+    */
     //--------------------------------------------------
     //Set up model objects and MCMC
     //--------------------------------------------------   
@@ -709,44 +740,62 @@ int main(int argc, char* argv[])
     }
 
     // dinfo for predictions
-    std::vector<dinfo> dipred_list(nummodels);
-    std::vector<double*> fp_list(nummodels);
+    std::vector<dinfo> dimix_list(nummodels);
+    std::vector<double*> fmix_list(nummodels);
     std::vector<std::vector<double>> xf_list(nummodels);
-    std::vector<double> f; //f(nvec[0],1); //intialized with vector of 1's which is the discrepancy piece. 
     size_t xcolsize = 0;
     xcol = 0;
     for(int i=0;i<nummodels;i++){
         // Initialize class objects
-        fp_list[i] = new double[nvec[0]];
-        dipred_list[i].y=fp_list[i];
-        dipred_list[i].p = pvec[i+1]; 
-        dipred_list[i].n=nvec[0]; 
-        dipred_list[i].tc=1;
+        fmix_list[i] = new double[nvec[0]];
+        dimix_list[i].y=fmix_list[i];
+        dimix_list[i].p = pvec[i+1]; 
+        dimix_list[i].n=nvec[0]; 
+        dimix_list[i].tc=1;
         // Get the appropriate x columns
         xcolsize = x_cols_list[i].size();
         //xf_list[i].resize(nvec[0]*xcolsize);
         for(size_t j=0;j<nvec[0];j++){
             for(size_t k=0;k<xcolsize;k++){
                 xcol = x_cols_list[i][k];
-                xf_list[i].push_back(x_list[i][j*xcolsize + xcol]);
-                cout << "model = " << i << "x = " << x_list[i][j*xcolsize + xcol] << endl;
+                xf_list[i].push_back(x_list[0][j*xcolsize + xcol]);
+                //cout << "model = " << i << "x = " << x_list[i][j*xcolsize + xcol] << endl;
             }
         }
         // Set the x component
         if(mpirank > 0){
-            dipred_list[i].x = &xf_list[i][0];
+            dimix_list[i].x = &xf_list[i][0];
         }else{
-            dipred_list[i].x = NULL;
+            dimix_list[i].x = NULL;
         }
+        
+        // Add the field obs data to the computer obs data (x_list is not used in dimix but it is convenient to update here in this loop)
+        x_list[i].insert(x_list[i].end(),xf_list[0].begin(),xf_list[0].end());    
         
     }
 
     // Items used to extract weights from the mix bart model
     mxd wts_iter(nummodels+1,nvec[0]); //matrix to store current set of weights
+    std::vector<double> mixprednotj(nvec[0],0);
+    
     double *fw = new double[nvec[0]];
     dinfo diw;
     diw.x = &x_list[0][0]; diw.y=fw; diw.p = pvec[0]; diw.n=nvec[0]; diw.tc=1;
-         
+
+    /*
+    // Initialize objects used to extract wts from mix bart and get weighted field obs for emulation
+    // Also dinfo for getting predictions from each emulator
+    std::vector<double*> fw_list(nummodels);
+    std::vector<dinfo> diw_list(nummodels);
+    //std::vector<double*> femu_list(nummodels);
+    //std::vector<dinfo> diemu_list(nummodels);
+    for(int i=0;i<nummodels;i++){ 
+        fw_list[i] = new double[nvec[0]];
+        diw_list[i].x = &x_list[0][0]; diw_list[i].y=fw_list[i]; diw_list[i].p = pvec[i+1]; diw_list[i].n=y_list[i].size(); diw_list[i].tc=1;
+        //femu_list[i] = new double[zf_list[i].size()];
+        //diemu_list[i].x = &xf_emu_list[i][0]; diw_list[i].y=femu_list[i]; diw_list[i].p = pvec[i+1]; diw_list[i].n=zf_list[i].size(); diw_list[i].tc=1;
+    }
+    */
     // Start the MCMC
 #ifdef _OPENMPI
     double tstart=0.0,tend=0.0;
@@ -756,20 +805,19 @@ int main(int argc, char* argv[])
     cout << "Starting MCMC..." << endl;
 #endif
 
+    // Initialize finfo using predictions from each emulator
+    for(int j=0;j<nummodels;j++){
+        ambm_list[j].predict(&dimix_list[j]);
+        for(int k=0;k<nvec[0];k++){
+            fi(k,j+1) = fmix_list[j][k] + means_list[j+1]; 
+        }   
+    }
+
     // Adapt Stage in the MCMC
     for(size_t i=0;i<nadapt;i++) { 
         // Print adapt step number
         if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
-        // Update finfo using predictions from each emulator at field obs
-        for(int j=0;j<nummodels;j++){
-            ambm_list[i].predict(&dipred_list[i]);
-            for(int k=0;k<nvec[0];k++){
-                fi(k,j+1) = fp_list[i][k] + means_list[j+1]; 
-            } 
-            // reset the f vector after inserting into fi matrix
-            f.clear();     
-        } 
-
+        
 #ifdef _OPENMPI
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
@@ -779,13 +827,65 @@ int main(int argc, char* argv[])
         axb.get_mix_wts(&diw, &wts_iter);  
 
         //Emulation Steps
-        for(size_t j=0;j<nummodels;j++){
+        for(int j=0;j<nummodels;j++){
+            for(int k=0;k<nummodels;k++){
+                // Get the mixed prediction
+                if(k!=j){
+                    for(int l=0;l<nvec[0];l++){
+                        mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
+                    }
+                }
+            }
 
-            if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
+            // add the discrepancy and get the weighted field obs
+            for(int l=0;l<nvec[0];l++){
+                mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
+                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+            }
+
+            // Update emulator
+            if(mpirank==0){ambm_list[j].drawvec(gen);} else {ambm_list[j].drawvec_mpislave(gen);}
+
+            //Update finfo column
+            ambm_list[j].predict(&dimix_list[j]);
+            for(int l=0;l<nvec[0];l++){
+                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
+            }
+
         } 
         
 #else
+        // Mixing Draw
         axb.drawvec(gen);
+
+        // Get the current model mixing weights    
+        wts_iter = mxd::Zero(nummodels+1,nvec[0]); //resets wt matrix
+        axb.get_mix_wts(&diw, &wts_iter);  
+
+        //Emulation Steps
+        for(int j=0;j<nummodels;j++){
+            for(int k=0;k<nummodels;k++){
+                // Get the mixed prediction
+                if(k!=j){
+                    for(int l=0;l<nvec[0];l++){
+                        mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
+                    }
+                }
+            }
+        
+            // add the discrepancy and get the weighted field obs
+            for(int l=0;l<nvec[0];l++){
+                mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
+                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+            }
+            ambm_list[j].drawvec(gen);
+            
+            //Update finfo column
+            ambm_list[j].predict(&dimix_list[j]);
+            for(int l=0;l<nvec[0];l++){
+                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
+            }
+        }
 #endif
     }
 

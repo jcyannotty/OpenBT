@@ -1917,20 +1917,20 @@ if(length(pb)>1) {
 # Modify the emulation data for KOH Joint analysis
 #--------------------------------------------------
 emu_data_ids = vector(mode = "list", length = nummodels)
-names(emu_data_ids) = names(emu_model_data)
-for(j in 1:nummodels){
-  # Initialize the contributions field observations to each emulator
-  xf_matrix = mix_model_data$x_train[,xc_col_list[[j]]]
-  yf_vec =  mix_model_data$y_train # passing in y's for convenience (essential in c++ program)
-  # Append the information from field obs
-  emu_model_data[[j]]$z_train = c(emu_model_data[[j]]$z_train,yf_vec)
-  emu_model_data[[j]]$x_train = rbind(emu_model_data[[j]]$x_train, xf_matrix)
-  # Update the n info
-  n0 = nc_vec[j] 
-  nc_vec[j] = length(emu_model_data[[j]]$z_train)
-  # Update the id list of computer obs vs field obs 
-  emu_data_ids[[j]] = c(rep('c',n0), rep('f',n))
-}
+# names(emu_data_ids) = names(emu_model_data)
+# for(j in 1:nummodels){
+#   # Initialize the contributions field observations to each emulator
+#   xf_matrix = mix_model_data$x_train[,xc_col_list[[j]]]
+#   yf_vec =  mix_model_data$y_train # passing in y's for convenience (essential in c++ program)
+#   # Append the information from field obs
+#   emu_model_data[[j]]$z_train = c(emu_model_data[[j]]$z_train,yf_vec)
+#   emu_model_data[[j]]$x_train = rbind(emu_model_data[[j]]$x_train, xf_matrix)
+#   # Update the n info
+#   n0 = nc_vec[j] 
+#   nc_vec[j] = length(emu_model_data[[j]]$z_train)
+#   # Update the id list of computer obs vs field obs 
+#   emu_data_ids[[j]] = c(rep('c',n0), rep('f',n))
+# }
 
 #--------------------------------------------------
 # Process other arguments
@@ -2069,7 +2069,7 @@ fout=file(paste(folder,"/config",sep=""),"w")
 #              paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
 #              paste(printevery),paste(xiroot),paste(tc),paste(modelname),paste(summarystats)),fout)
 
-writeLines(c(paste(modeltype),paste(nummodels),info_vec,xc_design_cols,idroots,
+writeLines(c(paste(modeltype),paste(nummodels),info_vec,xc_design_cols,
              paste(nd),paste(burn),paste(nadapt),paste(adaptevery),
              tau_vec,beta_vec,
              paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
@@ -2089,7 +2089,7 @@ xlist=split(as.data.frame(mix_model_data$x_train),(seq(n)-1) %/% (n/nslv))
 for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[1],i,sep=""))
 
 # Emulation Data
-idlist = vector(mode='list', length = nslv)
+#idlist = vector(mode='list', length = nslv)
 for(l in 1:nummodels){
   zlist=split(emu_model_data[[l]]$z_train,(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
   for(i in 1:nslv) write(zlist[[i]],file=paste(folder,"/",zroots[l],i,sep=""))
@@ -2097,12 +2097,12 @@ for(l in 1:nummodels){
   xlist=split(as.data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
   for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[l+1],i,sep=""))  
   
-  idlist0=split(emu_data_ids[[l]],(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
-  for(i in 1:nslv) idlist[[i]] = c(idlist[[i]],idlist0[[i]]) 
+  #idlist0=split(emu_data_ids[[l]],(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
+  #for(i in 1:nslv) idlist[[i]] = c(idlist[[i]],idlist0[[i]]) 
 }
 
 # Write the ids per mpi
-for(i in 1:nslv) write(t(idlist[[i]]),file=paste(folder,"/",idroots,i,sep=""))
+#for(i in 1:nslv) write(t(idlist[[i]]),file=paste(folder,"/",idroots,i,sep=""))
 
 # Variance and rotation data
 for(l in 0:nummodels){
