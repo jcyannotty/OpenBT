@@ -52,12 +52,13 @@ void mbrt::draw_mpislave(rn& gen)
 {
    //All the usual steps
    brt::draw_mpislave(gen);
-
+   //cout << "HERE mbrt slave 1" << endl;
    // Update the in-sample predicted vector
    setf();
-
+   //cout << "HERE mbrt slave 2" << endl;
    // Update the in-sample residual vector
    setr();
+   //cout << "HERE mbrt slave 3" << endl;
 }
 //--------------------------------------------------
 //draw theta for a single bottom node for the brt model
@@ -98,6 +99,7 @@ void mbrt::add_observation_to_suff(diterator& diter, sinfo& si)
 // MPI virtualized part for sending/receiving left,right suffs
 void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 {
+//cout << "Here1 mpi" << endl;
 #ifdef _OPENMPI
    msinfo& msil=static_cast<msinfo&>(sil);
    msinfo& msir=static_cast<msinfo&>(sir);
@@ -108,7 +110,11 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
       char buffer[SIZE_UINT6];
       int position=0;
       unsigned int ln,rn;
+      //cout << "Here2 mpi" << endl;
       for(size_t i=1; i<=(size_t)tc; i++) {
+         //cout << "tsir.sumw = " << tsir.sumw << endl;
+         //cout << "tsir.sumwy = " << tsir.sumwy << endl;
+         
          position=0;
          MPI_Recv(buffer,SIZE_UINT6,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
          MPI_Unpack(buffer,SIZE_UINT6,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
@@ -123,6 +129,7 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
          msil+=tsil;
          msir+=tsir;
       }
+      //cout << "Here3 mpi" << endl;
       delete &tsil;
       delete &tsir;
    }
@@ -131,6 +138,7 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
       char buffer[SIZE_UINT6];
       int position=0;  
       unsigned int ln,rn;
+      //cout << "Here4 mpi" << endl;
       ln=(unsigned int)msil.n;
       rn=(unsigned int)msir.n;
       MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
@@ -139,8 +147,12 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
       MPI_Pack(&msir.sumw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msil.sumwy,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msir.sumwy,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-
+      //cout << "Here5 mpi" << endl;
       MPI_Send(buffer,SIZE_UINT6,MPI_PACKED,0,0,MPI_COMM_WORLD);
+      //cout << "msir.sumw = " << msir.sumw << endl;
+      //cout << "msir.sumwy = " << msir.sumwy << endl;
+      //cout << "msir.n = " << msir.n << endl;
+      
    }
 #endif   
 }
@@ -171,17 +183,18 @@ void mbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
       unsigned int tempnvec[siv.size()];
       double tempsumwvec[siv.size()];
       double tempsumwyvec[siv.size()];
-
+      
       // receive nvec, update and send back.
       for(size_t i=1; i<=(size_t)tc; i++) {
          MPI_Recv(&tempnvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
          for(size_t j=0;j<siv.size();j++)
-            nvec[j]+=tempnvec[j];
+            nvec[j]+=tempnvec[j]; 
       }
       MPI_Request *request=new MPI_Request[tc];
       for(size_t i=1; i<=(size_t)tc; i++) {
          MPI_Isend(&nvec,siv.size(),MPI_UNSIGNED,i,0,MPI_COMM_WORLD,&request[i-1]);
       }
+      
       // cast back to msi
       for(size_t i=0;i<siv.size();i++) {
          msinfo* msi=static_cast<msinfo*>(siv[i]);
@@ -207,7 +220,7 @@ void mbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
       }
       MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
       delete[] request;
-
+      
       // receive sumwyvec, update and send back.
       for(size_t i=1; i<=(size_t)tc; i++) {
          MPI_Recv(&tempsumwyvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);

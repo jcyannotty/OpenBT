@@ -48,7 +48,7 @@ void brt::draw(rn& gen)
       rot(tnew,t,gen);
       delete tnew;
    }
-
+   
    // Perturbation Proposal
    if(mi.dopert)
       pertcv(gen);
@@ -269,10 +269,11 @@ void brt::drawtheta(rn& gen)
 //   std::vector<sinfo> siv;
    std::vector<sinfo*>& siv = newsinfovec();
 
-  allsuff(bnv,siv);
+   allsuff(bnv,siv);
 #ifdef _OPENMPI
-  mpi_resetrn(gen);
+   mpi_resetrn(gen);
 #endif
+   
    for(size_t i=0;i<bnv.size();i++) {
       bnv[i]->settheta(drawnodetheta(*(siv[i]),gen));
       delete siv[i]; //set it, then forget it!

@@ -1956,7 +1956,7 @@ if(length(minnumbot)>1) {
 # Set default argument for the sigmavs
 if(is.null(sigmav_list)){
   for(l in 0:nummodels){
-    sigmav_n = ifelse(l == 0, n, nc_vec[l])
+    sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
     sigmav_list[[l+1]] = rep(1,sigmav_n)
   }
 }else{
@@ -1964,9 +1964,11 @@ if(is.null(sigmav_list)){
     stop("Invalid data type: sigmav_list must be a list object with length K+1.")
   }
   for(l in 0:nummodels){
-    sigmav_n = ifelse(l == 0, n, nc_vec[l])
+    sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
     if(length(sigmav_list[[l+1]]) != sigmav_n){
-      stop(cat("Invalid sigmav_list entry at item",l+1,'.\n Length of sigmav_list[[l]] must match number of model runs.'))  
+      stop(cat("Invalid sigmav_list entry at item",l+1,"\n Length of sigmav_list[[l]] is incorrect. Required lengths are listed below: \n",
+               "\t Mixing (l=1): ", n, " (number of field obs) \n",
+               "\t Emulation (l>1): ", n + nc_vec[l+1], " (number of field obs + number of model runs))"))  
     }
     
   }
@@ -1978,7 +1980,7 @@ if(is.null(chv_list)){
     if(l == 0){
       chv_data = mix_model_data$x_train   
     }else{
-      chv_data = emu_model_data[[l]]$x_train  
+      chv_data = rbind(emu_model_data[[l]]$x_train, mix_model_data$x_train[,unlist(xc_col_list[l])])  
     }
     chv_list[[l+1]] = cor(chv_data,method="spearman")
   }  
@@ -2106,7 +2108,7 @@ for(l in 1:nummodels){
 
 # Variance and rotation data
 for(l in 0:nummodels){
-  ntemp = ifelse(l==0, n, nc_vec[l])
+  ntemp = ifelse(l==0, n, nc_vec[l]+n)
   slist=split(sigmav_list[[l+1]],(seq(ntemp)-1) %/% (ntemp/nslv))
   for(i in 1:nslv) write(slist[[i]],file=paste(folder,"/",sroots[l+1],i,sep=""))
   
@@ -2151,7 +2153,7 @@ system(cmd)
 res=list()
 res$modeltype=modeltype; res$model=model
 res$xroot=xroots; res$yroot=yroots; res$zroots=zroots;res$sroot=sroots; res$chgvroot=chgvroots; res$xc_col_list=xc_col_list
-res$zmeans = zmean_vec
+res$zmeans = zmean_vec; res$nummodels = nummodels;
 res$nd=nd; res$burn=burn; res$nadapt=nadapt; res$adaptevery=adaptevery; 
 res$mix_model_args = mix_model_args; res$emu_model_args = emu_model_args;
 res$pbd=pbd; res$pb=pb; res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
@@ -2168,4 +2170,117 @@ class(res)="OpenBT_posterior"
 
 return(res)
 
-} #end bracket
+}
+
+# Predict function for mixing and emulation
+predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=0.975){
+  # model type definitions
+  MODEL_MIX_EMULATE=1 #Full problem 
+  MODEL_MIX_ORTHOGONAL=2 # Full problem with orthogonal discrepancy
+  
+  #--------------------------------------------------
+  # Define objects
+  if(is.null(fit)) stop("No fitted model specified!\n")
+  if(is.null(x_test)) stop("No prediction points specified for !\n")
+  nslv=tc
+  fmeans=fit$fmean
+  p=ncol(x_test)
+  n=nrow(x_test)
+  nummodels = fit$nummodels
+  xproot = 'xp'
+  
+  x_test=as.matrix(x_test)
+  x_col_list = fit$x_col_list
+  
+  #--------------------------------------------------
+  # Design column numbers for computer models -- flattens the x_col_list
+  xc_design_cols = 0
+  h = 1
+  # Format -- number of cols for model 1, col numbers for model 1,...,number of cols for model K, col numbers for model K 
+  for(l in 1:nummodels){
+    pc = length(x_col_list[[l]])
+    xc_design_cols[h] = paste(pc)
+    xc_design_cols[(h+1):(h+pc)] = paste(xc_col_list[[l]])
+    h = h+pc_vec[l] + 1
+  }
+  
+  #--------------------------------------------------
+  #write out config file
+  fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
+  writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,
+               paste(fit$nd),paste(fit$m),
+               paste(fit$mh),paste(p),paste(nummodels),paste(tc),
+               paste(fmeans),xc_design_cols), fout)
+  close(fout)
+  
+  #--------------------------------------------------
+  #write out data subsets
+  #folder=paste(".",fit$modelname,"/",sep="")
+  xlist=split(as.data.frame(x_test),(seq(n)-1) %/% (n/nslv))
+  for(i in 1:nslv) write(t(xlist[[i]]),file=paste(fit$folder,"/",xproot,i-1,sep=""))
+  for(i in 1:p) write(fit$xicuts[[i]],file=paste(fit$folder,"/",fit$xiroot,i,sep=""))
+  
+  #--------------------------------------------------
+  #run prediction program
+  cmdopt=100 #default to serial/OpenMP
+  runlocal=FALSE
+  cmd="openbtcli --conf"
+  if(Sys.which("openbtcli")[[1]]=="") # not installed in a global location, so assume current directory
+    runlocal=TRUE
+  
+  if(runlocal) cmd="./openbtcli --conf"
+  
+  cmdopt=system(cmd)
+  
+  if(cmdopt==101) # MPI
+  {
+    cmd=paste("mpirun -np ",tc," openbtmixingpred ",fit$folder,sep="")
+  }
+  
+  if(cmdopt==100)  # serial/OpenMP
+  { 
+    if(runlocal)
+      cmd=paste("./openbtmixingpred ",fit$folder,sep="")
+    else
+      cmd=paste("openbtmixingpred ",fit$folder,sep="")
+  }
+  
+  #cmd=paste("mpirun -np ",tc," openbtpred",sep="")
+  #cat(cmd)
+  system(cmd)
+  system(paste("rm -f ",fit$folder,"/config.pred",sep=""))
+  
+  #--------------------------------------------------
+  #format and return
+  res_model=vector(mode = 'list', length = nummodels+2)
+  names(res_model) = c("mixmodel", paste0("emulator",1:nummodels),"Information")
+  res = list()
+  
+  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".mdraws*",sep=""),full.names=TRUE)
+  res$mdraws=do.call(cbind,sapply(fnames,data.table::fread))
+  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".sdraws*",sep=""),full.names=TRUE)
+  res$sdraws=do.call(cbind,sapply(fnames,data.table::fread))
+  
+  #Separate results into mixing vs emulation
+  for(i in 0:nummodels){
+    ind = seq(i*nd+1, (i+1)*nd, 1)
+    res_model[[i+1]]$mdraws = res$mdraws[ind,]
+    res_model[[i+1]]$sdraws = res$sdraws[ind,]
+    res_model[[i+1]]$mmean=apply(res$mdraws[ind,],2,mean)
+    res_model[[i+1]]$smean=apply(res$sdraws[ind,],2,mean)
+    res_model[[i+1]]$msd=apply(res$mdraws[ind,],2,sd)
+    res_model[[i+1]]$ssd=apply(res$sdraws[ind,],2,sd)
+    res_model[[i+1]]$m.5=apply(res$mdraws[ind,],2,quantile,0.5)
+    res_model[[i+1]]$m.lower=apply(res$mdraws[ind,],2,quantile,q.lower)
+    res_model[[i+1]]$m.upper=apply(res$mdraws[ind,],2,quantile,q.upper)
+    res_model[[i+1]]$s.5=apply(res$sdraws[ind,],2,quantile,0.5)
+    res_model[[i+1]]$s.lower=apply(res$sdraws[ind,],2,quantile,q.lower)
+    res_model[[i+1]]$s.upper=apply(res$sdraws[ind,],2,quantile,q.upper)
+  }
+  
+  res_model[[nummodels+2]] = list(q.lower=q.lower,q.upper=q.upper,modeltype=fit$modeltype)
+  rm(res)
+  class(res_model)="OpenBT_predict"
+  
+  return(res_model)
+}
