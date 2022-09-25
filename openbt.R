@@ -1954,6 +1954,7 @@ if(length(minnumbot)>1) {
 }
 
 # Set default argument for the sigmavs
+# **** FIX ME -- can use nc_vec[] without adding n
 if(is.null(sigmav_list)){
   for(l in 0:nummodels){
     sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)

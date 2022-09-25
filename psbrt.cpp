@@ -66,7 +66,6 @@ void psbrt::draw(rn& gen)
 //slave controller for draw when using MPI
 void psbrt::draw_mpislave(rn& gen)
 {
-  cout << "Enter slave" << endl;
   for(size_t j=0;j<m;j++) {
     //update this row of notjsigmavs
     *divec[j]= *getr();
@@ -74,7 +73,6 @@ void psbrt::draw_mpislave(rn& gen)
 
     // do the draw for jth component
     sb[j].draw_mpislave(gen);
-    cout << "Slave 1" << endl;
     // Update the in-sample predicted vector
     setf();
 

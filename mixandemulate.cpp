@@ -252,7 +252,7 @@ int main(int argc, char* argv[])
     //read in y for mixing and z's for emulation
     std::vector<std::vector<double>> y_list(ycore_list.size(), std::vector<double>(1));
     std::vector<double> y;
-    std::vector<size_t> nvec;
+    std::vector<size_t> nvec(nummodels+1,0);
     double ytemp;
     size_t n=0;
     std::stringstream yfss;
@@ -271,7 +271,9 @@ int main(int argc, char* argv[])
             y.push_back(ytemp);
         n=y.size();
         // Store into the vectors
-        nvec.push_back(n);
+        //nvec.push_back(n);
+        nvec[i]=n;
+        //cout << "nvec[i] = " << nvec[i] << endl;       
         y_list[i].resize(n);
         y_list[i] = y;
         // Append the field obs to the computer ouput when i > 0....not this second portion of the vector will be updated each iteration of mcmc
@@ -294,6 +296,7 @@ int main(int argc, char* argv[])
     //--------------------------------------------------
     //read in x 
     std::vector<std::vector<double>> x_list(xcore_list.size(), std::vector<double>(1));
+    std::vector<std::vector<double>> xv_list; // x inputs for the variance model (stores )
     std::vector<double> x;
     std::stringstream xfss;
     std::string xfs;
@@ -316,9 +319,10 @@ int main(int argc, char* argv[])
         if(i == 0){
             pvec.insert(pvec.begin(), p);
         }
-        // Store into the vectors
+        // Store into the vectors 
         x_list[i].resize(nvec[i]*pvec[i]);
         x_list[i] = x;
+
         //Update nvec[i] when i>0 (this accounts for the step of adding field obs to the emulation data sets, which happens later)
         if(i>0){
             nvec[i] = nvec[i] + nvec[0];
@@ -338,6 +342,14 @@ int main(int argc, char* argv[])
         if(mpirank>0 && pvec[i] != ((size_t) tempp)) { cout << "PROBLEM LOADING DATA" << endl; MPI_Finalize(); return 0;}
         pvec[i]=(size_t)tempp;
 #endif
+    }
+
+    // Set xv_list = x_list. This preserves the original separation of field anc computer inputs
+    // xv_list is the set of inputs passed into the variance models
+    if(mpirank>0){
+        xv_list = x_list;
+        //cout << "xv_list.size() = " << xv_list.size() << endl;
+        //cout << "xv_list[0].size() = " << xv_list[0].size() << endl;
     }
 
     //--------------------------------------------------
@@ -445,7 +457,18 @@ int main(int argc, char* argv[])
 #ifdef _OPENMPI
         if(mpirank>0) { 
 #endif
-            disig_list[i].n=nvec[i]; disig_list[i].x=&x_list[i][0]; disig_list[i].y=sig_vec[i];
+        if(i>0){
+            // Emulators
+            disig_list[i].n=(nvec[i]-nvec[0]); // number of model runs   
+            disig_list[i].x=&xv_list[i][0]; // inputs for those model runs --- we want to get predictions of variance for these runs
+            disig_list[i].y=sig_vec[i]; // sig_vec that keeps track of variance for model runs AND field obs. This is tied into ambm_list, hence both elements are needed
+            // NOTE: length of sig_vec[i] != nvec[i]-nvec[0] (nor does it equal the number of rows in computer design matrix)
+            // This is a hack to get things to work in the existing framewkork
+        }else{
+            //Mixer -- xv_list[0] = x_list[0] ... just using xv_list here for consistency
+            disig_list[i].n=nvec[0];disig_list[i].x=&xv_list[i][0];disig_list[i].y=sig_vec[i];    
+        }
+
 #ifdef _OPENMPI
         }
 #endif
@@ -603,6 +626,7 @@ int main(int argc, char* argv[])
     double opm; //variance info
     double lambda; //variance info
     finfo fi;
+    size_t tempn; // used when defining dips_list for emulators
     int l = 0; //Used for indexing emulators
     nu = 1.0; //reset nu to 1, previosuly defined earlier in program
 
@@ -661,7 +685,7 @@ int main(int argc, char* argv[])
     //r = new double[nvec[0]];
     for(size_t i=0;i<nvec[0];i++) r_list[0][i]=sigmav_list[0][i];
     //for(size_t i=0;i<nvec[0];i++) r[i]=sigmav_list[0][i];
-    dips_list[0].x=&x_list[0][0]; dips_list[0].y=r_list[0]; dips_list[0].n=nvec[0];
+    dips_list[0].x=&xv_list[0][0]; dips_list[0].y=r_list[0]; dips_list[0].n=nvec[0];
     //dips_list[0].x=&x_list[0][0]; dips_list[0].y=r; dips_list[0].n=nvec[0];
 #ifdef _OPENMPI
     }
@@ -741,14 +765,26 @@ int main(int argc, char* argv[])
         lambda=pow(lam_list[j],opm);
 
         //make dips info
+        tempn = 0;
         dips_list[j].n=0; dips_list[j].p=p; dips_list[j].x=NULL; dips_list[j].y=NULL; dips_list[j].tc=tc;
 #ifdef _OPENMPI
         if(mpirank>0) {
-#endif
-        // FIX THIS 
-        r_list[j] = new double[nvec[j]];
-        for(size_t i=0;i<nvec[j];i++) r_list[j][i]=sigmav_list[j][i];
-        dips_list[j].x=&x_list[j][0]; dips_list[j].y=r_list[j]; dips_list[j].n=nvec[j];
+#endif      
+            tempn = nvec[j] - nvec[0];
+            r_list[j] = new double[tempn];
+            for(size_t i=0;i<tempn;i++) r_list[j][i]=sigmav_list[j][i];
+            dips_list[j].x=&xv_list[j][0]; dips_list[j].y=r_list[j]; dips_list[j].n=tempn;
+            /*
+            if(j == 2){
+                diterator diter2(&dips_list[2]);
+                cout << "dinfo_list[2].n = " << dinfo_list[2].n << endl;
+                for(;diter2<diter2.until();diter2++) {
+                    //cout << "gety = " <<  diter2.gety() << endl;
+                    cout << "getx = " <<  diter2.getx() << endl;       
+                }
+            }
+            */
+
 #ifdef _OPENMPI
         }
 #endif
@@ -782,29 +818,44 @@ int main(int argc, char* argv[])
     //-------------------------------------------------- 
     // MCMC
     //-------------------------------------------------- 
-    // Define containers -- similar to those in cli.cpp, except now we iterate over K+1 bart objects
-    std::vector<std::vector<int>> onn_list(nummodels+1, std::vector<int>(nd*m,1));
-    std::vector<std::vector<std::vector<int>>> oid_list(nummodels+1, std::vector<std::vector<int>>(nd*m, std::vector<int>(1)));
-    std::vector<std::vector<std::vector<int>>> ovar_list(nummodels+1, std::vector<std::vector<int>>(nd*m, std::vector<int>(1)));
-    std::vector<std::vector<std::vector<int>>> oc_list(nummodels+1, std::vector<std::vector<int>>(nd*m, std::vector<int>(1)));
-    std::vector<std::vector<std::vector<double>>> otheta_list(nummodels+1, std::vector<std::vector<double>>(nd*m, std::vector<double>(1)));
-    
-    std::vector<std::vector<int>> snn_list(nummodels+1, std::vector<int>(nd*m,1));
-    std::vector<std::vector<std::vector<int>>> sid_list(nummodels+1, std::vector<std::vector<int>>(nd*m, std::vector<int>(1)));
-    std::vector<std::vector<std::vector<int>>> svar_list(nummodels+1, std::vector<std::vector<int>>(nd*m, std::vector<int>(1)));
-    std::vector<std::vector<std::vector<int>>> sc_list(nummodels+1, std::vector<std::vector<int>>(nd*m, std::vector<int>(1)));
-    std::vector<std::vector<std::vector<double>>> stheta_list(nummodels+1, std::vector<std::vector<double>>(nd*m, std::vector<double>(1)));
-
     // Method Wrappers
     brtMethodWrapper faxb(&brt::f,axb);
     brtMethodWrapper fpxb(&brt::f,pxb);
-    brtMethodWrapper *fambm_list[nummodels];
-    brtMethodWrapper *fpsbm_list[nummodels];
-     
-    for(int i=0;i<nummodels;i++){
-        fambm_list[i] = new brtMethodWrapper(&brt::f,*ambm_list[i]);
-        fpsbm_list[i] = new brtMethodWrapper(&brt::f,*psbm_list[i]);
-    }
+    //brtMethodWrapper *fambm_list[nummodels];
+    //brtMethodWrapper *fpsbm_list[nummodels];
+    
+    // Define containers -- similar to those in cli.cpp, except now we iterate over K+1 bart objects
+    std::vector<std::vector<int>> onn_list(nummodels+1, std::vector<int>(nd,1));
+    std::vector<std::vector<std::vector<int>>> oid_list(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+    std::vector<std::vector<std::vector<int>>> ovar_list(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+    std::vector<std::vector<std::vector<int>>> oc_list(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+    std::vector<std::vector<std::vector<double>>> otheta_list(nummodels+1, std::vector<std::vector<double>>(nd, std::vector<double>(1)));
+    
+    std::vector<std::vector<int>> snn_list(nummodels+1, std::vector<int>(nd,1));
+    std::vector<std::vector<std::vector<int>>> sid_list(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+    std::vector<std::vector<std::vector<int>>> svar_list(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+    std::vector<std::vector<std::vector<int>>> sc_list(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+    std::vector<std::vector<std::vector<double>>> stheta_list(nummodels+1, std::vector<std::vector<double>>(nd, std::vector<double>(1)));
+  
+    // Initialization of objects
+    for(int i=0;i<=nummodels;i++){
+        onn_list[i].resize(nd*m_list[i],1);
+        oid_list[i].resize(nd*m_list[i], std::vector<int>(1));
+        ovar_list[i].resize(nd*m_list[i], std::vector<int>(1));
+        oc_list[i].resize(nd*m_list[i], std::vector<int>(1));
+        otheta_list[i].resize(nd*m_list[i], std::vector<double>(1));
+        
+
+        snn_list[i].resize(nd*mh_list[i],1);
+        sid_list[i].resize(nd*mh_list[i], std::vector<int>(1));
+        svar_list[i].resize(nd*mh_list[i], std::vector<int>(1));
+        sc_list[i].resize(nd*mh_list[i], std::vector<int>(1));
+        stheta_list[i].resize(nd*mh_list[i], std::vector<double>(1));
+        if(i>0){
+            //fambm_list[i-1] = new brtMethodWrapper(&brt::f,*ambm_list[i-1]);
+            //fpsbm_list[i-1] = new brtMethodWrapper(&brt::f,*psbm_list[i-1]);
+        }
+     }
 
     // dinfo for predictions
     std::vector<dinfo> dimix_list(nummodels);
@@ -900,7 +951,6 @@ int main(int argc, char* argv[])
             
             // Update emulator
             if(mpirank==0){ambm_list[j]->draw(gen);} else {ambm_list[j]->draw_mpislave(gen);}
-            if(mpirank==0 && i == 5){ambm_list[l]->pr();}
             
             if(mpirank>0){
                 //Update finfo column 
@@ -945,12 +995,17 @@ int main(int argc, char* argv[])
         }
 #endif
         // Set dinfo objecs for the variance
-        cout << "HERE 1" << endl;
         for(int j=0;j<=nummodels;j++){
-            dips_list[j] = dinfo_list[j];
+            //dips_list[j] = dinfo_list[j];
             if(j>0){
                 // Emulators
-                dips_list[j] -= *fambm_list[j]; //Throws an error, unsure how to work around this pointer issue
+                if(mpirank>0){
+                    ambm_list[j-1]->predict(&dips_list[j]);
+                    dips_list[j] -= dinfo_list[j];
+                    dips_list[j] *= -1;
+                }else{
+                    dips_list[j] = dinfo_list[j];
+                }
                 if((i+1)%adaptevery==0 && mpirank==0){ambm_list[j-1]->adapt();}
             }else{
                 // Model Mixing
@@ -958,92 +1013,93 @@ int main(int argc, char* argv[])
                 if((i+1)%adaptevery==0 && mpirank==0){axb.adapt();}
             }
         }
-    
-        cout << "HERE 2" << endl;
 
 #ifdef _OPENMPI
         // Draw the variances
         // Model Mixing
-        cout << "HERE 3" << endl;
-        //if(mpirank==0) pxb.draw(gen); else pxb.draw_mpislave(gen);
+        if(mpirank==0) pxb.draw(gen); else pxb.draw_mpislave(gen);
 
         // Emulators
-        cout << "HERE 4" << endl;
         for(int j=0;j<nummodels;j++){
-            //if(mpirank==0) psbm_list[j]->draw(gen); else psbm_list[j]->draw_mpislave(gen);
+            if(mpirank==0) psbm_list[j]->draw(gen); else psbm_list[j]->draw_mpislave(gen);
         }
 
 #else
+        // Draw for model mixing
         pxb.draw(gen);        
+        // Draw for emulators
         for(int j=0;j<nummodels;j++){psbm_list[j]->draw(gen);}
-#endif
-/* 
-        cout << "HERE 5" << endl;
-        for(int j=0;j<nummodels;j++){
+#endif 
+        for(int j=0;j<=nummodels;j++){
             if(j>0){
-                disig_list[j] = *fpsbm_list[j];
-                if((i+1)%adaptevery==0 && mpirank==0) psbm_list[j]->adapt();
+                // Update the variance for the computer model runs
+                psbm_list[j-1]->predict(&disig_list[j]);
+                
+                // Now update the rest of sigmav_list[j]...the last nvec[0] entries are field obs
+                for(size_t l=0;l<nvec[0];l++){sigmav_list[j][nvec[j]-nvec[0]+l] = sigmav_list[0][l]; }
+                if((i+1)%adaptevery==0 && mpirank==0) psbm_list[j-1]->adapt();
             }else{
                 disig_list[0] = fpxb;
                 if((i+1)%adaptevery==0 && mpirank==0) pxb.adapt();
             }
             
-        }   
-*/
+        }
     }
-    cout << "OUT OF LOOP" << endl;
 
-/*
-    // Burn in Stage in the MCMC
+
+    // Burn-in Stage in the MCMC
     for(size_t i=0;i<nburn;i++) { 
-        // Print adapt step number
+        // Print burn step number
         if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
-        
-#ifdef _OPENMPI
+#ifdef _OPENMPI  
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-
-        // Get the current model mixing weights    
-        wts_iter = mxd::Zero(nummodels+1,nvec[0]); //resets wt matrix
-        axb.get_mix_wts(&diw, &wts_iter);  
-
-        //Emulation Steps
-        for(int j=0;j<nummodels;j++){
-            for(int k=0;k<nummodels;k++){
-                // Get the mixed prediction
-                if(k!=j){
-                    for(size_t l=0;l<nvec[0];l++){
-                        mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
-                    }
-                }
-            }
-
-            // add the discrepancy and get the weighted field obs
-            for(size_t l=0;l<nvec[0];l++){
-                mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
-            }
-
-            // Update emulator
-            if(mpirank==0){ambm_list[j].drawvec(gen);} else {ambm_list[j].drawvec_mpislave(gen);}
-
-            //Update finfo column
-            ambm_list[j].predict(&dimix_list[j]);
-            for(size_t l=0;l<nvec[0];l++){
-                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
-            }
-
+        // Get the current model mixing weights   
+        if(mpirank>0){
+            wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
+            axb.get_mix_wts(&diw, &wts_iter);  
         } 
         
+        //Emulation Steps
+        for(int j=0;j<nummodels;j++){
+            // Get re-weighted field observations
+            if(mpirank > 0){
+                for(int k=0;k<nummodels;k++){    
+                    // Get the mixed prediction
+                    if(k!=j){
+                        for(size_t l=0;l<dimix_list[j].n;l++){
+                            mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
+                            //cout << "mixprednotj[l] = " << mixprednotj[l] << endl;
+                        }
+                    }
+                }
+                // add the discrepancy and get the weighted field obs
+                for(size_t l=0;l<dimix_list[j].n;l++){
+                    mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
+                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                }
+            }
+            
+            // Update emulator
+            if(mpirank==0){ambm_list[j]->draw(gen);} else {ambm_list[j]->draw_mpislave(gen);}
+            if(mpirank>0){
+                //Update finfo column 
+                ambm_list[j]->predict(&dimix_list[j]);
+                for(size_t l=0;l<dimix_list[j].n;l++){
+                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1];
+                    //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                }
+            }           
+        } 
 #else
-        // Mixing Draw
+        // Model Mixing step
         axb.drawvec(gen);
-
+        
         // Get the current model mixing weights    
-        wts_iter = mxd::Zero(nummodels+1,nvec[0]); //resets wt matrix
+        wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
         axb.get_mix_wts(&diw, &wts_iter);  
 
-        //Emulation Steps
+        // Emulation Steps
         for(int j=0;j<nummodels;j++){
             for(int k=0;k<nummodels;k++){
                 // Get the mixed prediction
@@ -1053,32 +1109,38 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-        
             // add the discrepancy and get the weighted field obs
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                 y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
             }
-            ambm_list[j].drawvec(gen);
+            ambm_list[j]->drawvec(gen);
             
-            //Update finfo column
-            ambm_list[j].predict(&dimix_list[j]);
+            // Update finfo column
+            ambm_list[j]->predict(&dimix_list[j]);
             for(int l=0;l<nvec[0];l++){
                 fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
             }
         }
 #endif
         // Set dinfo objecs for the variance
-        for(int j=0;j<(nummodels+1);j++){
-            dips_list[j] = dinfo_list[j];
+        for(int j=0;j<=nummodels;j++){
+            //dips_list[j] = dinfo_list[j];
             if(j>0){
                 // Emulators
-                dips_list[j] -= fambm_list[j-1];
+                if(mpirank>0){
+                    ambm_list[j-1]->predict(&dips_list[j]);
+                    dips_list[j] -= dinfo_list[j];
+                    dips_list[j] *= -1;
+                }else{
+                    dips_list[j] = dinfo_list[j];
+                }
             }else{
                 // Model Mixing
                 dips_list[0] -= faxb;
             }
         }
+
 #ifdef _OPENMPI
         // Draw the variances
         // Model Mixing
@@ -1086,72 +1148,82 @@ int main(int argc, char* argv[])
 
         // Emulators
         for(int j=0;j<nummodels;j++){
-            if(mpirank==0) psbm_list[j].draw(gen); else psbm_list[j].draw_mpislave(gen);
+            if(mpirank==0) psbm_list[j]->draw(gen); else psbm_list[j]->draw_mpislave(gen);
         }
+
 #else
+        // Draw for model mixing
         pxb.draw(gen);        
-        for(int j=0;j<nummodels;j++){psbm_list[j].draw(gen);}
-#endif
-        for(int j=0;j<nummodels;j++){
+        // Draw for emulators
+        for(int j=0;j<nummodels;j++){psbm_list[j]->draw(gen);}
+#endif 
+        for(int j=0;j<=nummodels;j++){
             if(j>0){
-                disig_list[j] = fpsbm_list[j];
+                // Update the variance for the computer model runs
+                psbm_list[j-1]->predict(&disig_list[j]);
+                
+                // Now update the rest of sigmav_list[j]...the last nvec[0] entries are field obs
+                for(size_t l=0;l<nvec[0];l++){sigmav_list[j][nvec[j]-nvec[0]+l] = sigmav_list[0][l]; }
             }else{
                 disig_list[0] = fpxb;
+                
             }
             
-        }   
+        }
     }
 
-    // Draw Stage in the MCMC
     for(size_t i=0;i<nd;i++) { 
-        // Print adapt step number
+        // Print burn step number
         if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
-        
-#ifdef _OPENMPI
+#ifdef _OPENMPI  
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-
-        // Get the current model mixing weights    
-        wts_iter = mxd::Zero(nummodels+1,nvec[0]); //resets wt matrix
-        axb.get_mix_wts(&diw, &wts_iter);  
-
-        //Emulation Steps
-        for(int j=0;j<nummodels;j++){
-            for(int k=0;k<nummodels;k++){
-                // Get the mixed prediction
-                if(k!=j){
-                    for(size_t l=0;l<nvec[0];l++){
-                        mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
-                    }
-                }
-            }
-
-            // add the discrepancy and get the weighted field obs
-            for(size_t l=0;l<nvec[0];l++){
-                mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
-            }
-
-            // Update emulator
-            if(mpirank==0){ambm_list[j].drawvec(gen);} else {ambm_list[j].drawvec_mpislave(gen);}
-
-            //Update finfo column
-            ambm_list[j].predict(&dimix_list[j]);
-            for(size_t l=0;l<nvec[0];l++){
-                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
-            }
-
+        // Get the current model mixing weights   
+        if(mpirank>0){
+            wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
+            axb.get_mix_wts(&diw, &wts_iter);  
         } 
         
+        //Emulation Steps
+        for(int j=0;j<nummodels;j++){
+            // Get re-weighted field observations
+            if(mpirank > 0){
+                for(int k=0;k<nummodels;k++){    
+                    // Get the mixed prediction
+                    if(k!=j){
+                        for(size_t l=0;l<dimix_list[j].n;l++){
+                            mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
+                            //cout << "mixprednotj[l] = " << mixprednotj[l] << endl;
+                        }
+                    }
+                }
+                // add the discrepancy and get the weighted field obs
+                for(size_t l=0;l<dimix_list[j].n;l++){
+                    mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
+                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                }
+            }
+            
+            // Update emulator
+            if(mpirank==0){ambm_list[j]->draw(gen);} else {ambm_list[j]->draw_mpislave(gen);}
+            if(mpirank>0){
+                //Update finfo column 
+                ambm_list[j]->predict(&dimix_list[j]);
+                for(size_t l=0;l<dimix_list[j].n;l++){
+                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1];
+                    //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                }
+            }           
+        } 
 #else
-        // Mixing Draw
+        // Model Mixing step
         axb.drawvec(gen);
-
+        
         // Get the current model mixing weights    
-        wts_iter = mxd::Zero(nummodels+1,nvec[0]); //resets wt matrix
+        wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
         axb.get_mix_wts(&diw, &wts_iter);  
 
-        //Emulation Steps
+        // Emulation Steps
         for(int j=0;j<nummodels;j++){
             for(int k=0;k<nummodels;k++){
                 // Get the mixed prediction
@@ -1161,32 +1233,38 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-        
             // add the discrepancy and get the weighted field obs
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                 y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
             }
-            ambm_list[j].drawvec(gen);
+            ambm_list[j]->drawvec(gen);
             
-            //Update finfo column
-            ambm_list[j].predict(&dimix_list[j]);
+            // Update finfo column
+            ambm_list[j]->predict(&dimix_list[j]);
             for(int l=0;l<nvec[0];l++){
                 fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
             }
         }
 #endif
         // Set dinfo objecs for the variance
-        for(int j=0;j<(nummodels+1);j++){
-            dips_list[j] = dinfo_list[j];
+        for(int j=0;j<=nummodels;j++){
+            //dips_list[j] = dinfo_list[j];
             if(j>0){
                 // Emulators
-                dips_list[j] -= fambm_list[j-1];
+                if(mpirank>0){
+                    ambm_list[j-1]->predict(&dips_list[j]);
+                    dips_list[j] -= dinfo_list[j];
+                    dips_list[j] *= -1;
+                }else{
+                    dips_list[j] = dinfo_list[j];
+                }
             }else{
                 // Model Mixing
                 dips_list[0] -= faxb;
             }
         }
+
 #ifdef _OPENMPI
         // Draw the variances
         // Model Mixing
@@ -1194,71 +1272,84 @@ int main(int argc, char* argv[])
 
         // Emulators
         for(int j=0;j<nummodels;j++){
-            if(mpirank==0) psbm_list[j].draw(gen); else psbm_list[j].draw_mpislave(gen);
+            if(mpirank==0) psbm_list[j]->draw(gen); else psbm_list[j]->draw_mpislave(gen);
         }
+
 #else
+        // Draw for model mixing
         pxb.draw(gen);        
-        for(int j=0;j<nummodels;j++){psbm_list[j].draw(gen);}
-#endif
-        for(int j=0;j<nummodels;j++){
+        // Draw for emulators
+        for(int j=0;j<nummodels;j++){psbm_list[j]->draw(gen);}
+#endif 
+        for(int j=0;j<=nummodels;j++){
             if(j>0){
-                disig_list[j] = fpsbm_list[j];
+                // Update the variance for the computer model runs
+                psbm_list[j-1]->predict(&disig_list[j]);
+                
+                // Now update the rest of sigmav_list[j]...the last nvec[0] entries are field obs
+                for(size_t l=0;l<nvec[0];l++){sigmav_list[j][nvec[j]-nvec[0]+l] = sigmav_list[0][l]; }
             }else{
                 disig_list[0] = fpxb;
+                
             }
+            
         }
+
 
         // Save Tree to vector format
         if(mpirank==0) {
+            //axb.pr_vec();
             axb.savetree_vec(i,m_list[0],onn_list[0],oid_list[0],ovar_list[0],oc_list[0],otheta_list[0]); 
-            pxb.savetree_vec(i,mh_list[0],snn_list[0],sid_list[0],svar_list[0],sc_list[0],stheta_list[0]);
-            for(int j=0;j<nummodels;j++){
-                ambm_list[j].savetree(i,m_list[j+1],onn_list[j],oid_list[j],ovar_list[j],oc_list[j],otheta_list[j]);
-                psbm_list[j].savetree(i,mh_list[j+1],snn_list[j],sid_list[j],svar_list[j],sc_list[j],stheta_list[j]); 
+            pxb.savetree(i,mh_list[0],snn_list[0],sid_list[0],svar_list[0],sc_list[0],stheta_list[0]);
+            for(int j=1;j<=nummodels;j++){
+                ambm_list[j-1]->savetree(i,m_list[j],onn_list[j],oid_list[j],ovar_list[j],oc_list[j],otheta_list[j]);
+                psbm_list[j-1]->savetree(i,mh_list[j],snn_list[j],sid_list[j],svar_list[j],sc_list[j],stheta_list[j]); 
             }
         }
     }
 
+// Writing data to output files
 #ifdef _OPENMPI
     if(mpirank==0) {
         tend=MPI_Wtime();
     cout << "Training time was " << (tend-tstart)/60.0 << " minutes." << endl;
     }
 #endif
-
     //Flatten posterior trees to a few (very long) vectors so we can just pass pointers
     //to these vectors back to R (which is much much faster than copying all the data back).
     if(mpirank==0) {
         cout << "Returning posterior, please wait...";
         // Instantiate containers
-        std::vector<std::vector<int>*> e_ots; //=new std::vector<int>(nd*m);
-        std::vector<std::vector<int>*> e_oid; //=new std::vector<int>;
-        std::vector<std::vector<int>*> e_ovar; //=new std::vector<int>;
-        std::vector<std::vector<int>*> e_oc; //=new std::vector<int>;
-        std::vector<std::vector<double>*> e_otheta; //=new std::vector<double>;
-        std::vector<std::vector<int>*> e_sts; //=new std::vector<int>(nd*mh);
-        std::vector<std::vector<int>*> e_sid; //=new std::vector<int>;
-        std::vector<std::vector<int>*> e_svar; //=new std::vector<int>;
-        std::vector<std::vector<int>*> e_sc; //=new std::vector<int>;
-        std::vector<std::vector<double>*> e_stheta; //=new std::vector<double>;
+        std::vector<std::vector<int>*> e_ots(nummodels+1); //=new std::vector<int>(nd*m);
+        std::vector<std::vector<int>*> e_oid(nummodels+1); //=new std::vector<int>;
+        std::vector<std::vector<int>*> e_ovar(nummodels+1); //=new std::vector<int>;
+        std::vector<std::vector<int>*> e_oc(nummodels+1); //=new std::vector<int>;
+        std::vector<std::vector<double>*> e_otheta(nummodels+1); //=new std::vector<double>;
+        std::vector<std::vector<int>*> e_sts(nummodels+1); //=new std::vector<int>(nd*mh);
+        std::vector<std::vector<int>*> e_sid(nummodels+1); //=new std::vector<int>;
+        std::vector<std::vector<int>*> e_svar(nummodels+1); //=new std::vector<int>;
+        std::vector<std::vector<int>*> e_sc(nummodels+1); //=new std::vector<int>;
+        std::vector<std::vector<double>*> e_stheta(nummodels+1); //=new std::vector<double>;
 
         // Initialize containers with pointers
         for(int j=0;j<=nummodels;j++){
-            e_ots[j]=new std::vector<int>(nd*m);
+            e_ots[j]=new std::vector<int>(nd*m_list[j]);
             e_oid[j]=new std::vector<int>;
             e_ovar[j]=new std::vector<int>;
             e_oc[j]=new std::vector<int>;
             e_otheta[j]=new std::vector<double>;
-            e_sts[j]=new std::vector<int>(nd*m);
+            e_sts[j]=new std::vector<int>(nd*m_list[j]);
             e_sid[j]=new std::vector<int>;
             e_svar[j]=new std::vector<int>;
             e_sc[j]=new std::vector<int>;
             e_stheta[j]=new std::vector<double>;
         }
-    
+
+        // Loop through each model and store in appropriate outfile 
         for(size_t i=0;i<nd;i++)
-            for(size_t j=0;j<m;j++) {
-                for(int l=0;l<=nummodels;l++){
+            for(int l=0;l<=nummodels;l++) {
+                m = m_list[l];
+                for(size_t j=0;j<m;j++){ 
                     e_ots[l]->at(i*m+j)=static_cast<int>(oid_list[l][i*m+j].size());
                     e_oid[l]->insert(e_oid[l]->end(),oid_list[l][i*m+j].begin(),oid_list[l][i*m+j].end());
                     e_ovar[l]->insert(e_ovar[l]->end(),ovar_list[l][i*m+j].begin(),ovar_list[l][i*m+j].end());
@@ -1267,8 +1358,9 @@ int main(int argc, char* argv[])
                 }
             }
         for(size_t i=0;i<nd;i++)
-            for(size_t j=0;j<mh;j++) {
-                for(int l=0;l<=nummodels;l++){
+            for(int l=0;l<=nummodels;l++) {
+                mh = mh_list[l];
+                for(size_t j=0;j<mh;j++){
                     e_sts[l]->at(i*mh+j)=static_cast<int>(sid_list[l][i*mh+j].size());
                     e_sid[l]->insert(e_sid[l]->end(),sid_list[l][i*mh+j].begin(),sid_list[l][i*mh+j].end());
                     e_svar[l]->insert(e_svar[l]->end(),svar_list[l][i*mh+j].begin(),svar_list[l][i*mh+j].end());
@@ -1276,7 +1368,7 @@ int main(int argc, char* argv[])
                     e_stheta[l]->insert(e_stheta[l]->end(),stheta_list[l][i*mh+j].begin(),stheta_list[l][i*mh+j].end());
                 }
             }
-        
+
         //write out to file
         std::ofstream omf;
         std::string ofile;
@@ -1328,7 +1420,6 @@ int main(int argc, char* argv[])
         omf.close();
         cout << " done." << endl;
     }
-*/
     //-------------------------------------------------- 
     // Cleanup.
 #ifdef _OPENMPI
