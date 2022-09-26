@@ -2044,11 +2044,12 @@ power_vec = paste(c(power_mix, power_emu))
 powerh_vec = paste(c(powerh_mix, powerh_emu))
 lambda_vec = paste(c(overalllambda_mix, overalllambda_emu))
 nu_vec = paste(c(overallnu_mix, overallnu_emu))
+means_vec = c(ymean,zmean_vec)
 
 # Bind all of the K+1 dimensional vectors together into one matrix
 # Then flatten by row -- this makes things easier when reading in the data in c++
 # This way, we read in all data for mixing, then read in the data for each emulator one at a time
-info_matrix = data.frame(xroots, yzroots = c(yroots,zroots),sroots,chgvroots,means = paste(c(ymean,zmean_vec)),
+info_matrix = data.frame(xroots, yzroots = c(yroots,zroots),sroots,chgvroots,means = paste(means_vec),
                          m_vec, mh_vec, base_vec, baseh_vec, power_vec, powerh_vec, lambda_vec, nu_vec)
 
 info_vec = unlist(as.vector(t(info_matrix)))
@@ -2154,7 +2155,7 @@ system(cmd)
 res=list()
 res$modeltype=modeltype; res$model=model
 res$xroot=xroots; res$yroot=yroots; res$zroots=zroots;res$sroot=sroots; res$chgvroot=chgvroots; res$xc_col_list=xc_col_list
-res$zmeans = zmean_vec; res$nummodels = nummodels;
+res$means = means_vec; res$nummodels = nummodels;
 res$nd=nd; res$burn=burn; res$nadapt=nadapt; res$adaptevery=adaptevery; 
 res$mix_model_args = mix_model_args; res$emu_model_args = emu_model_args;
 res$pbd=pbd; res$pb=pb; res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
@@ -2184,16 +2185,17 @@ predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=
   if(is.null(fit)) stop("No fitted model specified!\n")
   if(is.null(x_test)) stop("No prediction points specified for !\n")
   nslv=tc
-  fmeans=fit$fmean
+  means_vec=fit$means
   p=ncol(x_test)
   n=nrow(x_test)
   nummodels = fit$nummodels
   xproot = 'xp'
   
   x_test=as.matrix(x_test)
-  x_col_list = fit$x_col_list
+  x_col_list = fit$xc_col_list
   
   #--------------------------------------------------
+  # Flatten any vector arguments that need to be passed to pred
   # Design column numbers for computer models -- flattens the x_col_list
   xc_design_cols = 0
   h = 1
@@ -2205,13 +2207,22 @@ predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=
     h = h+pc_vec[l] + 1
   }
   
+  # Flatten the m and mh vectors
+  mvec = fit$mix_model_args$ntree
+  mvec[2:(nummodels+1)] = fit$emu_model_args[,'ntree']
+  mhvec = fit$mix_model_args$ntreeh
+  mhvec[2:(nummodels+1)] = fit$emu_model_args[,'ntreeh']
+  
+  # Create an info matrix and vector of arguments that are required for the individual models
+  info_matrix = data.frame(means = paste(means_vec),mvec, mhvec)
+  info_vec = unlist(as.vector(t(info_matrix)))
+  
   #--------------------------------------------------
   #write out config file
   fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,
-               paste(fit$nd),paste(fit$m),
-               paste(fit$mh),paste(p),paste(nummodels),paste(tc),
-               paste(fmeans),xc_design_cols), fout)
+               paste(fit$nd),paste(nummodels),paste(p),paste(tc),
+               info_vec,xc_design_cols), fout)
   close(fout)
   
   #--------------------------------------------------

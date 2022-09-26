@@ -348,8 +348,6 @@ int main(int argc, char* argv[])
     // xv_list is the set of inputs passed into the variance models
     if(mpirank>0){
         xv_list = x_list;
-        //cout << "xv_list.size() = " << xv_list.size() << endl;
-        //cout << "xv_list[0].size() = " << xv_list[0].size() << endl;
     }
 
     //--------------------------------------------------
@@ -371,7 +369,7 @@ int main(int argc, char* argv[])
 
             // Add the field obs data to the computer obs data (x_list is not used in dimix but it is convenient to update here in this loop)
             x_list[i+1].insert(x_list[i+1].end(),xf_list[i].begin(),xf_list[i].end()); //x_list is nummodel+1  dimensional -- for mixing & emulators
-            cout << "x_list[i+1].size = " << x_list[i+1].size() << endl;
+            //cout << "x_list[i+1].size = " << x_list[i+1].size() << endl;
 
             /*
             for(size_t k=0;k<x_list[i+1].size();k++){
@@ -1338,7 +1336,7 @@ int main(int argc, char* argv[])
             e_ovar[j]=new std::vector<int>;
             e_oc[j]=new std::vector<int>;
             e_otheta[j]=new std::vector<double>;
-            e_sts[j]=new std::vector<int>(nd*m_list[j]);
+            e_sts[j]=new std::vector<int>(nd*mh_list[j]);
             e_sid[j]=new std::vector<int>;
             e_svar[j]=new std::vector<int>;
             e_sc[j]=new std::vector<int>;
