@@ -39,10 +39,10 @@ public:
       ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma,ci.diffpriors = true; for(size_t j=0;j<m;j++) mb[j].setci(invtau2_matrix,beta_vec,sigma);} //Set when using prior's that differ by function
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
-   void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> fdiscrep = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
-   void setfdelta(finfo *fdeltamean, finfo *fdeltasd) {
-      this->fdelta = fdeltamean; this->fdelta_mean = fdeltamean; this->fdelta_sd = fdeltasd; this->fdiscrep = true; 
-      for(size_t j=0;j<m;j++) mb[j].setfdelta(fdeltamean, fdeltasd);}
+   void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> nsprior = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
+   void setfsd(finfo *fsd) {
+      this->fisd = fsd; this->nsprior= true; 
+      for(size_t j=0;j<m;j++) mb[j].setfsd(fsd);}
    void setk(size_t k) {this->k = k; for(size_t j=0;j<m;j++) mb[j].setk(k); }
    void setdata_mix(dinfo *di);
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }

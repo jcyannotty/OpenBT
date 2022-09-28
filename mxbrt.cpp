@@ -44,7 +44,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     //initialize variables
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
     mxd I(k,k), Sig_inv(k,k), Sig(k,k), Ev(k,k), E(k,k), Sp(k,k), Prior_Sig_Inv(k,k);
-    vxd muhat(k), evals(k), stdnorm(k), betavec(k), tau2_mean(k);
+    vxd muhat(k), evals(k), stdnorm(k), betavec(k);
     double t2 = ci.tau*ci.tau;
     
     I = Eigen::MatrixXd::Identity(k,k); //Set identity matrix
@@ -52,10 +52,11 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
 
     //Set the prior precision matrix 
     if(ci.diffpriors){
-        Prior_Sig_Inv = ci.invtau2_matrix;    
+        Prior_Sig_Inv = ci.invtau2_matrix;
+        betavec = ci.beta_vec;    
     }else{
         //Assuming the same prior settings for tau2
-        if(fdiscrep){
+        if(nsprior){
             // Compute beta vector and scale by 1/m (stored in c1.beta0) 
             betavec = mxsi.sump/mxsi.n;
             betavec = betavec*ci.beta0;
@@ -68,14 +69,12 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
             Prior_Sig_Inv = (1/t2)*I;
         }
     }
-    
+
     //Compute the covariance
     Sig_inv = mxsi.sumffw + Prior_Sig_Inv; //Get inverse covariance matrix
     Sig = Sig_inv.llt().solve(I); //Invert Sig_inv with Cholesky Decomposition
-     
     //Compute the mean vector
     muhat = Sig*(mxsi.sumfyw + Prior_Sig_Inv*betavec); //Get posterior mean -- may be able to simplify this calculation (k*ci.beta0/(ci.tau*ci.tau)) 
-    
     //Spectral Decomposition of Covaraince Matrix Sig -- maybe move to a helper function
     //--Get eigenvalues and eigenvectors
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(Sig); //Get eigenvectors and eigenvalues
@@ -127,7 +126,7 @@ double mxbrt::lm(sinfo& si){
     I = mxd::Identity(k,k); //Set identity matrix
 
     //Compute lm value if no discrepancy is specified and each weight has the same prior
-    if(!fdiscrep && !ci.diffpriors){
+    if(!nsprior && !ci.diffpriors){
         //prior mean vector
         betavec = ci.beta0*vxd::Ones(k);
 
@@ -145,10 +144,8 @@ double mxbrt::lm(sinfo& si){
         //Get sum of prior precision log determinant
         sumpl = k*log(t2);
 
-    }else if(fdiscrep && !ci.diffpriors){
-        
+    }else if(nsprior && !ci.diffpriors){
         //Get prior inverse covariance and mean vector
-        vxd tau2_mean(k);
         mxd Prior_Sig_Inv(k,k);
         
         //Get beta vector and scale by 1/m 
@@ -218,11 +215,11 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     yy = diter.gety()*diter.gety();
 
     //Work with scaled precision vector for discrepancy model if true
-    if(fdiscrep){
+    if(nsprior){
         pv = vxd::Zero(k);
         for(size_t l = 0; l<k; l++){
             //pv(l) = (*fdelta_sd)(*diter,l)*(*fdelta_sd)(*diter,l);
-            pv(l) = 1/((*fdelta_sd)(*diter,l)*(*fdelta_sd)(*diter,l));
+            pv(l) = 1/((*fisd)(*diter,l)*(*fisd)(*diter,l));
         }
         //Constrain pv to the simplex and get pv2 using symmetry about 0.5
         pv = pv/pv.sum();
@@ -268,7 +265,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
         
         //Cast the prior precision vectors to arrays - if discrepancy is true
         double sump_rarray[k], sump_larray[k];
-        if(fdiscrep){
+        if(nsprior){
             vector_to_array(tsil.sump, &sump_larray[0]); //function defined in brtfuns
             vector_to_array(tsir.sump, &sump_rarray[0]); //function defined in brtfuns
         }
@@ -284,7 +281,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
             MPI_Unpack(buffer,buffer_size,&position,&sumfyw_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,buffer_size,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,buffer_size,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            if(fdiscrep){
+            if(nsprior){
                 //Unpack prior precision if specified
                 MPI_Unpack(buffer,buffer_size,&position,&sump_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sump_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
@@ -328,7 +325,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     
     //Cast vectors for prior precision if specified
     double sump_rarray[k], sump_larray[k];
-    if(fdiscrep){
+    if(nsprior){
         vector_to_array(msil.sump, &sump_larray[0]); //function defined in brtfuns
         vector_to_array(msir.sump, &sump_rarray[0]); //function defined in brtfuns
     }
@@ -343,7 +340,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     MPI_Pack(&sumfyw_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
-    if(fdiscrep){
+    if(nsprior){
         MPI_Pack(&sump_larray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
         MPI_Pack(&sump_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     }
@@ -497,7 +494,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         delete[] request;
 
         //For discrepancy models
-        if(fdiscrep){
+        if(nsprior){
             //receive sump, update, and send back
             for(size_t i=1; i<=(size_t)tc; i++) {
                 MPI_Recv(&tempsumpvec,k*siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
@@ -581,7 +578,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         delete request;
         MPI_Recv(&sumffwvec,k*k*siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-        if(fdiscrep){
+        if(nsprior){
             // send sumpvec 
             request=new MPI_Request;
             MPI_Isend(&sumpvec,k*siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
@@ -600,7 +597,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
             //std::cout << "tempsumffw["<<i<<"] = \n"<<tempsumffw<<std::endl;
         }
 
-        if(fdiscrep){
+        if(nsprior){
             //receive and update sumpvec if using discrepancy
             MPI_Wait(request,MPI_STATUSES_IGNORE);
             delete request;
@@ -830,6 +827,7 @@ void mxbrt::local_mpi_reduce_getsumr2(double &sumr2, int &n)
 #endif
 }
 
+/*
 //--------------------------------------------------
 //Model Discrepancy
 //--------------------------------------------------
@@ -848,3 +846,4 @@ void mxbrt::drawdelta(rn& gen){
         }
     }
 }
+*/

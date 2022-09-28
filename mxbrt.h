@@ -137,7 +137,7 @@ public:
     double getsigma() { return ci.sigma[0];}
 
     //Methods for working with individual model discrepacny
-    virtual void drawdelta(rn& gen);  
+    //virtual void drawdelta(rn& gen);  
 
     //--------------------
     //data

@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
    std::vector<size_t> xcols, pvec;
    size_t ptemp, xcol;
    pvec.push_back(p); 
-   for(int i=0;i<nummodels;i++){
+   for(size_t i=0;i<nummodels;i++){
       conf >> ptemp;
       pvec.push_back(ptemp);
       x_cols_list[i].resize(ptemp);
@@ -166,14 +166,13 @@ int main(int argc, char* argv[])
       xp.push_back(xtemp);
    np = xp.size()/pvec[0];
 #ifndef SILENT
-   cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << p << " from " << xfs << endl;
+   cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << pvec[0] << " from " << xfs << endl;
 #endif
-   cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << p << " from " << xfs << endl;
+   cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << pvec[0] << " from " << xfs << endl;
 
    //--------------------------------------------------
    //Construct prediction design matrices for each emulator -- essential when the emulators only use a subset of inputs from xp
    std::vector<std::vector<double>> xc_list(nummodels);
-
    size_t xcolsize = 0;
    xcol = 0;
    // Get the appropriate x columns
@@ -182,10 +181,9 @@ int main(int argc, char* argv[])
       for(size_t j=0;j<np;j++){
             for(size_t k=0;k<xcolsize;k++){
                xcol = x_cols_list[i][k] - 1;
-               xc_list[i].push_back(xc_list[0][j*xcolsize + xcol]); //xc_list is nummodel dimensional -- only for emulators
+               xc_list[i].push_back(xp[j*xcolsize + xcol]); //xc_list is nummodel dimensional -- only for emulators
             }
-      }
-      xc_list[i+1].insert(xc_list[i+1].end(),xc_list[i].begin(),xc_list[i].end()); 
+      } 
    }
 
    //--------------------------------------------------
@@ -198,7 +196,7 @@ int main(int argc, char* argv[])
    double xitemp;
    size_t indx = 0;
 
-   for(int j=0;j<=nummodels;j++){
+   for(size_t j=0;j<=nummodels;j++){
       xi_list[j].resize(pvec[j]);
       for(size_t i=0;i<pvec[j];i++) {
          // Get the next column in the x_cols_list -- important since emulators may have different inputs
@@ -230,8 +228,7 @@ int main(int argc, char* argv[])
          cout << xi_list[j][i][0] << " ... " << xi_list[j][i][xi_list[j][i].size()-1] << endl;
       }
 #endif
-    }
-
+   }
 
    //--------------------------------------------------
    //Set up model objects and MCMC
@@ -241,12 +238,9 @@ int main(int argc, char* argv[])
    amxbrt axb(m_list[0]); // additive mean mixing bart
    psbrt pxb(mh_list[0]); //product model for mixing variance
    finfo fi;
-   int l = 0; //Used for indexing emulators
 
    //finfo matrix
-   if(mpirank > 0){
-      fi = mxd::Ones(np, nummodels+1); //dummy initialize to matrix of 1's -- n0 x K+1 (1st column is discrepancy)
-   }
+   fi = mxd::Ones(np, nummodels+1); //dummy initialize to matrix of 1's -- n0 x K+1 (1st column is discrepancy)
    
    //Initialie the model mixing related objects
    axb.setxi(&xi_list[0]);   
@@ -282,28 +276,24 @@ int main(int argc, char* argv[])
    if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
 #endif
    for(size_t j=0;j<=nummodels;j++){
-      if(j == 0){
-         imf.open(folder + modelname + ".fitmix");
-      }else{
-         imf.open(folder + modelname + ".fitemulate");
-      }
+      if(j == 0){imf.open(folder + modelname + ".fitmix");}
+      if(j==1){imf.open(folder + modelname + ".fitemulate");}
       imf >> ind;
       imf >> im;
       imf >> imh;
    #ifdef _OPENMPI
       if(nd!=ind) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
-      if(m!=im) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
-      if(mh!=imh) { cout << "Error loading posterior trees"  << endl; MPI_Finalize(); return 0; }
+      if(m_list[j]!=im) { cout << "Error loading posterior trees" << endl; MPI_Finalize(); return 0; }
+      if(mh_list[j]!=imh) { cout << "Error loading posterior trees"  << endl; MPI_Finalize(); return 0; }
    #else
       if(nd!=ind) { cout << "Error loading posterior trees" << endl; return 0; }
-      if(m!=im) { cout << "Error loading posterior trees" << endl; return 0; }
-      if(mh!=imh) { cout << "Error loading posterior trees" << endl; return 0; }
+      if(m_list[j]!=im) { cout << "Error loading posterior trees" << endl; return 0; }
+      if(mh_list[j]!=imh) { cout << "Error loading posterior trees" << endl; return 0; }
    #endif
-
       // Model Mixing object
       imf >> temp;
       e_ots[j].resize(temp);
-      for(size_t i=0;i<temp;i++) imf >> e_ots[j].at(i);
+      for(size_t i=0;i<temp;i++)imf >> e_ots[j].at(i); 
 
       imf >> temp;
       e_oid[j].resize(temp);
@@ -366,6 +356,7 @@ int main(int argc, char* argv[])
    }
    
    // Temporary vectors used for loading one model realization at a time.
+   /*
    std::vector<int> onn(1,1);
    std::vector<std::vector<int> > oid(1, std::vector<int>(1));
    std::vector<std::vector<int> > ov(1, std::vector<int>(1));
@@ -376,10 +367,51 @@ int main(int argc, char* argv[])
    std::vector<std::vector<int> > sv(1, std::vector<int>(1));
    std::vector<std::vector<int> > sc(1, std::vector<int>(1));
    std::vector<std::vector<double> > stheta(1, std::vector<double>(1));
+   */
+
+   std::vector<std::vector<int>> onn(nummodels+1, std::vector<int>(nd,1));
+   std::vector<std::vector<std::vector<int>>> oid(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+   std::vector<std::vector<std::vector<int>>> ov(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+   std::vector<std::vector<std::vector<int>>> oc(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+   std::vector<std::vector<std::vector<double>>> otheta(nummodels+1, std::vector<std::vector<double>>(nd, std::vector<double>(1)));
+   std::vector<int> snn(1,1);
+   std::vector<std::vector<int> > sid(1, std::vector<int>(1));
+   std::vector<std::vector<int> > sv(1, std::vector<int>(1));
+   std::vector<std::vector<int> > sc(1, std::vector<int>(1));
+   std::vector<std::vector<double> > stheta(1, std::vector<double>(1));
+   /*
+   std::vector<std::vector<int>> snn(nummodels+1, std::vector<int>(nd,1));
+   std::vector<std::vector<std::vector<int>>> sid(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+   std::vector<std::vector<std::vector<int>>> sv(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+   std::vector<std::vector<std::vector<int>>> sc(nummodels+1, std::vector<std::vector<int>>(nd, std::vector<int>(1)));
+   std::vector<std::vector<std::vector<double>>> stheta(nummodels+1, std::vector<std::vector<double>>(nd, std::vector<double>(1)));
+   */
+
+   for(size_t k=0;k<=nummodels;k++){
+      // Reset sizes of containers
+      m = m_list[k];
+      mh = mh_list[k];
+      onn[k].resize(m,1);
+      oid[k].resize(m, std::vector<int>(1));
+      ov[k].resize(m, std::vector<int>(1));
+      oc[k].resize(m, std::vector<int>(1));
+      otheta[k].resize(m, std::vector<double>(1));
+      /*
+      snn[k].resize(mh,1);
+      sid[k].resize(mh, std::vector<int>(1));
+      sv[k].resize(mh, std::vector<int>(1));
+      sc[k].resize(mh, std::vector<int>(1));
+      stheta[k].resize(mh, std::vector<double>(1));
+      */
+   }
+      
+
 
    // Draw realizations of the posterior predictive.
-   size_t curdx=0;
-   size_t cumdx=0;
+   std::vector<size_t> curdx(nummodels+1,0);
+   std::vector<size_t> cumdx(nummodels+1,0);
+   size_t cmdx = 0;
+   size_t crdx = 0;
    size_t nt=1; //number of thetas
 #ifdef _OPENMPI
    double tstart=0.0,tend=0.0;
@@ -391,57 +423,48 @@ int main(int argc, char* argv[])
    //-------------------------------------------------
    // Mean trees first
    if(mpirank==0) cout << "Drawing mean response from posterior predictive" << endl;
-   for(size_t k=0;k<=nummodels;k++){
-      // Reset values
-      m = m_list[k];
-      cumdx = 0;
-      curdx = 0;
-      if(k==0){nt = nummodels+1;}else{nt = 1;}
-      
-      // Reset sizes of containers
-      onn.resize(m,1);
-      oid.resize(m, std::vector<int>(1));
-      ov.resize(m, std::vector<int>(1));
-      oc.resize(m, std::vector<int>(1));
-      otheta.resize(m, std::vector<double>(1));
-
-      for(size_t i=0;i<nd;i++) {
-         curdx=0;
-         for(size_t j=0;j<m;j++) {
-            onn[j]=e_ots[k].at(i*m+j);
-            oid[j].resize(onn[j]);
-            ov[j].resize(onn[j]);
-            oc[j].resize(onn[j]);
-            otheta[j].resize(onn[j]*nt);
+   for(size_t i=0;i<nd;i++){      
+      for(size_t a=0;a<=nummodels;a++){curdx[a] = 0;}
+      for(size_t k=0;k<=nummodels;k++){
+         if(k==0){nt = nummodels+1;}else{nt = 1;}
+         for(size_t j=0;j<m_list[k];j++){
+            onn[k][j]=e_ots[k].at(i*m_list[k]+j);
+            oid[k][j].resize(onn[k][j]);
+            ov[k][j].resize(onn[k][j]);
+            oc[k][j].resize(onn[k][j]);
+            otheta[k][j].resize(onn[k][j]*nt);
             // Loop through the nodes in a given tree
-            for(size_t l=0;l<(size_t)onn[j];l++) {
-               oid[j][l]=e_oid[k].at(cumdx+curdx+l);
-               ov[j][l]=e_ovar[k].at(cumdx+curdx+l);
-               oc[j][l]=e_oc[k].at(cumdx+curdx+l);
+            for(size_t l=0;l<(size_t)onn[k][j];l++) {
+               oid[k][j][l]=e_oid[k].at(cumdx[k]+curdx[k]+l);
+               ov[k][j][l]=e_ovar[k].at(cumdx[k]+curdx[k]+l);
+               oc[k][j][l]=e_oc[k].at(cumdx[k]+curdx[k]+l);
                if(k==0){
                   // Vector theta -- model mixing
-                  for(size_t r=0;r<nt;r++){otheta[j][l*nt+r]=e_otheta[k].at((cumdx+curdx+l)*nt+r);}
+                  for(size_t r=0;r<nt;r++){otheta[k][j][l*nt+r]=e_otheta[k].at((cumdx[k]+curdx[k]+l)*nt+r);}
                }else{
                   // Scalar theta -- emulators
-                  otheta[j][l]=e_otheta[k].at(cumdx+curdx+l);
+                  otheta[k][j][l]=e_otheta[k].at(cumdx[k]+curdx[k]+l);
                }
             }
-            curdx+=(size_t)onn[j];
+            curdx[k]+=(size_t)onn[k][j];
          }
-         cumdx+=curdx;
-
+         cumdx[k]+=curdx[k];
          // Load tree and draw relization
          if(k == 0){
-            axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta);
+            axb.loadtree_vec(0,m_list[k],onn[k],oid[k],ov[k],oc[k],otheta[k]);
             axb.predict_mix(&dip_list[k],&fi);
+            // Set prediction and update finfo
+            for(size_t j=0;j<np;j++){
+               tedraw_list[k][i][j] = fp_list[k][j];
+            }
          }else{
-            ambm_list[k-1]->loadtree(0,m,onn,oid,ov,oc,otheta);
+            ambm_list[k-1]->loadtree(0,m_list[k],onn[k],oid[k],ov[k],oc[k],otheta[k]);
             ambm_list[k-1]->predict(&dip_list[k]);
             // Set prediction and update finfo
             for(size_t j=0;j<np;j++){
                tedraw_list[k][i][j] = fp_list[k][j] + means_list[k];
                fi(j,k) = tedraw_list[k][i][j];
-            } 
+            }
          }
          
       }
@@ -452,8 +475,8 @@ int main(int argc, char* argv[])
    for(size_t k=0;k<=nummodels;k++){
       // Set values
       mh = mh_list[k];
-      cumdx=0;
-      curdx=0;
+      cmdx=0;
+      crdx=0;
 
       // Reset sizes of containers
       snn.resize(mh,1);
@@ -463,22 +486,22 @@ int main(int argc, char* argv[])
       stheta.resize(mh, std::vector<double>(1));
       
       for(size_t i=0;i<nd;i++) {
-         curdx=0;
+         crdx=0;
          for(size_t j=0;j<mh;j++) {
             snn[j]=e_sts[k].at(i*mh+j);
             sid[j].resize(snn[j]);
             sv[j].resize(snn[j]);
             sc[j].resize(snn[j]);
             stheta[j].resize(snn[j]);
-            for(size_t k=0;k< (size_t)snn[j];k++) {
-               sid[j][k]=e_sid[k].at(cumdx+curdx+k);
-               sv[j][k]=e_svar[k].at(cumdx+curdx+k);
-               sc[j][k]=e_sc[k].at(cumdx+curdx+k);
-               stheta[j][k]=e_stheta[k].at(cumdx+curdx+k);
+            for(size_t l=0;l<(size_t)snn[j];l++) {
+               sid[j][l]=e_sid[k].at(cmdx+crdx+l);
+               sv[j][l]=e_svar[k].at(cmdx+crdx+l);
+               sc[j][l]=e_sc[k].at(cmdx+crdx+l);
+               stheta[j][l]=e_stheta[k].at(cmdx+crdx+l);
             }
-            curdx+=(size_t)snn[j];
+            crdx+=(size_t)snn[j];
          }
-         cumdx+=curdx;
+         cmdx+=crdx;
 
          if(k == 0){
             // load tree and draw realization -- mixing variance
@@ -496,7 +519,7 @@ int main(int argc, char* argv[])
    }
 
    //-------------------------------------------------
-   // Save predictions to files 
+   // Save predictions to files -- all predictions are saved to a master ".mdraws" or ".sdraws" list
    //-------------------------------------------------
 #ifdef _OPENMPI
    if(mpirank==0) {

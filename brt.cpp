@@ -1661,10 +1661,6 @@ void brt::local_setf_mix(diterator& diter)
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec(); 
       yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
-      if(fdiscrep){
-         //yhat[*diter] = yhat[*diter] + (*fdelta).row(*diter)*thetavec_temp;
-      }
-
    }
 }
 
@@ -1703,10 +1699,6 @@ void brt::local_setr_mix(diterator& diter)
       bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec();
       resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
-      if(fdiscrep){
-         //resid[*diter] = resid[*diter] - (*fdelta).row(*diter)*thetavec_temp;
-      }
-      //resid[*diter] = 0.0 - (*fi).row(*diter)*thetavec_temp;
    }
 }
 //--------------------------------------------------

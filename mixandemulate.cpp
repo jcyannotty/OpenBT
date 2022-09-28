@@ -675,6 +675,7 @@ int main(int argc, char* argv[])
     //setup psbrt object
     //make di for psbrt object
     dips_list[0].n=0; dips_list[0].p=pvec[0]; dips_list[0].x=NULL; dips_list[0].y=NULL; dips_list[0].tc=tc;
+    for(int j=0;j<=nummodels;j++) r_list[j] = NULL;
     //double *r = NULL;
 #ifdef _OPENMPI
     if(mpirank>0) {
@@ -913,6 +914,7 @@ int main(int argc, char* argv[])
     }
 
     // Adapt Stage in the MCMC
+    diterator diter0(&dips_list[0]);
     for(size_t i=0;i<nadapt;i++) { 
         // Print adapt step number
         if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
@@ -921,21 +923,24 @@ int main(int argc, char* argv[])
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
         // Get the current model mixing weights   
         if(mpirank>0){
+            // draw new weight matrix
             wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
             axb.get_mix_wts(&diw, &wts_iter);  
-            //cout << "wts = \n" << wts_iter << endl;
         } 
         
         //Emulation Steps
         for(int j=0;j<nummodels;j++){
             // Get re-weighted field observations
             if(mpirank > 0){
+                // rest mixprednotj
+                mixprednotj.clear();
+                mixprednotj.resize(dimix_list[0].n, 0);
                 for(int k=0;k<nummodels;k++){    
                     // Get the mixed prediction
                     if(k!=j){
                         for(size_t l=0;l<dimix_list[j].n;l++){
                             mixprednotj[l] = mixprednotj[l] + fi(l,k+1)*wts_iter(k+1,l);  
-                            //cout << "mixprednotj[l] = " << mixprednotj[l] << endl;
+                            //if(i%1000 == 0)cout << "mixprednotj[l] = " << mixprednotj[l] << endl;
                         }
                     }
                 }
@@ -943,7 +948,10 @@ int main(int argc, char* argv[])
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                     y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
-                    //cout << "y_list[j+1][nvec[j+1]- nvec[0] + l] = " << y_list[j+1][nvec[j+1]- nvec[0] + l] << endl;
+                    //cout << "wts_iter(j+1,l) = " << wts_iter(j+1,l) << "---- y_list[j+1][nvec[j+1] - nvec[0] + l] = " << y_list[j+1][nvec[j+1]- nvec[0] + l] << endl;
+                    // Now update the appropriate sigmav_list[j+1] entries where the last nvec[0] entries are reweighted field obs
+                    sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
+                    //if(i%1000 == 0)cout << "y_list[j+1][nvec[j+1]- nvec[0] + l] = " << y_list[j+1][nvec[j+1]- nvec[0] + l] << endl;
                 }
             }
             
@@ -969,6 +977,10 @@ int main(int argc, char* argv[])
 
         // Emulation Steps
         for(int j=0;j<nummodels;j++){
+            // reset mixprednotj
+            mixprednotj.clear();
+            mixprednotj.resize(dimix_list[0].n, 0);
+
             for(int k=0;k<nummodels;k++){
                 // Get the mixed prediction
                 if(k!=j){
@@ -982,6 +994,8 @@ int main(int argc, char* argv[])
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                 y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                // Now update the appropriate sigmav_list[j+1] entries where the last nvec[0] entries are reweighted field obs
+                sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
             }
             ambm_list[j]->drawvec(gen);
             
@@ -992,6 +1006,7 @@ int main(int argc, char* argv[])
             }
         }
 #endif
+    // *** Think about moving this into mpi sections since we use mpirank > 0 below
         // Set dinfo objecs for the variance
         for(int j=0;j<=nummodels;j++){
             //dips_list[j] = dinfo_list[j];
@@ -1007,6 +1022,8 @@ int main(int argc, char* argv[])
                 if((i+1)%adaptevery==0 && mpirank==0){ambm_list[j-1]->adapt();}
             }else{
                 // Model Mixing
+                //dips_list[0] = dinfo_list[0];
+                for(size_t l=0;l<dips_list[0].n;l++){r_list[0][l] = y_list[0][l];}
                 dips_list[0] -= faxb;
                 if((i+1)%adaptevery==0 && mpirank==0){axb.adapt();}
             }
@@ -1016,6 +1033,7 @@ int main(int argc, char* argv[])
         // Draw the variances
         // Model Mixing
         if(mpirank==0) pxb.draw(gen); else pxb.draw_mpislave(gen);
+        //if(mpirank>0){cout << "sigdraw[0][0] = " << sigmav_list[0][0] << endl;} 
 
         // Emulators
         for(int j=0;j<nummodels;j++){
@@ -1062,6 +1080,9 @@ int main(int argc, char* argv[])
         for(int j=0;j<nummodels;j++){
             // Get re-weighted field observations
             if(mpirank > 0){
+                // rest mixprednotj
+                mixprednotj.clear();
+                mixprednotj.resize(dimix_list[0].n, 0);
                 for(int k=0;k<nummodels;k++){    
                     // Get the mixed prediction
                     if(k!=j){
@@ -1075,6 +1096,8 @@ int main(int argc, char* argv[])
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                     y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                    // Now update the appropriate sigmav_list[j+1] entries where the last nvec[0] entries are reweighted field obs
+                    sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
                 }
             }
             
@@ -1099,6 +1122,9 @@ int main(int argc, char* argv[])
 
         // Emulation Steps
         for(int j=0;j<nummodels;j++){
+            // rest mixprednotj
+            mixprednotj.clear();
+            mixprednotj.resize(dimix_list[0].n, 0);
             for(int k=0;k<nummodels;k++){
                 // Get the mixed prediction
                 if(k!=j){
@@ -1111,6 +1137,7 @@ int main(int argc, char* argv[])
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                 y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
             }
             ambm_list[j]->drawvec(gen);
             
@@ -1135,6 +1162,8 @@ int main(int argc, char* argv[])
                 }
             }else{
                 // Model Mixing
+                //dips_list[0] = dinfo_list[0];
+                for(size_t l=0;l<dips_list[0].n;l++){r_list[0][l] = y_list[0][l];} 
                 dips_list[0] -= faxb;
             }
         }
@@ -1164,7 +1193,6 @@ int main(int argc, char* argv[])
                 for(size_t l=0;l<nvec[0];l++){sigmav_list[j][nvec[j]-nvec[0]+l] = sigmav_list[0][l]; }
             }else{
                 disig_list[0] = fpxb;
-                
             }
             
         }
@@ -1186,6 +1214,9 @@ int main(int argc, char* argv[])
         for(int j=0;j<nummodels;j++){
             // Get re-weighted field observations
             if(mpirank > 0){
+                // rest mixprednotj
+                mixprednotj.clear();
+                mixprednotj.resize(dimix_list[0].n, 0);
                 for(int k=0;k<nummodels;k++){    
                     // Get the mixed prediction
                     if(k!=j){
@@ -1199,6 +1230,7 @@ int main(int argc, char* argv[])
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                     y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                    sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
                 }
             }
             
@@ -1223,6 +1255,9 @@ int main(int argc, char* argv[])
 
         // Emulation Steps
         for(int j=0;j<nummodels;j++){
+            // rest mixprednotj
+            mixprednotj.clear();
+            mixprednotj.resize(dimix_list[0].n, 0);
             for(int k=0;k<nummodels;k++){
                 // Get the mixed prediction
                 if(k!=j){
@@ -1235,6 +1270,7 @@ int main(int argc, char* argv[])
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
                 y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
             }
             ambm_list[j]->drawvec(gen);
             
@@ -1259,6 +1295,8 @@ int main(int argc, char* argv[])
                 }
             }else{
                 // Model Mixing
+                //dips_list[0] = dinfo_list[0];
+                for(size_t l=0;l<dips_list[0].n;l++){r_list[0][l] = y_list[0][l];} 
                 dips_list[0] -= faxb;
             }
         }

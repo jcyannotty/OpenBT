@@ -77,12 +77,14 @@
     int modeltype;
     std::string xicore;
     std::string xwcore;
+    std::string fitcore;
 
     //model name, xi and xp
     conf >> modelname;
     conf >> modeltype;
     conf >> xicore;
     conf >> xwcore;
+    conf >> fitcore;
 
     //number of saved draws and number of trees
     size_t nd;
@@ -199,7 +201,7 @@
     if(mpirank==0) cout << "Loading saved posterior tree draws" << endl;
     #endif
     size_t ind,im,imh;
-    std::ifstream imf(folder + modelname + ".fit");
+    std::ifstream imf(folder + modelname + fitcore);
     imf >> ind;
     imf >> im;
     imf >> imh;

@@ -6,7 +6,7 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = foreign subdir-objects no-installinfo no-installman dist-zip
 
 # main package installed binaries
-bin_PROGRAMS = openbtcli openbtpred openbtvartivity openbtsobol openbtmopareto openbtmixingwts openbtmixing
+bin_PROGRAMS = openbtcli openbtpred openbtvartivity openbtsobol openbtmopareto openbtmixingwts openbtmixing openbtmixingpred
 
 
 # main package programs
@@ -30,6 +30,9 @@ openbtmixingwts_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la lib
 
 openbtmixing_SOURCES = mixandemulate.cpp
 openbtmixing_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+
+openbtmixingpred_SOURCES = mixandemulatepred.cpp
+openbtmixingpred_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
 # test programs -- these are only built if 'make check' is run.
 check_PROGRAMS = testcrn testtree testbrt testbrtvp testmbrt testsbrt testmxbrt testambrt testpsbrt testamxbrt testsinglebinomial testsinglepoisson

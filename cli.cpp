@@ -151,30 +151,24 @@ int main(int argc, char* argv[])
    std::string chgvcore;
    conf >> chgvcore;
 
-   //function output 
-   std::string fcore;
+   //fhat and sdhat for model mixing 
+   std::string fcore, fsdcore;
    conf >> fcore;
+   conf >> fsdcore;
 
-   //Discrepancy mean and standard deviation matrices
-   std::string fdmcore;
-   std::string fdscore;
-   conf >> fdmcore;
-   conf >> fdscore;
+   //non-stationary prior for mixing True/False - read in as a string (reading is as a bool prevented the rest of the values from being read, not sure why)
+   std::string nsprior_str;
+   bool nsprior = false;
+   conf >> nsprior_str;
+   if(nsprior_str == "TRUE"){ nsprior = true; }
    
-
-   //Function output discrepancy True/False - read in as a string (reading is as a bool prevented the rest of the values from being read, not sure why)
-   std::string fdiscrepancy_str;
-   bool fdiscrepancy = false;
-   conf >> fdiscrepancy_str;
-   if(fdiscrepancy_str == "TRUE"){ fdiscrepancy = true; }
-   
-   //Model Mixing Prior Mean and variance root and true/false denoting if the priors are the same for each model
-   std::string fprcore;
-   conf >> fprcore;
-   std::string fprior_str;
-   bool fprior = false;
-   conf >> fprior_str;
-   if(fprior_str == "TRUE"){ fprior = true; }
+   //Model Mixing wts Prior Mean and sd root and true/false denoting if the priors are the same for each wt model
+   std::string wprcore; // name of the textfile containing the prior for the weights
+   std::string wprior_str; // str -- T/F did the user provide a prior mean vec and covariance for the weights via text file
+   bool wprior = false; // bool version of wprior_str
+   conf >> wprcore;
+   conf >> wprior_str; 
+   if(wprior_str == "TRUE"){ wprior = true; }
 
    //control
    double pbd;
@@ -379,15 +373,16 @@ int main(int argc, char* argv[])
 
    //--------------------------------------------------
    //Initialize f mean and std discrepancy information -- used only for model mixing when fdiscrepancy = TRUE 
-   std::vector<double> fdm, fds;
-   double fdmtemp, fdstemp;
-   finfo fdeltamean, fdeltasd;
-   size_t kdm = 0; 
-   size_t kds = 0;
-   if(modeltype==MODEL_MIXBART && fdiscrepancy){   
+   std::vector<double> fsdvec;
+   double fsdtemp;
+   finfo fsd; 
+   size_t ksd = 0;
+   if(modeltype==MODEL_MIXBART && nsprior){   
    #ifdef _OPENMPI
       if(mpirank>0) {
    #endif      
+         /*
+         // Deleta
          std::stringstream fdmfss;
          std::string fdmfs;
          fdmfss << folder << fdmcore << mpirank;
@@ -399,29 +394,29 @@ int main(int argc, char* argv[])
 
          //Make finfo on the slave node
          makefinfo(k,n,&fdm[0],fdeltamean);
-
-         std::stringstream fdsfss;
-         std::string fdsfs;
-         fdsfss << folder << fdscore << mpirank;
-         fdsfs=fdsfss.str();
-         std::ifstream fdsf(fdsfs);
-         while(fdsf >> fdstemp)
-            fds.push_back(fdstemp);
-         kds = fds.size()/n; 
+         */
+         std::stringstream fsdfss;
+         std::string fsdfs;
+         fsdfss << folder << fsdcore << mpirank;
+         fsdfs=fsdfss.str();
+         std::ifstream fsdf(fsdfs);
+         while(fsdf >> fsdtemp)
+            fsdvec.push_back(fsdtemp);
+         ksd = fsdvec.size()/n; 
 
          //Make finfo on the slave node
-         makefinfo(k,n,&fds[0],fdeltasd);
+         makefinfo(k,n,&fsdvec[0],fsd);
    
    #ifndef SILENT
-         cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << kdm << " from " << fdmfs << endl;
-         cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << kds << " from " << fdsfs << endl;
+         //cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << kdm << " from " << fdmfs << endl;
+         cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << ksd << " from " << fsdfs << endl;
    #endif
    #ifdef _OPENMPI
       }
       int tempkd = (unsigned int) k;
       MPI_Allreduce(MPI_IN_PLACE,&tempkd,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
-      if(mpirank>0 && kdm != ((size_t) tempkd)) { cout << "PROBLEM LOADING DISCREPANCY DATA" << endl; MPI_Finalize(); return 0;}
-      if(mpirank>0 && kds != ((size_t) tempkd)) { cout << "PROBLEM LOADING DISCREPANCY DATA" << endl; MPI_Finalize(); return 0;}
+      //if(mpirank>0 && kdm != ((size_t) tempkd)) { cout << "PROBLEM LOADING DISCREPANCY DATA" << endl; MPI_Finalize(); return 0;}
+      if(mpirank>0 && ksd != ((size_t) tempkd)) { cout << "PROBLEM LOADING DISCREPANCY DATA" << endl; MPI_Finalize(); return 0;}
    #endif   
    }   
 
@@ -430,13 +425,13 @@ int main(int argc, char* argv[])
    //std::vector<std::vector<double>> fpr;
    std::vector<double> fprvtemp;
    double fprtemp;
-   std::ifstream fprf(folder + fprcore);
+   std::ifstream fprf(folder + wprcore);
    Eigen::MatrixXd prior_precision(k,k);
    Eigen::VectorXd prior_mean(k);
 
    prior_precision = mxd::Identity(k,k);
    prior_mean = vxd::Zero(k);
-   if(modeltype==MODEL_MIXBART && fprior){
+   if(modeltype==MODEL_MIXBART && wprior){
       //Get the means first
       for(size_t j=0;j<k;j++) {
          fprf >> fprtemp;
@@ -967,7 +962,7 @@ return 0;
    //function output information
    axb.setfi(&fi, k);
    //set individual function discrepacnies if provided 
-   if(fdiscrepancy) {axb.setfdelta(&fdeltamean, &fdeltasd);}
+   if(nsprior) {axb.setfsd(&fsd);}
    //data objects
    axb.setdata_mix(&di);  //set the data
    //thread count

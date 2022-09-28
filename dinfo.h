@@ -299,43 +299,4 @@ public:
   size_t operator*() { return i; }
 };
 
-
-/*
-//dinfo class for model mixing
-class dinfo_mx : public dinfo{
-   public:
-   dinfo_mx(): dinfo(), f(0), k(1){} //Update generic constructor
-   dinfo_mx(const dinfo& d, size_t k0, double* f0) : dinfo(d), k(k0), f(f0) {} //Make dinfo_mx using previously defined dinfo
-   dinfo_mx(const dinfo_mx& d) : p(d.p),n(d.n),k(d.k),x(d.x),y(d.y),f(d.f),tc(d.tc) {} //Constructor using mixing info
-   dinfo_mx(size_t ip, size_t in, size_t ik, double *f0, double *ix, double *iy) : p(ip), n(in), k(ik),f(f0), x(ix), y(iy), tc(1) {} //Constructor with each argument
-   dinfo_mx(size_t ip, size_t in, size_t ik, double *f0, double *ix, double *iy,int itc) : p(ip), n(in),k(ik), f(f0), x(ix), y(iy), tc(itc) {} //constructor with each argument and thread count
-   
-   size_t p;  //number of vars
-   size_t n;  //number of observations
-   size_t k; // number of models -- number of columns in F
-   double *f; //jth function value of ith obs is *(f + k*i+j)
-   double *x; // jth var of ith obs is *(x + p*i+j)
-   double *y; // ith y is *(y+i) or y[i]
-   int tc; //thread count
-
-   //Override assignment operator
-   dinfo_mx& operator=(const dinfo_mx& rhs) {
-      if(&rhs != this) {
-        this->n = rhs.n;
-        this->p = rhs.p;
-        this->k = rhs.k;
-        this->x = rhs.x;
-        this->f = rhs.f;
-        #ifdef _OPENMP
-        #pragma omp parallel for num_threads(tc)
-        #endif
-        for(size_t i=0;i<n;i++)
-          y[i]=rhs.y[i];     
-      }
-      return *this; 
-   }
-
-};
-*/
-
 #endif

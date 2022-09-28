@@ -204,9 +204,9 @@ public:
 
    //Set the data, the vector of predicted values, and residuals
    void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix();}
-   void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);this->fdiscrep = false;} //sets the pointer for the f matrix and k as members of brt 
+   void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);this->nsprior = false;} //sets the pointer for the f matrix and k as members of brt 
    void setk(size_t k){this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the number of models for mixing--used in programs that do not need to read in function data (ex: mixingwts.cpp))
-   void setfdelta(finfo *fdeltamean, finfo *fdeltasd){this->fdelta = fdeltamean; this->fdelta_mean = fdeltamean; this->fdelta_sd = fdeltasd; this->fdiscrep = true;} //sets the function discrepancies 
+   void setfsd(finfo *fsd){this->fisd = fsd; this->nsprior = true;} //sets the function discrepancies 
    void setf_mix();
    void setr_mix(); 
    void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
@@ -300,10 +300,8 @@ protected:
    //Protected Model Mixing functions and data
    //-------------------------------------------
    finfo *fi; //pointer to the f matrix
-   finfo *fdelta; //pointer to the function discrepancy matrix
-   finfo *fdelta_mean; //pointer to the function discrepancy mean matrix
-   finfo *fdelta_sd; //pointer to the function discrepancy std matrix  
-   bool fdiscrep; //True/False -- use individual function discrepancy
+   finfo *fisd; //pointer to the std matrix for fhat  
+   bool nsprior; //True/False -- use stationary or nonstationy prior
    size_t k;
    
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);

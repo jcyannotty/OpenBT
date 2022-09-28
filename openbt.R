@@ -35,7 +35,6 @@ openbt = function(
 x.train,
 y.train,
 f.train = matrix(1,nrow = length(y.train), ncol = 2),
-#x.test=matrix(0.0,0,0),
 ntree=NULL,
 ntreeh=NULL,
 ndpost=1000, nskip=100,
@@ -43,9 +42,8 @@ k=NULL,
 power=2.0, base=.95,
 tc=2,
 sigmav=rep(1,length(y.train)),
-f.discrep.mean = NULL,
-f.discrep.sd = NULL,
-f.prior.info = NULL,
+f.sd.train = NULL, # rename
+wts.prior.info = NULL, # keep/rename
 fmean=mean(y.train),
 overallsd = NULL,
 overallnu= NULL,
@@ -149,7 +147,7 @@ if(model=="merck_truncated")
 if(model=="mixbart")
 {
   modeltype=MODEL_MIXBART
-  if(is.null(ntree)) ntree=200
+  if(is.null(ntree)) ntree=20
   if(is.null(ntreeh)) ntreeh=1
   if(is.null(k)) k=1
   if(is.null(overallsd)) overallsd=sd(y.train)
@@ -182,24 +180,20 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 }
 
 #Set mix discrepancy to FALSE if we use a different model
-fdiscrepancy = FALSE
-fprior = FALSE
+nsprior = FALSE
+wtsprior = FALSE
 if(modeltype==MODEL_MIXBART)
 {
   #Center the response
-  #y.train=(y.train-fmean)
   fmean.out=paste(0.0) 
   
-  #Center the function output by the mean of data
-  #f.train=apply(f.train, 2, function(x) (x - fmean))
-  
   #Check to see if any discrepancy data has been passed into the function -- if so, we will use the discrepancy model mixing
-  if(!is.null(f.discrep.mean)&!is.null(f.discrep.sd)){
-    fdiscrepancy = TRUE    
+  if(!is.null(f.sd.train)){
+    nsprior = TRUE    
   }
-  if(!is.null(f.prior.info)){
-    fprior = TRUE
-    if(ncol(f.prior.info) != 2 | nrow(f.prior.info)!=ncol(f.train)) stop("Invalid f.prior.info: Required dimensions of num.models x 2")
+  if(!is.null(wts.prior.info)){
+    wtsprior = TRUE
+    if(ncol(wts.prior.info) != 2 | nrow(wts.prior.info)!=ncol(f.train)) stop("Invalid wts.prior.info: Required dimensions of num.models x 2")
   }
 }
 #--------------------------------------------------
@@ -250,7 +244,7 @@ if(modeltype==MODEL_MIXBART){
   beta0=0
 }
 
-if(modeltype==MODEL_MIXBART & fdiscrepancy){
+if(modeltype==MODEL_MIXBART & nsprior){
   #tau = 1/(sqrt(m)*k)
   #tau = 1/(2*sqrt(m)*k)
   tau = 1/(2*(m)*k)
@@ -342,9 +336,8 @@ yroot="y"
 sroot="s"
 chgvroot="chgv"
 froot="f"
-fdmroot="fdm"
-fdsroot="fds"
-fproot="fpr"
+fsdroot="fds"
+wproot="wpr"
 xiroot="xi"
 folder=tempdir(check=TRUE)
 if(!dir.exists(folder)) dir.create(folder)
@@ -357,7 +350,7 @@ fout=file(paste(folder,"/config",sep=""),"w")
 writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
-            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fdmroot),paste(fdsroot),paste(fdiscrepancy),paste(fproot),paste(fprior), 
+            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(nsprior),paste(wproot),paste(wtsprior), 
             paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
             paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
@@ -388,16 +381,17 @@ if(modeltype == MODEL_MIXBART){
   flist=split(as.data.frame(f.train),(seq(n)-1) %/% (n/nslv))
   for(i in 1:nslv) write(t(flist[[i]]),file=paste(folder,"/",froot,i,sep=""))
   
-  if(fdiscrepancy){
-    fdmlist=split(as.data.frame(f.discrep.mean),(seq(n)-1) %/% (n/nslv))
-    for(i in 1:nslv) write(t(fdmlist[[i]]),file=paste(folder,"/",fdmroot,i,sep=""))
+  if(nsprior){
+    # -- delete these two lines
+    #fdmlist=split(as.data.frame(f.discrep.mean),(seq(n)-1) %/% (n/nslv))
+    #for(i in 1:nslv) write(t(fdmlist[[i]]),file=paste(folder,"/",fdmroot,i,sep=""))
     
-    fdslist=split(as.data.frame(f.discrep.sd),(seq(n)-1) %/% (n/nslv))
-    for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(folder,"/",fdsroot,i,sep=""))
+    fdslist=split(as.data.frame(f.sd.train),(seq(n)-1) %/% (n/nslv))
+    for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(folder,"/",fsdroot,i,sep=""))
   }
   
-  if(fprior){
-    write(f.prior.info,file=paste(folder,"/",fproot,sep=""))
+  if(wtsprior){
+    write(wts.prior.info,file=paste(folder,"/",fproot,sep=""))
   }
 }
 
@@ -447,8 +441,8 @@ res$model=model
 res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
 res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
 res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
-res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fdmroot=fdmroot;res$fdsroot=fdsroot; 
-res$fdiscrepancy = fdiscrepancy; res$pbd=pbd; res$pb=pb
+res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fsdroot=fsdroot; 
+res$nsprior = nsprior; res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
 res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
 res$printevery=printevery; res$xiroot=xiroot; res$minx=minx; res$maxx=maxx;
@@ -473,8 +467,8 @@ predict.openbt = function(
 fit=NULL,
 x.test=NULL,
 f.test=matrix(1,nrow = 1, ncol = 2),
-f.discrep.mean = NULL,
-f.discrep.sd = NULL,
+# f.discrep.mean = NULL, # delete
+# f.sd.test = NULL, # delete
 tc=2,
 fmean=fit$fmean,
 q.lower=0.025,
@@ -505,13 +499,13 @@ n=nrow(x.test)
 k=2 #Default number of models for model mixing
 xproot="xp"
 fproot="fp"
-fpdmroot="fpdm"
-fpdsroot="fpds"
+#fpdmroot="fpdm"
+#fpdsroot="fpds"
 
 if(fit$modeltype==MODEL_MIXBART){
   if(is.null(f.test)){stop("No function output specified for model mixing!\n")}
   k=ncol(f.test) #Number of models
-  if(is.null(f.discrep.mean) & fit$fdiscrepancy){stop("No function discrepancy mean and/or standard deviation was provided, but model was trained with functional discrepancy.") } 
+  #if(fit$nsprior){stop("No function discrepancy mean and/or standard deviation was provided, but model was trained with functional discrepancy.") } 
 }
 
 if(fit$modeltype==MODEL_BART || fit$modeltype==MODEL_HBART || fit$modeltype==MODEL_MERCK_TRUNCATED)
@@ -522,22 +516,16 @@ if(fit$modeltype==MODEL_PROBIT || fit$modeltype==MODEL_MODIFIEDPROBIT)
 {
    fmean.out=paste(qnorm(fmean))
 }
-if(fit$modeltype==MODEL_MIXBART)
-{
-  #Ussed to add the mean back in for predictions in pred.cpp
-  #fmean.out=paste(fmean)
+if(fit$modeltype==MODEL_MIXBART){
   fmean.out=paste(0.0)
-  #Center the function output in the test set by the ymean
-  #f.test = apply(f.test, 2, function(x) x - fmean)
-  
 }
 
 #--------------------------------------------------
 #write out config file
 fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
-writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,fpdmroot, fpdsroot,
+writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,
             paste(fit$nd),paste(fit$m),
-            paste(fit$mh),paste(p),paste(k),paste(fit$fdiscrepancy),paste(tc),
+            paste(fit$mh),paste(p),paste(k),paste(tc),
             fmean.out), fout)
 close(fout)
 
@@ -553,12 +541,12 @@ if(fit$modeltype==MODEL_MIXBART){
   flist=split(as.data.frame(f.test),(seq(n)-1) %/% (n/nslv))
   for(i in 1:nslv) write(t(flist[[i]]),file=paste(fit$folder,"/",fproot,i-1,sep=""))
   
-  if(fit$fdiscrepancy){
-    fdmlist=split(as.data.frame(f.discrep.mean),(seq(n)-1) %/% (n/nslv))
-    for(i in 1:nslv) write(t(fdmlist[[i]]),file=paste(fit$folder,"/",fpdmroot,i-1,sep=""))
+  if(fit$nsprior){
+    #fdmlist=split(as.data.frame(f.discrep.mean),(seq(n)-1) %/% (n/nslv))
+    #for(i in 1:nslv) write(t(fdmlist[[i]]),file=paste(fit$folder,"/",fpdmroot,i-1,sep=""))
     
-    fdslist=split(as.data.frame(f.discrep.sd),(seq(n)-1) %/% (n/nslv))
-    for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(fit$folder,"/",fpdsroot,i-1,sep=""))
+    #fdslist=split(as.data.frame(f.sd.train),(seq(n)-1) %/% (n/nslv))
+    #for(i in 1:nslv) write(t(fdslist[[i]]),file=paste(fit$folder,"/",fpdsroot,i-1,sep=""))
   }
 }
 
@@ -1582,24 +1570,29 @@ openbt.mixingwts = function(
   MODEL_MERCK_TRUNCATED=8
   MODEL_MIXBART=9
   
+  model_types = c("mixbart", "mix_emulate")
   #--------------------------------------------------
   # params
   if(is.null(fit)) stop("No fitted model specified!\n")
   if(is.null(x.test)) stop("No prediction points specified!\n")
-  if(fit$modeltype!=MODEL_MIXBART){stop("Wrong model type! This function is for mixbart.\n")}
   if(is.null(numwts)){stop("Missing number of model weights parameter numwts.\n")}
+  if(!(fit$model %in% model_types)){stop("Wrong model type! This function is for mixbart.\n")}
+  #if(fit$modeltype!=MODEL_MIXBART){stop("Wrong model type! This function is for mixbart.\n")}
+  
   nslv=tc
   x.test=as.matrix(x.test)
   p=ncol(x.test)
   n=nrow(x.test)
   xwroot="xw"
-  
+  fitroot=".fit"
+  if(fit$model == "mixbart"){m = fit$m; mh = fit$mh}else{m = fit$mix_model_args$ntree; mh = fit$mix_model_args$ntreeh}
+  if(fit$model != "mixbart"){fitroot = ".fitmix"}
   #--------------------------------------------------
   #write out config file
   fout=file(paste(fit$folder,"/config.mxwts",sep=""),"w")
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xwroot,
-               paste(fit$nd),paste(fit$m),
-               paste(fit$mh),paste(p),paste(numwts),paste(tc)), fout)
+               fitroot,paste(fit$nd),paste(m),
+               paste(mh),paste(p),paste(numwts),paste(tc)), fout)
   close(fout)
  
   #--------------------------------------------------
@@ -1684,12 +1677,13 @@ openbt.mixingwts = function(
 #----------------------------------------------
 # Model mixing and emulation interface
 #----------------------------------------------
-openbt_mix_emulate = function(
+openbt.mix_emulate = function(
 mix_model_data = list(y_train = NULL, x_train = NULL),
 emu_model_data = list('model1'=list(z_train = NULL, x_train = NULL),'model2'=list(z_train = NULL, x_train = NULL)),
 mix_model_args = list('ntree'=10,'ntreeh'=1,'k'=2,'overallnu'=10,'overallsd'=NA,'power'=2.0,'base'=0.95,'powerh'=NA,'baseh'=NA),
 emu_model_args = matrix(c(100,1,2,10,NA,2.0,0.95,NA,NA), nrow = 2, ncol = 9,byrow = TRUE, 
                         dimnames = list(paste0('model',1:2),c('ntree','ntreeh','k','overallnu','overallsd','power','base','powerh','baseh'))),
+discrep_model_args = list('k' = 10, 'beta0' = NA),
 ndpost=1000, nskip=100,nadapt=1000,adaptevery=100,
 pbd=.7,
 pb=.5,
@@ -1842,10 +1836,15 @@ if(!is.null(xicuts)){
 rgy = range(mix_model_data$y_train)
 m = mix_model_args$ntree
 k = mix_model_args$k
-beta_disc = mean(mix_model_data$y_train)/m
-beta_wts = 1/(2*m)
+
 tau_disc = (rgy[2]-rgy[1])/(2*sqrt(m)*k)
 tau_wts =  (1)/(2*sqrt(m)*k)
+beta_wts = 1/(2*m)
+if(is.na(discrep_model_args$beta0)){
+  beta_disc = mean(mix_model_data$y_train)/m
+}else{
+  beta_disc = discrep_model_args$beta0/m
+}
 
 # -- Error variance
 if(is.na(mix_model_args$overallsd)){
@@ -1905,7 +1904,7 @@ for(l in 1:nummodels){
 pbdh=pbd
 pbh=pb
 if(length(pbd)>1) {
-  pbdh=pbdh[2]
+  pbdh=pbd[2]
   pbd=pbd[1]
 }
 if(length(pb)>1) {
@@ -1913,24 +1912,6 @@ if(length(pb)>1) {
   pb=pb[1]
 }
 
-#--------------------------------------------------
-# Modify the emulation data for KOH Joint analysis
-#--------------------------------------------------
-emu_data_ids = vector(mode = "list", length = nummodels)
-# names(emu_data_ids) = names(emu_model_data)
-# for(j in 1:nummodels){
-#   # Initialize the contributions field observations to each emulator
-#   xf_matrix = mix_model_data$x_train[,xc_col_list[[j]]]
-#   yf_vec =  mix_model_data$y_train # passing in y's for convenience (essential in c++ program)
-#   # Append the information from field obs
-#   emu_model_data[[j]]$z_train = c(emu_model_data[[j]]$z_train,yf_vec)
-#   emu_model_data[[j]]$x_train = rbind(emu_model_data[[j]]$x_train, xf_matrix)
-#   # Update the n info
-#   n0 = nc_vec[j] 
-#   nc_vec[j] = length(emu_model_data[[j]]$z_train)
-#   # Update the id list of computer obs vs field obs 
-#   emu_data_ids[[j]] = c(rep('c',n0), rep('f',n))
-# }
 
 #--------------------------------------------------
 # Process other arguments
@@ -1981,7 +1962,9 @@ if(is.null(chv_list)){
     if(l == 0){
       chv_data = mix_model_data$x_train   
     }else{
-      chv_data = rbind(emu_model_data[[l]]$x_train, mix_model_data$x_train[,unlist(xc_col_list[l])])  
+      xmixtemp = mix_model_data$x_train[,unlist(xc_col_list[l])]
+      if(length(unlist(xc_col_list[l])) == 1){xmixtemp = matrix(xmixtemp,ncol = 1)}
+      chv_data = rbind(emu_model_data[[l]]$x_train, xmixtemp)  
     }
     chv_list[[l+1]] = cor(chv_data,method="spearman")
   }  
@@ -2100,9 +2083,6 @@ for(l in 1:nummodels){
   
   xlist=split(as.data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
   for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[l+1],i,sep=""))  
-  
-  #idlist0=split(emu_data_ids[[l]],(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
-  #for(i in 1:nslv) idlist[[i]] = c(idlist[[i]],idlist0[[i]]) 
 }
 
 # Write the ids per mpi
@@ -2175,7 +2155,7 @@ return(res)
 }
 
 # Predict function for mixing and emulation
-predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=0.975){
+openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=0.975){
   # model type definitions
   MODEL_MIX_EMULATE=1 #Full problem 
   MODEL_MIX_ORTHOGONAL=2 # Full problem with orthogonal discrepancy
@@ -2203,8 +2183,8 @@ predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=
   for(l in 1:nummodels){
     pc = length(x_col_list[[l]])
     xc_design_cols[h] = paste(pc)
-    xc_design_cols[(h+1):(h+pc)] = paste(xc_col_list[[l]])
-    h = h+pc_vec[l] + 1
+    xc_design_cols[(h+1):(h+pc)] = paste(fit$xc_col_list[[l]])
+    h = h + pc + 1
   }
   
   # Flatten the m and mh vectors
@@ -2266,7 +2246,8 @@ predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=
   #format and return
   res_model=vector(mode = 'list', length = nummodels+2)
   names(res_model) = c("mixmodel", paste0("emulator",1:nummodels),"Information")
-  res = list()
+  res = vector(mode = 'list', length = 2)
+  names(res) = c('mdraws', 'sdraws')
   
   fnames=list.files(fit$folder,pattern=paste(fit$modelname,".mdraws*",sep=""),full.names=TRUE)
   res$mdraws=do.call(cbind,sapply(fnames,data.table::fread))
@@ -2275,19 +2256,25 @@ predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=
   
   #Separate results into mixing vs emulation
   for(i in 0:nummodels){
-    ind = seq(i*nd+1, (i+1)*nd, 1)
+    # Initialize the list elements
+    res_model[[i+1]] = vector(mode = 'list', length = 12)
+    names(res_model[[i+1]]) = paste0(rep(c("m","s"),6),
+                                    rep(c('draws','mean','sd','.5','.lower','.upper'),each = 2))
+    ind = seq(i*fit$nd+1, (i+1)*fit$nd, 1)
+
+    # Summarize the data for the selected model
     res_model[[i+1]]$mdraws = res$mdraws[ind,]
     res_model[[i+1]]$sdraws = res$sdraws[ind,]
-    res_model[[i+1]]$mmean=apply(res$mdraws[ind,],2,mean)
-    res_model[[i+1]]$smean=apply(res$sdraws[ind,],2,mean)
-    res_model[[i+1]]$msd=apply(res$mdraws[ind,],2,sd)
-    res_model[[i+1]]$ssd=apply(res$sdraws[ind,],2,sd)
-    res_model[[i+1]]$m.5=apply(res$mdraws[ind,],2,quantile,0.5)
-    res_model[[i+1]]$m.lower=apply(res$mdraws[ind,],2,quantile,q.lower)
-    res_model[[i+1]]$m.upper=apply(res$mdraws[ind,],2,quantile,q.upper)
-    res_model[[i+1]]$s.5=apply(res$sdraws[ind,],2,quantile,0.5)
-    res_model[[i+1]]$s.lower=apply(res$sdraws[ind,],2,quantile,q.lower)
-    res_model[[i+1]]$s.upper=apply(res$sdraws[ind,],2,quantile,q.upper)
+    res_model[[i+1]]$mmean=apply(res_model[[i+1]]$mdraws,2,mean)
+    res_model[[i+1]]$smean=apply(res_model[[i+1]]$sdraws,2,mean)
+    res_model[[i+1]]$msd=apply(res_model[[i+1]]$mdraws,2,sd)
+    res_model[[i+1]]$ssd=apply(res_model[[i+1]]$sdraws,2,sd)
+    res_model[[i+1]]$m.5=apply(res_model[[i+1]]$mdraws,2,quantile,0.5)
+    res_model[[i+1]]$s.5=apply(res_model[[i+1]]$sdraws,2,quantile,0.5)
+    res_model[[i+1]]$m.lower=apply(res_model[[i+1]]$mdraws,2,quantile,q.lower)
+    res_model[[i+1]]$s.lower=apply(res_model[[i+1]]$sdraws,2,quantile,q.lower)
+    res_model[[i+1]]$m.upper=apply(res_model[[i+1]]$mdraws,2,quantile,q.upper)
+    res_model[[i+1]]$s.upper=apply(res_model[[i+1]]$sdraws,2,quantile,q.upper)
   }
   
   res_model[[nummodels+2]] = list(q.lower=q.lower,q.upper=q.upper,modeltype=fit$modeltype)

@@ -85,8 +85,6 @@ int main(int argc, char* argv[])
    std::string xicore;
    std::string xpcore;
    std::string fpcore;
-   std::string fpdmcore;
-   std::string fpdscore;
 
    //model name, xi and xp
    conf >> modelname;
@@ -94,8 +92,6 @@ int main(int argc, char* argv[])
    conf >> xicore;
    conf >> xpcore;
    conf >> fpcore;
-   conf >> fpdmcore;
-   conf >> fpdscore;
 
    //number of saved draws and number of trees
    size_t nd;
@@ -111,11 +107,13 @@ int main(int argc, char* argv[])
    conf >> p;
    conf >> k;
 
-   //model mixing fdiscrepancy
+   /*
+   //model mixing fdiscrepancy -- remove
    std::string fdiscrepancy_str;
    conf >> fdiscrepancy_str;
    bool fdiscrepancy = false;
    if(fdiscrepancy_str == "TRUE"){ fdiscrepancy = true;}
+   */
 
    //thread count
    int tc;
@@ -234,6 +232,7 @@ int main(int argc, char* argv[])
 
    //--------------------------------------------------
    //Initialize f mean and std discrepancy information -- used only for model mixing when fdiscrepancy = TRUE 
+   /*
    std::vector<double> fdm, fds;
    double fdmtemp, fdstemp;
    finfo fdeltamean(np,k), fdeltasd(np,k);
@@ -258,6 +257,7 @@ int main(int argc, char* argv[])
          Eigen::Map<Eigen::MatrixXd, Eigen::RowMajor> fds_temp(fdm.data(),k,np);
          fdeltasd = fds_temp.transpose();
    }
+   */
    
 if(modeltype!=MODEL_MIXBART){
    //--------------------------------------------------
@@ -485,7 +485,7 @@ if(modeltype!=MODEL_MIXBART){
    amxbrt axb(m);
    axb.setxi(&xi); //set the cutpoints for this model object
    axb.setfi(&fi_test, k); //set the function output for this model object -- main use is to set k 
-   if(fdiscrepancy) {axb.setfdelta(&fdeltamean, &fdeltasd);}  //set individual function discrepacnies if provided -- main use is to set fdiscrepancy to TRUE
+   //if(fdiscrepancy) {axb.setfdelta(&fdeltamean, &fdeltasd);}  //set individual function discrepacnies if provided -- main use is to set fdiscrepancy to TRUE
    
    //setup psbrt object
    psbrt psbm(mh);
