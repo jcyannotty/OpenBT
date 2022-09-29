@@ -336,7 +336,7 @@ yroot="y"
 sroot="s"
 chgvroot="chgv"
 froot="f"
-fsdroot="fds"
+fsdroot="fsd"
 wproot="wpr"
 xiroot="xi"
 folder=tempdir(check=TRUE)
@@ -391,7 +391,7 @@ if(modeltype == MODEL_MIXBART){
   }
   
   if(wtsprior){
-    write(wts.prior.info,file=paste(folder,"/",fproot,sep=""))
+    write(wts.prior.info,file=paste(folder,"/",wproot,sep=""))
   }
 }
 

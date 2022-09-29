@@ -1,3 +1,4 @@
+from re import M
 import invoke # A task execution tool; unused
 from sklearn.base import ClassifierMixin, RegressorMixin, BaseEstimator
 # ^ Two of these aren't used yet; B.E. is the parent class of OPENBT
@@ -45,30 +46,66 @@ class OPENBT(BaseEstimator):
         self._set_model_type()
 
 
-    def fit(self, X, y):
+    def fit(self, X, y, F = None, S = None):
         """
         Writes out data and fits model. X and y should be numpy arrays, 
         but I added some checks to allow 1-D lists to be accepted. No promises on 
         attempting to pass in a grid of lists within a list as an array.
         """
-        # First, make sure the input is compatible with future functions/fits:
+        # Cast X to np.array if the input is a list
         if (type(X) == list):
             X = np.array(X)
             print("Completed list-to-numpy_array conversion for X. Be careful about row/column mixups!")
+        
+        # Cast y to np.array if the input is a list
         if (type(y) == list):
             y = np.array(y)
             print("Completed list-to-numpy_array conversion for y. Be careful about row/column mixups!")
-        self.X_train = np.transpose(X)
+        
+        # Reshape X_train to be pxn --- keeping this to remain in sync with remainder of code
+        self.X_train = np.transpose(X) 
+        
         if (len(self.X_train.shape) == 1): # If shape is (n, ), change it to (n, 1):
             self.X_train = self.X_train.reshape(1, len(X)) 
-            # ^ Reshaping in case of weird 1-variable input (e.g. a 1D list)
+            
         if (len(y.shape) == 1): # Same thing for y
             y = y.reshape(len(y), 1)
-            
+
+        # Set the y and fmean information    
         self.y_orig = y    
         self.fmean = np.mean(y)
-        # self.y_train = y - self.fmean # I axed this in order to customize for different modeltypes; see define_params
-        self._define_params() # This is where the default variables get overwritten
+
+        if self.model == 'mixbart':
+            # Check if F is specified
+            if F is None:
+                raise ValueError("Please input the F matrix for model mixing.")
+            # Set prior type (stationary vs. nonstationary)
+            if S is None:
+                self.nsprior = False
+            else:
+                self.nsprior = True
+
+            # Cast F and S to arrays (only needed for S when using nsprior)
+            if isinstance(F, list):
+                F = np.array(F) 
+            
+            if isinstance(S, list) and self.nsprior:
+                S = np.array(F) 
+            
+            # Check the dimensions of F and S
+            if (not F.shape == S.shape) and self.nsprior:
+                raise ValueError("Dimensions of F and S do not match.")
+
+            # Set the data as Class objects
+            self.nummodels = F.shape[1] 
+            self.F_train = F
+            self.S_train = S
+
+            # Set other default arguments
+            self.wtsprior = False # T/F did user pass in list of hyperparameters for each model weight (rather than using the standard ones)
+
+        # Overwrite any default parameters
+        self._define_params()
         print("Writing config file and data")
         self._write_config_file()
         self._write_data()
@@ -90,12 +127,25 @@ class OPENBT(BaseEstimator):
         res['minx'] = self.minx; res['maxx'] = self.maxx
         return res
 
-
-    def fitmix(self, x_train, y_train, f_train, v_train = None, prior = 's'):
-        pass
-
     def get_wts(self, x_test, q_lower=0.025, q_upper=0.975):
         pass
+
+    def set_wts_prior(self, betavec, tauvec):
+        # Cast lists to np.arrays when needed
+        if isinstance(betavec, list):
+            betavec = np.array(betavec)
+        if isinstance(tauvec, list):
+            tauvec = np.array(tauvec)
+
+        # Check lengths
+        if not (len(tauvec) == self.nummodels and len(betavec) == self.nummodels):
+            raise ValueError("Incorrect vector length for tauvec and/or betavec. Lengths must be equal to the number of models.")
+
+        # Store the hyperparameters passed in 
+        self.wtsprior = True
+        self.betavec = betavec
+        self.tauvec = tauvec
+
 
     def _set_model_type(self):
         models = {"bt": 1,
@@ -130,7 +180,7 @@ class OPENBT(BaseEstimator):
         # overallsd will be done in the define_params function.
 
 
-    # ****Need to figure out what this function is for
+    # **** Revisit
     def _update_h_args(self, arg):
         try:
             self.__dict__[arg + "h"] = self.__dict__[arg][1]
@@ -140,6 +190,7 @@ class OPENBT(BaseEstimator):
         # ^ Right now it seems to do the 'except' step for all args it's used with, FYI
 
 
+    # ****** Revisit
     def _define_params(self):
         """Set up parameters for the openbtcli
         """
@@ -154,6 +205,8 @@ class OPENBT(BaseEstimator):
             self.uniqy = np.unique(self.y_train) # Already sorted, btw
             if(len(self.uniqy) > 2 or self.uniqy[1] != 0 or self.uniqy[2] != 1):
                  sys.exit("Invalid y.train: Probit requires dichotomous response coded 0/1") 
+        elif self.modeltype in [9]:
+            self.fmean_out = 0
         else: # Unused modeltypes for now, but still set their properties just in case
             self.y_train = self.y_orig 
             self.fmean_out = None
@@ -170,23 +223,44 @@ class OPENBT(BaseEstimator):
                 xinc = (maxx[feat] - minx[feat])/(self.numcut+1)
                 self.xi[feat] = [
                     np.arange(1, (self.numcut)+1)*xinc + minx[feat]]
+        
+        # Set the terminal node hyperparameters
         self.tau = (self.rgy[1] - self.rgy[0])/(2*np.sqrt(self.ntree)*self.k)
-        # self.ntreeh = 1    # Removed so the user can set it (see set_model_type function)
+
+        # Overwrite the hyperparameter settings when model mixing
+        if self.modeltype == 9:
+            if self.nsprior:
+                tau = 1/(2*self.ntree*self.k)
+                beta = 1/self.ntree
+            else:
+                self.tau = 1/(2*np.sqrt(self.ntree)*self.k)
+                beta = 1/(2*self.ntree)
+
+        # Map for the overall sd default values
         osd = np.std(self.y_train, ddof = 1)
-        osd_map = {1: 1, 2: 1, 3: 1, 4: osd, 5: osd, 6: 1, 7: 1, 8: osd}
+        osd_map = {1: 1, 2: 1, 3: 1, 4: osd, 5: osd, 6: 1, 7: 1, 8: osd, 9:osd} # ****** Think about this for model mixing
+        
+        # Overall sd update
         if (self.overallsd is None):
              print("Overwriting overallsd to agree with the model's default")
              self.overallsd = osd_map[self.modeltype]
+        
+        # overall lambda calibration
         self.overalllambda = self.overallsd**2
         if (self.modeltype == 6) & (isinstance(self.pbd, float)):
             self.pbd = [self.pbd, 0]
         [self._update_h_args(arg) for arg in ["power", "base",
                                               "pbd", "pb", "stepwpert",
                                               "probchv", "minnumbot"]]
+        
+        # define the roots for the output files
         self.xroot = "x"
         self.yroot = "y"
         self.sroot = "s"
         self.chgvroot = "chgv"
+        self.froot = "f"
+        self.fsdroot = "fsd"
+        self.wproot = "wpr"
         self.xiroot = "xi"
         # Check probit:
         if self.modeltype == 6:
@@ -213,14 +287,17 @@ class OPENBT(BaseEstimator):
                       self.ntree, self.ntreeh,
                       self.ndpost, self.nskip,
                       self.nadapt, self.adaptevery,
-                      self.tau, self.overalllambda,
+                      self.tau, self.beta,
+                      self.overalllambda,
                       self.overallnu, self.base,
                       self.power, self.baseh, self.powerh,
                       self.tc, self.sroot, self.chgvroot,
+                      self.froot, self.fsdroot, self.nsprior,
+                      self.wproot, self.wtsprior,
                       self.pbd, self.pb, self.pbdh, self.pbh, self.stepwpert,
                       self.stepwperth,
                       self.probchv, self.probchvh, self.minnumbot,
-                      self.minnumboth, self.printevery, "xi", self.modelname,
+                      self.minnumboth, self.printevery, self.xiroot, self.modelname,
                       self.summarystats]
         # print(run_params)
         self.configfile = Path(self.fpath / "config")
@@ -269,6 +346,18 @@ class OPENBT(BaseEstimator):
         for k, v in self.xi.items():
             np.savetxt(
                 str(self.fpath / Path(self.xiroot + str(k+1))), v, fmt='%.7f')
+        
+        # Write model mixing files
+        if self.modeltype == 9:
+            # F-hat matrix
+            self.__write_chunks(self.F_train, splits, "f", '%.7f')
+            # S-hat matrix when using nsprior
+            if self.nsprior:
+                self.__write_chunks(self.S_train, splits, "fsd", '%.7f')
+            # Wts prior when passed in
+            if self.wtsprior:
+                np.savetxt(str(self.fpath / Path(self.wproot)), np.concatenate(self.betavec, self.tauvec),fmt='%.7f')
+        
         # print(os.path.abspath(self.fpath))
         # sys.exit('Examining tmp file(s)') # The data files were correct:
         # For tc = 4: 1 chgv, 1 config, 3 s's, 3 x's, 3 y's, 1 xi (xi had the most data).
@@ -284,30 +373,53 @@ class OPENBT(BaseEstimator):
         #     print(os.path.abspath(self.fpath)); sys.exit('Examining tmp file(s)')
 
 
-    def predict(self, X, q_lower=0.025, q_upper=0.975, **kwargs):
+    # ****** add model mixing
+    def predict(self, X, q_lower=0.025, q_upper=0.975, F = None, **kwargs):
         """
         Like with fit() X (the preds matrix) should be a numpy array, 
         but I added a couple of checks to allow a list to be accepted.
         """
+        # Casting lists to arrays when needed
         if (type(X) == list):
             X = np.array(X)
             print("Completed list-to-numpy_array conversion for the preds. Be careful about row/column mixups!")
         if (len(X.shape) == 1): # If shape is (n, ), change it to (n, 1):
             X = X.reshape(len(X), 1) 
             # ^ Reshaping in case of weird 1-variable input (e.g. a 1D list)
+        
+        # Model mixing checks
+        if self.modeltype == 9:
+            if isinstance(F, list):
+                F = np.array(F)
+            if F is None:
+                raise TypeError("No F matrix was provided for model mixing predictions.")
+            if not F.shape[1] == self.nummodels:
+                raise ValueError("Number of columns in F does not equal the number of models which were used in the training phase.")
+            if not F.shape[0] == X.shape[0]:
+                raise ValueError("Number of rows in F does not match the number of rows in X.")
 
+        # Set control values
         self.p_test = X.shape[1]
         self.n_test = X.shape[0]
         self.q_lower = q_lower; self.q_upper = q_upper
         self.xproot = "xp"
+        self.fproot = "fp"
         self.__write_chunks(X, (self.n_test) // (self.n_test/(self.tc)),
                             self.xproot,
                             '%.7f')
+        
+        # Write chunks for f in model mixing
+        if self.modeltype == 9:
+            self.__write_chunks(F, (self.n_test) // (self.n_test/(self.tc)),
+                            self.fproot,
+                            '%.7f')
+
+        # Set and write config file
         self.configfile = Path(self.fpath / "config.pred")
         pred_params = [self.modelname, self.modeltype,
-                       self.xiroot, self.xproot, self.ndpost,
-                       self.ntree, self.ntreeh,
-                       self.p_test, self.tc, self.fmean]
+                       self.xiroot, self.xproot, self.xproot,
+                       self.ndpost, self.ntree, self.ntreeh,
+                       self.p_test, self.nummodels ,self.tc, self.fmean]
         # print(self.ntree); print(self.ntreeh)
         with self.configfile.open("w") as pfile:
             for param in pred_params:
