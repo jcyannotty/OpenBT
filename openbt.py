@@ -1,4 +1,5 @@
 from re import M
+from types import ModuleType
 import invoke # A task execution tool; unused
 from sklearn.base import ClassifierMixin, RegressorMixin, BaseEstimator
 # ^ Two of these aren't used yet; B.E. is the parent class of OPENBT
@@ -126,25 +127,6 @@ class OPENBT(BaseEstimator):
              res[key] = self.__dict__[key]
         res['minx'] = self.minx; res['maxx'] = self.maxx
         return res
-
-    def get_wts(self, x_test, q_lower=0.025, q_upper=0.975):
-        pass
-
-    def set_wts_prior(self, betavec, tauvec):
-        # Cast lists to np.arrays when needed
-        if isinstance(betavec, list):
-            betavec = np.array(betavec)
-        if isinstance(tauvec, list):
-            tauvec = np.array(tauvec)
-
-        # Check lengths
-        if not (len(tauvec) == self.nummodels and len(betavec) == self.nummodels):
-            raise ValueError("Incorrect vector length for tauvec and/or betavec. Lengths must be equal to the number of models.")
-
-        # Store the hyperparameters passed in 
-        self.wtsprior = True
-        self.betavec = betavec
-        self.tauvec = tauvec
 
 
     def _set_model_type(self):
@@ -277,6 +259,7 @@ class OPENBT(BaseEstimator):
         # print((self.k, self.overallsd, self.overallnu, self.ntree, self.ntreeh))
 
 
+    # Need to generalize -- this is only used in fit 
     def _write_config_file(self):
         """Create temp directory to write config and data files
         """
@@ -373,7 +356,7 @@ class OPENBT(BaseEstimator):
         #     print(os.path.abspath(self.fpath)); sys.exit('Examining tmp file(s)')
 
 
-    # ****** add model mixing
+
     def predict(self, X, q_lower=0.025, q_upper=0.975, F = None, **kwargs):
         """
         Like with fit() X (the preds matrix) should be a numpy array, 
@@ -743,6 +726,106 @@ class OPENBT(BaseEstimator):
         return res
     
 
+    def mixingwts(self, X, q_lower=0.025, q_upper=0.975):
+        # Checks for proper inputs and convert lists to arrays
+        if not self.modeltype == 9:
+            raise TypeError("Cannot call openbt.mixingwts() method for openbt objects that are not modeltype = 'mixbart'")
+        if isinstance(X,list):
+            X = np.array(X)
+        if not self.p == X.shape[1]:
+            raise ValueError("The X array does not have the appropriate number of columns.")
+        
+        
+        # Set control parameters
+        self.xwroot = "xw"
+        self.fitroot= ".fit"  # default, needed when considering the general class of model mixing problems -- revist this later
+        self.q_lower = q_lower
+        self.q_upper = q_upper
+
+        # write out the config file
+        # Set control values
+        self.n_test = X.shape[0] # no need to set this as a class object like in predict function
+        self.__write_chunks(X, (self.n_test) // (self.n_test/(self.tc)),
+                            self.xwroot,
+                            '%.7f')
+        
+        # Set and write config file
+        self.configfile = Path(self.fpath / "config.pred")
+        pred_params = [self.modelname, self.modeltype,
+                       self.xiroot, self.xproot, self.xproot,
+                       self.ndpost, self.ntree, self.ntreeh,
+                       self.p_test, self.nummodels ,self.tc, self.fmean]
+        # print(self.ntree); print(self.ntreeh)
+        with self.configfile.open("w") as pfile:
+            for param in pred_params:
+                pfile.write(str(param)+"\n")
+        # run the program
+        cmd = "openbtmixingwts"
+        sp = subprocess.run([cmd, str(self.fpath)],
+                            stdin=subprocess.DEVNULL, capture_output=True)
+        self._read_in_wts()
+        
+        # New: make things a bit more like R, and save attributes to a fit object:
+        res = {}
+        res['wdraws'] = self.wdraws 
+        res['wmean'] = self.wmean 
+        res['wsd'] = self.wsd
+        res['w_5'] = self.w_5
+        res['w_lower'] = self.w_lower
+        res['w_upper'] = self.w_upper
+        res['q_lower'] = self.q_lower; res['q_upper'] = self.q_upper
+        res['x_test'] = X; res['modeltype'] = self.modeltype
+        return res
+
+    def _read_in_wts(self):
+        # Initialize the wdraws dictionary
+        self.wdraws = {}        
+
+        # Initialize summary statistic matrices for the wts
+        self.wmean = np.empty((self.n_test,self.nummodels))
+        self.wsd = np.empty((self.n_test,self.nummodels))
+        self.w_5 = np.empty((self.n_test,self.nummodels))
+        self.w_lower = np.empty((self.n_test,self.nummodels))
+        self.w_upper = np.empty((self.n_test,self.nummodels))
+
+
+        # Get the weight files
+        for k in range(self.nummodels):
+            wdraw_files = sorted(list(self.fpath.glob(self.modelname+".w"+str(k+1)+"draws*")))
+            wdraws = []
+            for f in wdraw_files:
+                read = open(f, "r"); lines = read.readlines()
+                if lines[0] != '\n' and lines[1] != '\n': # If it's nonempty
+                    wdraws.append(np.loadtxt(f))
+
+            # Store the wdraws array in the self.wdraws dictionary under the key wtname  
+            wtname = "w" + str(k+1)
+            self.wdraws[wtname] = np.concatenate(wdraws, axis=1) # Got rid of the transpose
+            
+            for j in range(len(self.mdraws[0])):
+                self.wmean[j] = np.mean(self.wdraws[wtname][:, j])
+                self.wsd[j] = np.std(self.wdraws[wtname][:, j], ddof = 1)
+                self.w_5[j] = np.percentile(self.wdraws[wtname][:, j], 0.50)
+                self.w_lower[j] = np.percentile(self.wdraws[wtname][:, j], self.q_lower)
+                self.w_upper[j] = np.percentile(self.wdraws[wtname][:, j], self.q_upper)
+
+
+    def set_wts_prior(self, betavec, tauvec):
+        # Cast lists to np.arrays when needed
+        if isinstance(betavec, list):
+            betavec = np.array(betavec)
+        if isinstance(tauvec, list):
+            tauvec = np.array(tauvec)
+
+        # Check lengths
+        if not (len(tauvec) == self.nummodels and len(betavec) == self.nummodels):
+            raise ValueError("Incorrect vector length for tauvec and/or betavec. Lengths must be equal to the number of models.")
+
+        # Store the hyperparameters passed in 
+        self.wtsprior = True
+        self.betavec = betavec
+        self.tauvec = tauvec
+
 
     # Save a posterior tree fit object (post) from the tmp working directory
     # into a local zip file given by [file].zip
@@ -777,6 +860,10 @@ class OPENBT(BaseEstimator):
             print("Saved estimator object to", dirname)
         
 
+
+#------------------------------------------------------
+# Helper Functions (outside of class methods)
+#------------------------------------------------------
 # Load the posterior tree fit object (doesn't load any files like s1, x1, y1, etc):
 def obt_load(dirname = None, postname = 'post_PyData', est = False):  
     if est == False:
@@ -793,3 +880,10 @@ def obt_load(dirname = None, postname = 'post_PyData', est = False):
         from joblib import load
         loaded_obj = load(dirname)
     return(loaded_obj)
+
+
+#------------------------------------------------------
+# Future Work --- OpenbtMixing Class, inherits from Openbt
+#------------------------------------------------------
+
+
