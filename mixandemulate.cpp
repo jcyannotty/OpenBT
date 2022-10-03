@@ -908,7 +908,7 @@ int main(int argc, char* argv[])
         for(int j=0;j<nummodels;j++){
             ambm_list[j]->predict(&dimix_list[j]);
             for(size_t k=0;k<dimix_list[j].n;k++){
-                fi(k,j+1) = fmix_list[j][k] + means_list[j+1]; 
+                fi(k,j+1) = fmix_list[j][k] + means_list[j+1]; //fmix_list is K dimensional and the others are K+1 dimensional (hence j vs. j+1)
             }   
         }
     }
@@ -947,7 +947,7 @@ int main(int argc, char* argv[])
                 // add the discrepancy and get the weighted field obs
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l) - means_list[j+1];
                     //cout << "wts_iter(j+1,l) = " << wts_iter(j+1,l) << "---- y_list[j+1][nvec[j+1] - nvec[0] + l] = " << y_list[j+1][nvec[j+1]- nvec[0] + l] << endl;
                     // Now update the appropriate sigmav_list[j+1] entries where the last nvec[0] entries are reweighted field obs
                     sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
@@ -993,7 +993,7 @@ int main(int argc, char* argv[])
             // add the discrepancy and get the weighted field obs
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l)- means_list[j+1];
                 // Now update the appropriate sigmav_list[j+1] entries where the last nvec[0] entries are reweighted field obs
                 sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
             }
@@ -1095,7 +1095,7 @@ int main(int argc, char* argv[])
                 // add the discrepancy and get the weighted field obs
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l)- means_list[j+1];
                     // Now update the appropriate sigmav_list[j+1] entries where the last nvec[0] entries are reweighted field obs
                     sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
                 }
@@ -1136,7 +1136,7 @@ int main(int argc, char* argv[])
             // add the discrepancy and get the weighted field obs
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l)- means_list[j+1];
                 sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
             }
             ambm_list[j]->drawvec(gen);
@@ -1229,7 +1229,7 @@ int main(int argc, char* argv[])
                 // add the discrepancy and get the weighted field obs
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                    y_list[j+1][nvec[j+1] - nvec[0] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l)- means_list[j+1];
                     sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
                 }
             }
@@ -1269,7 +1269,7 @@ int main(int argc, char* argv[])
             // add the discrepancy and get the weighted field obs
             for(int l=0;l<nvec[0];l++){
                 mixprednotj[l] = mixprednotj[l] + wts_iter(0,l);
-                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l);
+                y_list[j+1][nvec[j+1] + l] = (y_list[0][l] - mixprednotj[l])/wts_iter(j+1,l)- means_list[j+1];
                 sigmav_list[j+1][nvec[j+1]-nvec[0]+l] = sigmav_list[0][l]/wts_iter(j+1,l);
             }
             ambm_list[j]->drawvec(gen);
