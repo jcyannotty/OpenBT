@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
    std::string nsprior_str;
    bool nsprior = false;
    conf >> nsprior_str;
-   if(nsprior_str == "TRUE"){ nsprior = true; }
+   if(nsprior_str == "TRUE" or nsprior_str == "True"){ nsprior = true; }
    
    //Model Mixing wts Prior Mean and sd root and true/false denoting if the priors are the same for each wt model
    std::string wprcore; // name of the textfile containing the prior for the weights
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
    bool wprior = false; // bool version of wprior_str
    conf >> wprcore;
    conf >> wprior_str; 
-   if(wprior_str == "TRUE"){ wprior = true; }
+   if(wprior_str == "TRUE" or wprior_str == "True"){ wprior = true; }
 
    //control
    double pbd;
@@ -358,6 +358,7 @@ int main(int argc, char* argv[])
       
       //Make finfo on the slave node
       makefinfo(k,n,&f[0],fi);
+      cout << "fi = \n" << fi << endl;
       cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
 #ifndef SILENT
       cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
@@ -382,7 +383,7 @@ int main(int argc, char* argv[])
       if(mpirank>0) {
    #endif      
          /*
-         // Deleta
+         // Delta
          std::stringstream fdmfss;
          std::string fdmfs;
          fdmfss << folder << fdmcore << mpirank;

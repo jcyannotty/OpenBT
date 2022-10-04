@@ -429,10 +429,10 @@ if(cmdopt==100)  # serial/OpenMP
    else
       cmd=paste("openbtcli ",folder,sep="")
 }
-#
+
 #cat(cmd)
 system(cmd)
-system(paste("rm -f ",folder,"/config",sep=""))
+#system(paste("rm -f ",folder,"/config",sep=""))
 #system(paste("mv ",folder,"fit ",folder,modelname,".fit",sep=""))
 
 res=list()

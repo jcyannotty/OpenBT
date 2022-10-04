@@ -38,6 +38,8 @@ class OPENBT(BaseEstimator):
         self.ntree = None; self.ntreeh = None
         self.truncateds = None
         self.nummodels = 2
+        self.nsprior = False
+        self.wtsprior = False
         # hyperthread = False # Supposed to let you run processes on all hyperthreads, not just each core
         # I added a few more if statements in _define_params() to make these go smoothly
         self.modelname = "model"
@@ -85,6 +87,10 @@ class OPENBT(BaseEstimator):
                 self.nsprior = False
             else:
                 self.nsprior = True
+                # Check the dimensions of F and S
+                if (not F.shape == S.shape):
+                    raise ValueError("Dimensions of F and S do not match.")
+
 
             # Cast F and S to arrays (only needed for S when using nsprior)
             if isinstance(F, list):
@@ -93,10 +99,6 @@ class OPENBT(BaseEstimator):
             if isinstance(S, list) and self.nsprior:
                 S = np.array(F) 
             
-            # Check the dimensions of F and S
-            if (not F.shape == S.shape) and self.nsprior:
-                raise ValueError("Dimensions of F and S do not match.")
-
             # Set the data as Class objects
             self.nummodels = F.shape[1] 
             self.F_train = F
@@ -162,9 +164,10 @@ class OPENBT(BaseEstimator):
         # overallsd will be done in the define_params function.
 
 
-    # **** Revisit
+    # **** Revisit --- the try case is checking to see if a list of length 2 is the item for each dictionary key + "h"
     def _update_h_args(self, arg):
         try:
+            print("enter update_h_args")
             self.__dict__[arg + "h"] = self.__dict__[arg][1]
             self.__dict__[arg] = self.__dict__[arg][0]
         except:
@@ -189,6 +192,9 @@ class OPENBT(BaseEstimator):
                  sys.exit("Invalid y.train: Probit requires dichotomous response coded 0/1") 
         elif self.modeltype in [9]:
             self.fmean_out = 0
+            self.fmean = 0
+            self.y_train = self.y_orig
+            self.rgy = [np.min(self.y_train), np.max(self.y_train)]
         else: # Unused modeltypes for now, but still set their properties just in case
             self.y_train = self.y_orig 
             self.fmean_out = None
@@ -212,11 +218,13 @@ class OPENBT(BaseEstimator):
         # Overwrite the hyperparameter settings when model mixing
         if self.modeltype == 9:
             if self.nsprior:
-                tau = 1/(2*self.ntree*self.k)
-                beta = 1/self.ntree
+                self.tau = 1/(2*self.ntree*self.k)
+                self.beta = 1/self.ntree
             else:
                 self.tau = 1/(2*np.sqrt(self.ntree)*self.k)
-                beta = 1/(2*self.ntree)
+                self.beta = 1/(2*self.ntree)
+        else:
+            self.beta = 0
 
         # Map for the overall sd default values
         osd = np.std(self.y_train, ddof = 1)
@@ -229,8 +237,13 @@ class OPENBT(BaseEstimator):
         
         # overall lambda calibration
         self.overalllambda = self.overallsd**2
+        
+        # Birth and Death probability -- set product tree pbd to 0 for selected models 
         if (self.modeltype == 6) & (isinstance(self.pbd, float)):
             self.pbd = [self.pbd, 0]
+        if self.modeltype in [4,9] and (isinstance(self.pbd, float)):
+            self.pbd = [self.pbd, 0] 
+        
         [self._update_h_args(arg) for arg in ["power", "base",
                                               "pbd", "pb", "stepwpert",
                                               "probchv", "minnumbot"]]
@@ -298,7 +311,8 @@ class OPENBT(BaseEstimator):
              splitted_data = np.array_split(data, no_chunks)
         else:
              sys.exit('Fit: Invalid tc input - exiting process')   
-        int_added = 0 if var == "xp" else 1
+        int_added = 0 if var in ["xp","fp","xw"] else 1
+
         # print(splitted_data)
         for i, ch in enumerate(splitted_data):
              # print(i); print(ch)
@@ -400,7 +414,7 @@ class OPENBT(BaseEstimator):
         # Set and write config file
         self.configfile = Path(self.fpath / "config.pred")
         pred_params = [self.modelname, self.modeltype,
-                       self.xiroot, self.xproot, self.xproot,
+                       self.xiroot, self.xproot, self.fproot,
                        self.ndpost, self.ntree, self.ntreeh,
                        self.p_test, self.nummodels ,self.tc, self.fmean]
         # print(self.ntree); print(self.ntreeh)
@@ -732,6 +746,8 @@ class OPENBT(BaseEstimator):
             raise TypeError("Cannot call openbt.mixingwts() method for openbt objects that are not modeltype = 'mixbart'")
         if isinstance(X,list):
             X = np.array(X)
+        if (len(X.shape) == 1):
+            X = X.reshape(len(X), 1)
         if not self.p == X.shape[1]:
             raise ValueError("The X array does not have the appropriate number of columns.")
         
@@ -750,18 +766,18 @@ class OPENBT(BaseEstimator):
                             '%.7f')
         
         # Set and write config file
-        self.configfile = Path(self.fpath / "config.pred")
+        self.configfile = Path(self.fpath / "config.mxwts")
         pred_params = [self.modelname, self.modeltype,
-                       self.xiroot, self.xproot, self.xproot,
+                       self.xiroot, self.xwroot, self.fitroot,
                        self.ndpost, self.ntree, self.ntreeh,
-                       self.p_test, self.nummodels ,self.tc, self.fmean]
+                       self.p, self.nummodels ,self.tc]
         # print(self.ntree); print(self.ntreeh)
         with self.configfile.open("w") as pfile:
             for param in pred_params:
                 pfile.write(str(param)+"\n")
         # run the program
         cmd = "openbtmixingwts"
-        sp = subprocess.run([cmd, str(self.fpath)],
+        sp = subprocess.run(["mpirun", "-np", str(self.tc), cmd, str(self.fpath)],
                             stdin=subprocess.DEVNULL, capture_output=True)
         self._read_in_wts()
         
@@ -802,12 +818,12 @@ class OPENBT(BaseEstimator):
             wtname = "w" + str(k+1)
             self.wdraws[wtname] = np.concatenate(wdraws, axis=1) # Got rid of the transpose
             
-            for j in range(len(self.mdraws[0])):
-                self.wmean[j] = np.mean(self.wdraws[wtname][:, j])
-                self.wsd[j] = np.std(self.wdraws[wtname][:, j], ddof = 1)
-                self.w_5[j] = np.percentile(self.wdraws[wtname][:, j], 0.50)
-                self.w_lower[j] = np.percentile(self.wdraws[wtname][:, j], self.q_lower)
-                self.w_upper[j] = np.percentile(self.wdraws[wtname][:, j], self.q_upper)
+            for j in range(len(self.wdraws[wtname][0])):
+                self.wmean[j][k] = np.mean(self.wdraws[wtname][:, j])
+                self.wsd[j][k] = np.std(self.wdraws[wtname][:, j], ddof = 1)
+                self.w_5[j][k] = np.percentile(self.wdraws[wtname][:, j], 0.50)
+                self.w_lower[j][k] = np.percentile(self.wdraws[wtname][:, j], self.q_lower)
+                self.w_upper[j][k] = np.percentile(self.wdraws[wtname][:, j], self.q_upper)
 
 
     def set_wts_prior(self, betavec, tauvec):
