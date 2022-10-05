@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from openbt import OPENBT
 
@@ -123,3 +124,10 @@ plt.show()
 fitxp['mmean']
 fitxp['smean']
 fitxw['wmean']
+
+
+#--------------------------------------------------
+# For Taweret 
+from pandas.core.frame import DataFrame as Dfclass
+Dfclass([1,2])
+pd.DataFrame([1,2])
