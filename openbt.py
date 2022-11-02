@@ -164,10 +164,9 @@ class OPENBT(BaseEstimator):
         # overallsd will be done in the define_params function.
 
 
-    # **** Revisit --- the try case is checking to see if a list of length 2 is the item for each dictionary key + "h"
+    # --- the try case is checking to see if a list of length 2 is the item for each dictionary key + "h"
     def _update_h_args(self, arg):
         try:
-            print("enter update_h_args")
             self.__dict__[arg + "h"] = self.__dict__[arg][1]
             self.__dict__[arg] = self.__dict__[arg][0]
         except:
@@ -175,7 +174,6 @@ class OPENBT(BaseEstimator):
         # ^ Right now it seems to do the 'except' step for all args it's used with, FYI
 
 
-    # ****** Revisit
     def _define_params(self):
         """Set up parameters for the openbtcli
         """

@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
    conf >> tc;
 
    // Read in arguments for each model
-   std::vector<size_t> means_list;
+   std::vector<double> means_list;
    std::vector<size_t> m_list;
    std::vector<size_t> mh_list;
 
@@ -421,7 +421,7 @@ int main(int argc, char* argv[])
    //-------------------------------------------------
    // Get predictions 
    //-------------------------------------------------
-   // Mean trees first
+   // Mean trees first -- store all thetas from the text files and get predictions for emulators
    if(mpirank==0) cout << "Drawing mean response from posterior predictive" << endl;
    for(size_t i=0;i<nd;i++){      
       for(size_t a=0;a<=nummodels;a++){curdx[a] = 0;}
@@ -451,12 +451,14 @@ int main(int argc, char* argv[])
          cumdx[k]+=curdx[k];
          // Load tree and draw relization
          if(k == 0){
+            /*
             axb.loadtree_vec(0,m_list[k],onn[k],oid[k],ov[k],oc[k],otheta[k]);
             axb.predict_mix(&dip_list[k],&fi);
             // Set prediction and update finfo
             for(size_t j=0;j<np;j++){
                tedraw_list[k][i][j] = fp_list[k][j];
             }
+            */
          }else{
             ambm_list[k-1]->loadtree(0,m_list[k],onn[k],oid[k],ov[k],oc[k],otheta[k]);
             ambm_list[k-1]->predict(&dip_list[k]);
@@ -468,9 +470,34 @@ int main(int argc, char* argv[])
          }
          
       }
+      // Now get the mixing predictions for the ith iteration of the mcmc
+      axb.loadtree_vec(0,m_list[0],onn[0],oid[0],ov[0],oc[0],otheta[0]);
+      axb.predict_mix(&dip_list[0],&fi);
+      for(size_t j=0;j<np;j++){
+         tedraw_list[0][i][j] = fp_list[0][j];
+      }
    }
    
-   // Variance trees second
+   // Now get Model Mixing Predictions using the emualtor results to update finfo
+   /*
+   for(size_t i=0;i<nd;i++){
+      // Set prediction and update finfo
+      for(size_t k=1;k<=nummodels;k++){
+         for(size_t j=0;j<np;j++){
+            fi(j,k) = tedraw_list[k][i][j];
+         }
+      }
+      
+      axb.loadtree_vec(0,m_list[0],onn[0],oid[0],ov[0],oc[0],otheta[0]);
+      axb.predict_mix(&dip_list[0],&fi);
+      // Set prediction and update finfo
+      for(size_t j=0;j<np;j++){
+         tedraw_list[0][i][j] = fp_list[0][j];
+      }      
+   }
+   */
+
+   // Variance trees third
    if(mpirank==0) cout << "Drawing sd response from posterior predictive" << endl;
    for(size_t k=0;k<=nummodels;k++){
       // Set values

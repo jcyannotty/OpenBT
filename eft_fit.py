@@ -94,11 +94,17 @@ fsg_terms(0.03, 2)
 flg_terms(0.1, 2)
 
 # Set training points for model runs
-x1_train = np.linspace(0.05, 0.5, 5)
-x2_train = np.linspace(0.05, 0.5, 5)
+#x1_train = np.linspace(0.05, 0.5, 5)
+#x2_train = np.linspace(0.05, 0.5, 5)
 
-x1_test = np.linspace(0.03, 0.48, 10)
-x2_test = np.linspace(0.03, 0.48, 10)
+x1_train = np.array([0.03, 0.10, 0.15, 0.25])
+x2_train = np.array([0.25, 0.35,0.40,0.50])
+
+x1_test = np.linspace(0.03, 0.5, 20)
+x2_test = np.linspace(0.03, 0.5, 20)
+
+#x1_test = np.linspace(0.03, 0.5, 300)
+#x2_test = np.linspace(0.03, 0.5, 300)
 
 x1_data = np.concatenate((x1_train,x1_test), axis = 0)
 x2_data = np.concatenate((x2_train,x2_test), axis = 0)
@@ -136,8 +142,8 @@ x2_data = x2_data[:,None]
 # Hyperparameters
 center0 = 0
 disp0 = 0
-df0 = 10000
-scale0 = 0.0001
+df0 = 100
+scale0 = 2.5
 kernel1 = RBF(length_scale=0.3, length_scale_bounds=(0.05, 4)) + WhiteKernel(1e-10, noise_level_bounds='fixed')
 kernel2 = RBF(length_scale=0.5, length_scale_bounds=(0.05, 1)) + WhiteKernel(1e-10, noise_level_bounds='fixed')
 
@@ -146,10 +152,10 @@ y1_df = exp1_res['ypred_df']
 coeffs1 = gm.coefficients(np.array(y1_df),ratio = 1,orders=np.arange(0,ns+1))
 
 gp1 = gm.ConjugateGaussianProcess(kernel1, center=center0, disp=disp0, df=df0, scale=5, n_restarts_optimizer=10)
-fit1 = gp1.fit(x1_train, coeffs1[:5,])
+fit1 = gp1.fit(x1_train, coeffs1[:4,])
 fit1.predict(x1_test,return_std=True)
 np.sum(fit1.predict(x1_test,return_std=False),axis = 1)
-
+fit1.cbar_sq_mean_
 
 ratio1 = np.array(list(chain(*exp1_res['qx_df'].values.tolist()))) # Reshape the array
 ref1 = np.array(list(chain(*exp1_res['yref_df'].values.tolist()))) # Reshape the array
@@ -158,14 +164,19 @@ gp_trunc1 = gm.TruncationGP(kernel = fit1.kernel_, center=center0, disp=disp0, d
 fit_trunc1 = gp_trunc1.fit(x1_data, y=np.array(exp1_res['ypred_df']), orders=np.arange(0,ns+1))
 fit_trunc1.predict(x1_data, order = 2, return_std = True)
 
-fhat = fit_trunc1.predict(x1_data, order = 2, return_std = False)
-std = fit_trunc1.predict(x1_data, order = 2, return_std = True)[1]
+fhat1 = fit_trunc1.predict(x1_data, order = 2, return_std = False)
+std1 = fit_trunc1.predict(x1_data, order = 2, return_std = True)[1]
 
 fig, ax = plt.subplots(figsize=(3.2, 3.2))
-fig.plot(x1_test, fhat[5:], zorder = 2)
-ax.fill_between(x1_test[:,0], fhat[5:] + 2*std[5:], fhat[5:] - 2*std[5:], zorder=1)
+ax.plot(x1_test, fhat1[5:], zorder = 2)
+#ax.fill_between(x1_test[:,0], fhat1[5:] + 2*std1[5:], fhat1[5:] - 2*std1[5:], zorder=1)
 plt.show()
 
+
+center0 = 0
+disp0 = 0
+df0 = 10
+scale0 = 0.2
 
 exp2_res = get_exp(list(chain(*x2_data.tolist())), 4, 'lg')
 y2_df = exp2_res['ypred_df']
@@ -176,21 +187,77 @@ ref2 = np.array(list(chain(*exp2_res['yref_df'].values.tolist()))) # Reshape the
 coeffs2 = gm.coefficients(np.array(y2_df),ratio = ref2,orders=np.arange(0,nl+1))
 
 gp2 = gm.ConjugateGaussianProcess(kernel2, center=center0, disp=disp0, df=df0, scale=5, n_restarts_optimizer=10)
-fit2 = gp2.fit(x2_train, coeffs2[:5,])
-fit2.predict(x2_test,return_std=True)
-np.sum(fit2.predict(x2_test,return_std=False),axis = 1)
+fit2 = gp2.fit(x2_train, coeffs2[:4,])
+#fit2.predict(x2_test,return_std=True)
+#np.sum(fit2.predict(x2_test,return_std=False),axis = 1)
+fit2.cbar_sq_mean_
 
 gp_trunc2 = gm.TruncationGP(kernel = fit2.kernel_, center=center0, disp=disp0, df=df0, scale=scale0, ref = ref2, ratio = ratio2)
 fit_trunc2 = gp_trunc2.fit(x2_data, y=np.array(exp2_res['ypred_df']), orders=np.arange(0,nl+1))
-fit_trunc2.predict(x2_data, order = 4, return_std = True)
+#fit_trunc2.predict(x2_data, order = 4, return_std = True)
 
-fhat = fit_trunc2.predict(x2_data, order = 4, return_std = False)
-std = fit_trunc2.predict(x2_data, order = 4, return_std = True)[1]
+fhat2 = fit_trunc2.predict(x2_data, order = 4, return_std = False)
+std2 = fit_trunc2.predict(x2_data, order = 4, return_std = True)[1]
 
 fig, ax = plt.subplots(figsize=(3.2, 3.2))
-fig.plot(x2_test, fhat[5:], zorder = 2)
-ax.fill_between(x1_test[:,0], fhat[5:] + 2*std[5:], fhat[5:] - 2*std[5:], zorder=1)
+ax.plot(x2_test, fhat2[5:], zorder = 2)
+ax.fill_between(x1_test[:,0], fhat2[5:] + 2*std2[5:], fhat2[5:] - 2*std2[5:], zorder=1)
 plt.show()
+
+#-----------------------------------------------------
+nn = fhat1.shape[0]
+fdata = np.concatenate([fhat1.reshape(nn,1), fhat2.reshape(nn,1)], axis = 1)
+sdata = np.concatenate([std1.reshape(nn,1), std2.reshape(nn,1)], axis = 1)
+
+np.savetxt("/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Overleaf Results/f_train.txt", fdata[4:])
+np.savetxt("/home/johnyannotty/Documents/Model Mixing BART/Open BT Examples/Overleaf Results/s_train.txt", sdata[4:])
+
+
+#-----------------------------------------------------
+# Model Mixing
+n_train = 20
+n_test = 100
+s = 0.03
+
+x_train = x1_data[4:]
+x_grid = x1_test
+#x_test = np.linspace(0.01, 1.0, n_test)
+
+np.random.seed(1234567)
+y_train = np.array([2.508488,2.481616,2.462142,2.436121,2.405677,2.374887,2.343086,2.305914,2.271658,2.232709,2.203263,2.175726,2.136858,
+    2.116650, 2.068122, 2.040274, 2.017935, 1.990049, 1.964042, 1.937480])
+nn = fhat1.shape[0]
+f_train = np.concatenate([fhat1.reshape(nn,1), fhat2.reshape(nn,1)], axis = 1)
+s_train = np.concatenate([std1.reshape(nn,1), std2.reshape(nn,1)], axis = 1)
+
+from openbt import OPENBT
+m = OPENBT(model = "mixbart", tc = 4, modelname = "eft", ntree = 10, k = 1, ndpost = 10000, nskip = 2000, nadapt = 5000, 
+                adaptevery = 500, overallsd = 0.01, minnumbot = 3, nsprior = True, overallnu = 5, numcut = 300)
+fit = m.fit(x_train, y_train, F= f_train[4:(n_train+4),:], S= s_train[4:(n_train+4),:])
+f_grid = f_train[(n_train+4):,:]
+fitp = m.predict(x_grid, F = f_grid)
+
+fitp['mmean']
+
+fig, ax = plt.subplots(figsize=(5.2, 5.2))
+ax.plot(x_grid, fitp['mmean'], zorder = 2)
+ax.plot(x_grid, fitp['mmean'], zorder = 2)
+ax.plot(x_grid, fitp['m_lower'], zorder = 2)
+ax.plot(x_grid, fitp['m_upper'], zorder = 2)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #-------------------------
 

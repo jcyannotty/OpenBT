@@ -358,7 +358,6 @@ int main(int argc, char* argv[])
       
       //Make finfo on the slave node
       makefinfo(k,n,&f[0],fi);
-      cout << "fi = \n" << fi << endl;
       cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;
 #ifndef SILENT
       cout << "node " << mpirank << " loaded " << n << " mixing inputs of dimension " << k << " from " << ffs << endl;

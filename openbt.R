@@ -1837,7 +1837,7 @@ rgy = range(mix_model_data$y_train)
 m = mix_model_args$ntree
 k = mix_model_args$k
 
-tau_disc = (rgy[2]-rgy[1])/(2*sqrt(m)*k)
+tau_disc = (rgy[2]-rgy[1])/(2*sqrt(m)*discrep_model_args$k)
 tau_wts =  (1)/(2*sqrt(m)*k)
 beta_wts = 1/(2*m)
 if(is.na(discrep_model_args$beta0)){
@@ -1935,7 +1935,6 @@ if(length(minnumbot)>1) {
 }
 
 # Set default argument for the sigmavs
-# **** FIX ME -- can use nc_vec[] without adding n
 if(is.null(sigmav_list)){
   for(l in 0:nummodels){
     sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
@@ -1989,7 +1988,7 @@ if(modeltype==MODEL_MIX_EMULATE){
   cat("Model: KOH Bayesian Additive Model Mixing Trees\n")
 }
 if(modeltype==MODEL_MIX_ORTHOGONAL){
-  cat("Model: Orhtogonal Bayesian Additive Model Mixing Trees\n")
+  cat("Model: Orthogonal Bayesian Additive Model Mixing Trees\n")
 }
 
 #--------------------------------------------------

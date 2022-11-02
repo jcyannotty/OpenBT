@@ -962,7 +962,7 @@ int main(int argc, char* argv[])
                 //Update finfo column 
                 ambm_list[j]->predict(&dimix_list[j]);
                 for(size_t l=0;l<dimix_list[j].n;l++){
-                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1];
+                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
                     //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
                 }
             }           
@@ -1014,8 +1014,9 @@ int main(int argc, char* argv[])
                 // Emulators
                 if(mpirank>0){
                     ambm_list[j-1]->predict(&dips_list[j]);
-                    dips_list[j] -= dinfo_list[j];
-                    dips_list[j] *= -1;
+                    for(size_t l=0;l<dips_list[j].n;l++){r_list[j][l] = y_list[j][l] - r_list[j][l];}    
+                    //dips_list[j] -= dinfo_list[j]; // Get residuals
+                    //dips_list[j] *= -1;
                 }else{
                     dips_list[j] = dinfo_list[j];
                 }
@@ -1155,8 +1156,9 @@ int main(int argc, char* argv[])
                 // Emulators
                 if(mpirank>0){
                     ambm_list[j-1]->predict(&dips_list[j]);
-                    dips_list[j] -= dinfo_list[j];
-                    dips_list[j] *= -1;
+                    for(size_t l=0;l<dips_list[j].n;l++){r_list[j][l] = y_list[j][l] - r_list[j][l];}
+                    //dips_list[j] -= dinfo_list[j];
+                    //dips_list[j] *= -1;
                 }else{
                     dips_list[j] = dinfo_list[j];
                 }
@@ -1288,8 +1290,9 @@ int main(int argc, char* argv[])
                 // Emulators
                 if(mpirank>0){
                     ambm_list[j-1]->predict(&dips_list[j]);
-                    dips_list[j] -= dinfo_list[j];
-                    dips_list[j] *= -1;
+                    for(size_t l=0;l<dips_list[j].n;l++){r_list[j][l] = y_list[j][l] - r_list[j][l];}
+                    //dips_list[j] -= dinfo_list[j];
+                    //dips_list[j] *= -1;
                 }else{
                     dips_list[j] = dinfo_list[j];
                 }
