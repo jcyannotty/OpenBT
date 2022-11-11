@@ -470,12 +470,12 @@ class OPENBT(BaseEstimator):
              self.smean[j] = np.mean(self.sdraws[:, j])
              self.msd[j] = np.std(self.mdraws[:, j], ddof = 1)
              self.ssd[j] = np.std(self.sdraws[:, j], ddof = 1)
-             self.m_5[j] = np.percentile(self.mdraws[:, j], 0.50)
-             self.s_5[j] = np.percentile(self.sdraws[:, j], 0.50)
-             self.m_lower[j] = np.percentile(self.mdraws[:, j], self.q_lower)
-             self.s_lower[j] = np.percentile(self.sdraws[:, j], self.q_lower)
-             self.m_upper[j] = np.percentile(self.mdraws[:, j], self.q_upper)
-             self.s_upper[j] = np.percentile(self.sdraws[:, j], self.q_upper)
+             self.m_5[j] = np.quantile(self.mdraws[:, j], 0.50)
+             self.s_5[j] = np.quantile(self.sdraws[:, j], 0.50)
+             self.m_lower[j] = np.quantile(self.mdraws[:, j], self.q_lower)
+             self.s_lower[j] = np.quantile(self.sdraws[:, j], self.q_lower)
+             self.m_upper[j] = np.quantile(self.mdraws[:, j], self.q_upper)
+             self.s_upper[j] = np.quantile(self.sdraws[:, j], self.q_upper)
 
 
     def clean_model(self):
@@ -515,9 +515,9 @@ class OPENBT(BaseEstimator):
         for j in range(len(self.vdraws[0])): # (should = self.p)
              self.mvdraws[j] = np.mean(self.vdraws[:, j])
              self.vdraws_sd[j] = np.std(self.vdraws[:, j], ddof = 1)
-             self.vdraws_5[j] = np.percentile(self.vdraws[:, j], 0.50)
-             self.vdraws_lower[j] = np.percentile(self.vdraws[:, j], self.q_lower)
-             self.vdraws_upper[j] = np.percentile(self.vdraws[:, j], self.q_upper)
+             self.vdraws_5[j] = np.quantile(self.vdraws[:, j], 0.50)
+             self.vdraws_lower[j] = np.quantile(self.vdraws[:, j], self.q_lower)
+             self.vdraws_upper[j] = np.quantile(self.vdraws[:, j], self.q_upper)
         if (len(self.vdraws[0]) == 1): #  Make the output just a double, not a 2D array
              self.mvdraws = self.mvdraws[0]
              self.vdraws_sd = self.vdraws_sd[0]
