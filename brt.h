@@ -135,6 +135,7 @@ public:
    //--------------------
    //constructors/destructors
    brt():t(0.0),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
+   //brt(size_t ik):t(vxd::Zero(ik)),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
    virtual ~brt() { if(mi.varcount) delete[] mi.varcount; }
    //--------------------
    //methods
@@ -146,7 +147,7 @@ public:
                             if(this->ncp1<(double)((*xi)[i].size()+1.0))
                               this->ncp1=(double)((*xi)[i].size()+1.0);
                          }
-   void setdata(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf(); setr(); }
+   void setdata(dinfo *di) {this->di=di;resid.resize(di->n);yhat.resize(di->n);setf();setr();}
    void pr();
    void settp(double alpha, double beta) {tp.alpha=alpha;tp.beta=beta;}
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
@@ -189,6 +190,40 @@ public:
                                                                            //Instead, uses the path from nx that it constructs.
    bool rot(tree::tree_p tnew, tree& x, rn& gen);  //uses subsuff
    void adapt();
+
+   //--------------------------------------------------
+   //Methods for vector parameters and model mixing
+   //--------------------------------------------------
+   //draw theta vector -- used for vector parameter
+   void drawvec(rn& gen);
+   void drawvec_mpislave(rn& gen);
+   void drawthetavec(rn& gen);
+
+   //Birth and Death for vector parameters
+   void bd_vec(rn& gen);
+
+   //Set the data, the vector of predicted values, and residuals
+   void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix();}
+   void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);this->nsprior = false;} //sets the pointer for the f matrix and k as members of brt 
+   void setk(size_t k){this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the number of models for mixing--used in programs that do not need to read in function data (ex: mixingwts.cpp))
+   void setfsd(finfo *fsd){this->fisd = fsd; this->nsprior = true;} //sets the function discrepancies 
+   void setf_mix();
+   void setr_mix(); 
+   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
+   void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // predict y at the (npred x p) settings *di.x with functional discrepancy mean & sd
+   void get_mix_wts(dinfo* dipred, mxd* wts);
+   void get_mix_theta(dinfo* dipred, mxd* wts);
+   void get_fi(){std::cout << "fi = \n" << *fi << std::endl;}
+    
+   //Print brt object with vector parameters
+   void pr_vec(); 
+
+   //Save and load the tree
+   void savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   void loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta); 
+
 protected:
    //--------------------
    //model information
@@ -241,10 +276,7 @@ protected:
    void local_ompsetf(dinfo di);
    void local_ompsetr(dinfo di);
    void local_omppredict(dinfo dipred);
-//   void local_ompsavetree(int* id, int* v, int* c, double* theta);
-//   void local_savetree(int* id, int* v, int* c, double* theta);
-//   void local_omploadtree(size_t nn, int* id, int* v, int* c, double* theta);
-//   void local_loadtree(size_t nn, int* id, int* v, int* c, double* theta);
+
    void local_ompsavetree(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
    virtual void local_savetree(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
@@ -262,6 +294,44 @@ protected:
    virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
    void mpi_resetrn(rn& gen);
    void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
+
+
+   //-------------------------------------------
+   //Protected Model Mixing functions and data
+   //-------------------------------------------
+   finfo *fi; //pointer to the f matrix
+   finfo *fisd; //pointer to the std matrix for fhat  
+   bool nsprior; //True/False -- use stationary or nonstationy prior
+   size_t k;
+   
+   virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
+   virtual void local_setf_mix(diterator& diter);
+   virtual void local_setr_mix(diterator& diter);
+   virtual void local_predict_mix(diterator& diter, finfo& fipred);
+   virtual void local_get_mix_wts(diterator& diter, mxd& wts);
+   virtual void local_get_mix_theta(diterator& diter, mxd& wts);
+   
+   // #ifdef _OPENMP
+   //void local_ompgetsuff_mix(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir);
+   //void local_ompgetsuff_mix(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir);
+   //void local_ompallsuff_mix(dinfo di, tree::npv bnv,std::vector<sinfo*>& siv);
+   //void local_ompsubsuff_mix(dinfo di, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv);
+   void local_ompsetf_mix(dinfo di);
+   void local_ompsetr_mix(dinfo di);
+   void local_omppredict_mix(dinfo dipred, finfo fipred);
+   void local_ompget_mix_wts(dinfo dipred, mxd wts);
+   void local_ompget_mix_theta(dinfo dipred, mxd wts);
+
+   //Save and Load tree with vector parameters
+   void local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   void local_omploadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+
 };
 
 #endif

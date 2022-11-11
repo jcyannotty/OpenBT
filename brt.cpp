@@ -48,7 +48,7 @@ void brt::draw(rn& gen)
       rot(tnew,t,gen);
       delete tnew;
    }
-
+   
    // Perturbation Proposal
    if(mi.dopert)
       pertcv(gen);
@@ -269,10 +269,11 @@ void brt::drawtheta(rn& gen)
 //   std::vector<sinfo> siv;
    std::vector<sinfo*>& siv = newsinfovec();
 
-  allsuff(bnv,siv);
+   allsuff(bnv,siv);
 #ifdef _OPENMPI
-  mpi_resetrn(gen);
+   mpi_resetrn(gen);
 #endif
+   
    for(size_t i=0;i<bnv.size();i++) {
       bnv[i]->settheta(drawnodetheta(*(siv[i]),gen));
       delete siv[i]; //set it, then forget it!
@@ -437,7 +438,7 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
       //else this x doesn't map to the subtree so it's not added into suff stats.
    }
 }
-//--------------------------------------------------
+//-------------------------------------------------- 
 //local_ompsubsuff
 void brt::local_ompsubsuff(dinfo di, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv)
 {
@@ -1267,6 +1268,687 @@ void mpislave_bd(rn& gen)
 
 
 }
+
+//----------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
+//Model Mixing functions for brt.cpp
+//----------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------
+//Draw function for vector parameters -- calls drawthetavec
+void brt::drawvec(rn& gen)
+{
+   // Structural/topological proposal(s)
+   if(gen.uniform()<mi.pbd){
+//   if(mi.pbd>0.0)
+      //std::cout << "bd" << std::endl;
+      bd_vec(gen);
+   }
+   else
+   {
+      //std::cout << "Rotate" << std::endl; 
+      tree::tree_p tnew;
+      tnew=new tree(t); //copy of current to make life easier upon rejection
+      //t.pr_vec();
+      rot(tnew,t,gen);
+      //t.pr_vec();
+      delete tnew;
+   }
+
+   // Perturbation Proposal
+   if(mi.dopert)
+      pertcv(gen);
+
+   // Gibbs Step
+    drawthetavec(gen);
+
+   //update statistics
+   if(mi.dostats) {
+      tree::npv bnv; //all the bottom nodes
+      for(size_t k=0;k< xi->size();k++) mi.varcount[k]+=t.nuse(k);
+      t.getbots(bnv);
+      unsigned int tempdepth[bnv.size()];
+      unsigned int tempavgdepth=0;
+      for(size_t i=0;i!=bnv.size();i++)
+         tempdepth[i]=(unsigned int)bnv[i]->depth();
+      for(size_t i=0;i!=bnv.size();i++) {
+         tempavgdepth+=tempdepth[i];
+         mi.tmaxd=std::max(mi.tmaxd,tempdepth[i]);
+         mi.tmind=std::min(mi.tmind,tempdepth[i]);
+      }
+      mi.tavgd+=((double)tempavgdepth)/((double)bnv.size());
+   }
+}
+
+
+//Draw theta vector -- samples the theta vector and assigns to tree 
+void brt::drawthetavec(rn& gen)
+{
+   tree::npv bnv;
+//   std::vector<sinfo> siv;
+   std::vector<sinfo*>& siv = newsinfovec();
+
+  allsuff(bnv,siv);
+#ifdef _OPENMPI
+  mpi_resetrn(gen);
+#endif
+   for(size_t i=0;i<bnv.size();i++) {
+      bnv[i]->setthetavec(drawnodethetavec(*(siv[i]),gen));
+      delete siv[i]; //set it, then forget it!
+   }
+   delete &siv;  //and then delete the vector of pointers.
+}
+
+//--------------------------------------------------
+//draw theta for a single bottom node for the brt model
+Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
+{
+//   return 1.0;
+   Eigen::VectorXd sin_vec(k); //cast si.n to a vector of dimension 1.
+   for(size_t i = 0; i<k; i++){
+      sin_vec(i) = si.n; //Input si.n into each vector component
+   }
+   return sin_vec;
+}
+
+//--------------------------------------------------
+//slave controller for draw when using MPI
+void brt::drawvec_mpislave(rn& gen)
+{
+   #ifdef _OPENMPI
+   char buffer[SIZE_UINT3];
+   int position=0;
+   MPI_Status status;
+   typedef tree::npv::size_type bvsz;
+
+   // Structural/topological proposal(s)
+   // MPI receive the topological proposal type and nlid and nrid if applicable.
+   MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+   sinfo& tsil = *newsinfo();
+   sinfo& tsir = *newsinfo();
+   vxd theta0(k);
+   theta0 = vxd::Zero(k);
+   if(status.MPI_TAG==MPI_TAG_BD_BIRTH_VC) {
+      unsigned int nxid,v,c;
+      tree::tree_p nx;
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&nxid,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&v,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&c,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      nx=t.getptr((size_t)nxid);
+      getsuff(nx,(size_t)v,(size_t)c,tsil,tsir);
+      MPI_Status status2;
+      MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
+      if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,theta0,theta0); //accept birth
+      //else reject, for which we do nothing.
+   }
+   else if(status.MPI_TAG==MPI_TAG_BD_DEATH_LR) {
+      unsigned int nlid,nrid;
+      tree::tree_p nl,nr;
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&nlid,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&nrid,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      nl=t.getptr((size_t)nlid);
+      nr=t.getptr((size_t)nrid);
+      getsuff(nl,nr,tsil,tsir);
+      MPI_Status status2;
+      MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
+      if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) t.deathp(nl->getp(),theta0); //accept death
+      //else reject, for which we do nothing.
+   }
+   else if(status.MPI_TAG==MPI_TAG_ROTATE) {
+      mpi_resetrn(gen);
+      tree::tree_p tnew;
+      tnew=new tree(t); //copy of current to make life easier upon rejection
+      rot(tnew,t,gen);
+      delete tnew;
+   }
+   delete &tsil;
+   delete &tsir;
+
+   // Perturbation Proposal
+   // nothing to perturb if tree is a single terminal node, so we would just skip.
+   if(mi.dopert && t.treesize()>1)
+   {
+      tree::npv intnodes;
+      tree::tree_p pertnode;
+      t.getintnodes(intnodes);
+      for(size_t pertdx=0;pertdx<intnodes.size();pertdx++)
+      {
+         std::vector<sinfo*>& sivold = newsinfovec();
+         std::vector<sinfo*>& sivnew = newsinfovec();
+         pertnode = intnodes[pertdx];
+         MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+         if(status.MPI_TAG==MPI_TAG_PERTCV)
+         {
+            size_t oldc = pertnode->getc();
+            unsigned int propcint;
+            position=0;
+            MPI_Unpack(buffer,SIZE_UINT1,&position,&propcint,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            size_t propc=(size_t)propcint;
+            pertnode->setc(propc);
+            tree::npv bnv;
+            getpertsuff(pertnode,bnv,oldc,sivold,sivnew);
+            MPI_Status status2;
+            MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
+            if(status2.MPI_TAG==MPI_TAG_PERTCV_ACCEPT) pertnode->setc(propc); //accept new cutpoint
+            //else reject, for which we do nothing.
+         }
+         else if(status.MPI_TAG==MPI_TAG_PERTCHGV)
+         {
+            size_t oldc = pertnode->getc();
+            size_t oldv = pertnode->getv();
+            bool didswap=false;
+            unsigned int propcint;
+            unsigned int propvint;
+            position=0;
+            mpi_update_norm_cormat(rank,tc,pertnode,*xi,(*mi.corv)[oldv],chv_lwr,chv_upr);
+            MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            MPI_Unpack(buffer,SIZE_UINT3,&position,&propcint,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT3,&position,&propvint,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT3,&position,&didswap,1,MPI_CXX_BOOL,MPI_COMM_WORLD);
+            size_t propc=(size_t)propcint;
+            size_t propv=(size_t)propvint;
+            pertnode->setc(propc);
+            pertnode->setv(propv);
+            if(didswap)
+               pertnode->swaplr();
+            mpi_update_norm_cormat(rank,tc,pertnode,*xi,(*mi.corv)[propv],chv_lwr,chv_upr);
+            tree::npv bnv;
+            getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
+            MPI_Status status2;
+            MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
+            if(status2.MPI_TAG==MPI_TAG_PERTCHGV_ACCEPT) { //accept change var and pert
+               pertnode->setc(propc);
+               pertnode->setv(propv);
+               if(didswap)
+                  pertnode->swaplr();
+            }
+            // else reject, for which we do nothing.
+         }
+         // no other possibilities.
+         for(bvsz j=0;j<sivold.size();j++) delete sivold[j];
+         for(bvsz j=0;j<sivnew.size();j++) delete sivnew[j];
+         delete &sivold;
+         delete &sivnew;
+      }
+   }
+
+   // Gibbs Step
+   drawthetavec(gen);
+
+   #endif
+}
+
+
+//--------------------------------------------------
+//Model Mixing Birth and Death
+//--------------------------------------------------
+//bd_vec: birth/death for vector parameters
+void brt::bd_vec(rn& gen)
+{
+//   cout << "--------------->>into bd" << endl;
+   tree::npv goodbots;  //nodes we could birth at (split on)
+   double PBx = getpb(t,*xi,mi.pb,goodbots); //prob of a birth at x
+
+   if(gen.uniform() < PBx) { //do birth or death
+      mi.bproposal++;
+      //std::cout << "Birth" << std::endl;
+      //--------------------------------------------------
+      //draw proposal
+      tree::tree_p nx; //bottom node
+      size_t v,c; //variable and cutpoint
+      double pr; //part of metropolis ratio from proposal and prior
+      bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);
+      
+      //--------------------------------------------------
+      //compute sufficient statistics
+      sinfo& sil = *newsinfo();
+      sinfo& sir = *newsinfo();
+      sinfo& sit = *newsinfo();
+      
+      getsuff(nx,v,c,sil,sir);
+      
+      // sit = sil + sir; NO! The + operator cannot be overloaded, so instead we do this:
+      sit += sil;
+      sit += sir;
+
+      //--------------------------------------------------
+      //compute alpha
+      bool hardreject=true;
+      double lalpha=0.0;
+      double lml, lmr, lmt;  // lm is the log marginal left,right,total
+      if((sil.n>=mi.minperbot) && (sir.n>=mi.minperbot)) { 
+         lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
+         hardreject=false;
+         lalpha = log(pr) + (lml+lmr-lmt);
+         //std::cout << "lml" << lml << std::endl;
+         //std::cout << "lmr" << lmr << std::endl;
+         //std::cout << "lmt" << lmt << std::endl;
+         //std::cout << "lalpha" << lalpha << std::endl;
+         lalpha = std::min(0.0,lalpha);
+      }
+      //--------------------------------------------------
+      //try metrop
+      Eigen::VectorXd thetavecl,thetavecr; //parameters for new bottom nodes, left and right
+      double uu = gen.uniform();
+      //std::cout << "lu" << log(uu) << std::endl;
+#ifdef _OPENMPI
+      MPI_Request *request = new MPI_Request[tc];
+#endif
+      if( !hardreject && (log(uu) < lalpha) ) {
+         thetavecl = Eigen::VectorXd:: Zero(k); 
+         thetavecr = Eigen::VectorXd:: Zero(k); 
+         t.birthp(nx,v,c,thetavecl,thetavecr);
+         mi.baccept++;
+#ifdef _OPENMPI
+//        cout << "accept birth " << lalpha << endl;
+         const int tag=MPI_TAG_BD_BIRTH_VC_ACCEPT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+      else { //transmit reject over MPI
+//        cout << "reject birth " << lalpha << endl;
+         const int tag=MPI_TAG_BD_BIRTH_VC_REJECT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+#else
+      }
+#endif
+      delete &sil;
+      delete &sir;
+      delete &sit;
+#ifdef _OPENMPI
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+      delete[] request;
+#endif
+   } else {
+      mi.dproposal++;
+      //std::cout << "Death" << std::endl;
+      //--------------------------------------------------
+      //draw proposal
+      double pr;  //part of metropolis ratio from proposal and prior
+      tree::tree_p nx; //nog node to death at
+      dprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,pr,gen);
+
+      //--------------------------------------------------
+      //compute sufficient statistics
+      //sinfo sil,sir,sit;
+      sinfo& sil = *newsinfo();
+      sinfo& sir = *newsinfo();
+      sinfo& sit = *newsinfo();
+      getsuff(nx->getl(),nx->getr(),sil,sir);
+      // sit = sil + sir; NO! The + operator cannot be overloaded, so instead we do this:
+      sit += sil;
+      sit += sir;
+
+      //--------------------------------------------------
+      //compute alpha
+      double lml, lmr, lmt;  // lm is the log marginal left,right,total
+      lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
+      double lalpha = log(pr) + (lmt - lml - lmr);
+      lalpha = std::min(0.0,lalpha);
+
+      //--------------------------------------------------
+      //try metrop
+      Eigen::VectorXd thetavec(k);
+#ifdef _OPENMPI
+      MPI_Request *request = new MPI_Request[tc];
+#endif
+      if(log(gen.uniform()) < lalpha) {
+         thetavec = Eigen::VectorXd::Zero(k); 
+         t.deathp(nx,thetavec);
+         mi.daccept++;
+#ifdef _OPENMPI
+//        cout << "accept death " << lalpha << endl;
+         const int tag=MPI_TAG_BD_DEATH_LR_ACCEPT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+      else { //transmit reject over MPI
+//        cout << "reject death " << lalpha << endl;
+         const int tag=MPI_TAG_BD_DEATH_LR_REJECT;
+         for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+         }
+      }
+#else
+      }
+#endif
+      delete &sil;
+      delete &sir;
+      delete &sit;
+#ifdef _OPENMPI
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+      delete[] request;
+#endif
+   }
+}
+
+//--------------------------------------------------
+//Model Mixing - set residuals and fitted values
+//--------------------------------------------------
+//set the vector of predicted values
+void brt::setf_mix() {
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompsetf_mix(*di); //faster if pass dinfo by value.
+   #else
+         diterator diter(di);
+         local_setf_mix(diter);
+   #endif
+}
+void brt::local_ompsetf_mix(dinfo di)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = di.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&di,beg,end);
+   local_setf_mix(diter);
+#endif
+}
+void brt::local_setf_mix(diterator& diter)
+{
+   tree::tree_p bn;
+   vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec(); 
+      yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
+   }
+}
+
+//--------------------------------------------------
+//set the vector of residual values
+void brt::setr_mix() {
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompsetr_mix(*di); //faster if pass dinfo by value.
+   #else
+         diterator diter(di);
+         local_setr_mix(diter);
+   #endif
+}
+void brt::local_ompsetr_mix(dinfo di)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = di.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&di,beg,end);
+   local_setr_mix(diter);
+#endif
+}
+void brt::local_setr_mix(diterator& diter)
+{
+   tree::tree_p bn;
+   vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
+
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
+   }
+}
+//--------------------------------------------------
+//predict the response at the (npred x p) input matrix *x
+//Note: the result appears in *dipred.y.
+void brt::predict_mix(dinfo* dipred, finfo* fipred) {
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_omppredict_mix(*dipred, *fipred); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_predict_mix(diter, *fipred);
+   #endif
+}
+
+//Local predictions for model mixing over omp
+void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = dipred.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&dipred,beg,end);
+   local_predict_mix(diter, fipred);
+#endif
+}
+
+//Local preditions for model mixing
+void brt::local_predict_mix(diterator& diter, finfo& fipred){
+   tree::tree_p bn;
+   vxd thetavec_temp(k); 
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      diter.sety(fipred.row(*diter)*thetavec_temp);
+   }
+}
+
+//Mix using the discrepancy
+void brt::predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen) {
+   size_t np = (*fpdmean).rows();
+   finfo fdpred(np,k);
+   double z;
+   //Update the fdpred matrix to sum the point estimates + random discrepancy: fipred + fidelta 
+   for(size_t i = 0; i<np; i++){
+        for(size_t j=0; j<k;j++){
+           z = gen.normal();
+           fdpred(i,j) = (*fipred)(i,j) + (*fpdmean)(i,j) + (*fpdsd)(i,j)*z; 
+        }
+    }
+   //cout << fdpred << endl;
+   //Run the same functions -- just now using the updated prediction matrix
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_omppredict_mix(*dipred, fdpred); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_predict_mix(diter, fdpred);
+   #endif
+}
+
+//--------------------------------------------------
+//Get modeling mixing weights
+void brt::get_mix_wts(dinfo* dipred, mxd *wts){
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompget_mix_wts(*dipred, *wts); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_get_mix_wts(diter, *wts);
+   #endif   
+}
+
+void brt::local_get_mix_wts(diterator &diter, mxd &wts){
+   tree::tree_p bn;
+   vxd thetavec_temp(k); 
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
+   }
+}
+
+void brt::local_ompget_mix_wts(dinfo dipred, mxd wts){
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = dipred.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&dipred,beg,end);
+   local_get_mix_wts(diter, wts);
+#endif
+}
+
+//--------------------------------------------------
+//Get modeling mixing weights per tree
+void brt::get_mix_theta(dinfo* dipred, mxd *wts){
+   #ifdef _OPENMP
+#     pragma omp parallel num_threads(tc)
+      local_ompget_mix_theta(*dipred, *wts); //faster if pass dinfo by value.
+   #else
+         diterator diter(dipred);
+         local_get_mix_theta(diter, *wts);
+   #endif   
+}
+
+void brt::local_get_mix_theta(diterator &diter, mxd &wts){
+   tree::tree_p bn;
+   vxd thetavec_temp(k);
+   bool enter = true; 
+   for(;diter<diter.until();diter++) {
+      bn = t.bn(diter.getxp(),*xi);
+      thetavec_temp = bn->getthetavec();
+      if(enter){
+         wts.col(0) = thetavec_temp; //sets the thetavec to be the 1st column of the wts eigen matrix.
+         enter = false;
+      }
+   }
+}
+
+void brt::local_ompget_mix_theta(dinfo dipred, mxd wts){
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = dipred.n;
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+
+   diterator diter(&dipred,beg,end);
+   local_get_mix_theta(diter, wts);
+#endif
+}
+
+
+//--------------------------------------------------
+//Print for brt with vector parameters
+void brt::pr_vec(){
+   std::cout << "***** brt object:\n";
+#ifdef _OPENMPI
+   std::cout << "mpirank=" << rank << endl;
+#endif
+   if(xi) {
+      size_t p = xi->size();
+      cout  << "**xi cutpoints set:\n";
+      cout << "\tnum x vars: " << p << endl;
+      cout << "\tfirst x cuts, first and last " << (*xi)[0][0] << ", ... ," << 
+              (*xi)[0][(*xi)[0].size()-1] << endl;
+      cout << "\tlast x cuts, first and last " << (*xi)[p-1][0] << ", ... ," << 
+              (*xi)[p-1][(*xi)[p-1].size()-1] << endl;
+   } else {
+      cout << "**xi cutpoints not set\n";
+   }
+   if(di) {
+      cout << "**data set, n,p: " << di->n << ", " << di->p << endl;
+   } else {
+      cout << "**data not set\n";
+   }
+   std::cout << "**the tree:\n";
+   t.pr_vec();   
+}
+
+
+//--------------------------------------------------
+//save/load tree to/from vector format -- for these functions, each double vector is of length k*nn. 
+//Save tree with vector parameters
+void brt::savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   #ifdef _OPENMP
+#    pragma omp parallel num_threads(tc)
+     local_ompsavetree_vec(iter,m,nn,id,v,c,theta);
+   #else
+     int beg=0;
+     int end=(int)m;
+     local_savetree_vec(iter,beg,end,nn,id,v,c,theta);
+   #endif
+}
+
+//void brt::local_ompsavetree(int* id, int* v, int* c, double* theta)
+void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = (int)m; //1 tree in brt version of save/load tree(s)
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+   if(end>my_rank)
+      local_savetree_vec(iter,beg,end,nn,id,v,c,theta);
+#endif
+}
+void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
+     std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   //beg,end are not used in the single-tree models.
+   nn[iter]=t.treesize();
+   id[iter].resize(nn[iter]);
+   v[iter].resize(nn[iter]);
+   c[iter].resize(nn[iter]);
+   theta[iter].resize(k*nn[iter]);
+
+   //t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0]);
+   t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0], k);
+}
+void brt::loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   #ifdef _OPENMP
+#    pragma omp parallel num_threads(tc)
+     local_omploadtree_vec(iter,m,nn,id,v,c,theta);
+   #else
+     int beg=0;
+     int end=(int)m;
+     local_loadtree_vec(iter,beg,end,nn,id,v,c,theta);
+   #endif
+}
+
+//void brt::local_omploadtree(size_t nn, int* id, int* v, int* c, double* theta)
+void brt::local_omploadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = (int)m; //1 tree in brt version of save/load tree(s)
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+   if(end>my_rank)
+      local_loadtree_vec(iter,beg,end,nn,id,v,c,theta);
+#endif
+}
+void brt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
+{
+   //beg,end are not used in the single-tree models.
+   t.vectotree(nn[iter],&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],k);
+}
+
+
 /*
 //--------------------------------------------------
 //peturb proposal for internal node cut points.

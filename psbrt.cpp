@@ -73,7 +73,6 @@ void psbrt::draw_mpislave(rn& gen)
 
     // do the draw for jth component
     sb[j].draw_mpislave(gen);
-
     // Update the in-sample predicted vector
     setf();
 

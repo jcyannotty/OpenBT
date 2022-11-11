@@ -22,7 +22,7 @@
 //     Hugh A. Chipman: hughchipman@gmail.com
 
 
-#include "ambrt.h"
+#include "ambrt.h" 
 #include "brtfuns.h"
 #include <iostream>
 #include <map>
@@ -47,10 +47,10 @@ void ambrt::draw(rn& gen)
 
     // do the draw for jth component
     mb[j].draw(gen);
-
+   
     // Update the in-sample predicted vector
     setf();
-
+   
     // Update the in-sample residual vector
     setr();
   }
@@ -67,18 +67,28 @@ void ambrt::draw(rn& gen)
 void ambrt::draw_mpislave(rn& gen)
 {
   for(size_t j=0;j<m;j++) {
-   *divec[j]= *di;
-   *divec[j]-= *getf();
-   *divec[j]+= *mb[j].getf();
-
+    *divec[j]= *di;
+    /*
+    cout << "here slave 1" << endl;
+    cout << "yhat.size() = "<< yhat.size() << endl;
+    cout << "di->n = " << (*di).n << endl;
+    cout << "di->x = " << (*di).x << endl;
+    cout << "di->y = " << (*di).y << endl;
+    cout << "di->p = " << (*di).p << endl;
+    */
+    *divec[j]-= *getf();
+    //cout << "here slave 2" << endl;
+    *divec[j]+= *mb[j].getf();
+    //cout << "here slave 3" << endl;
     // do the draw for jth component
     mb[j].draw_mpislave(gen);
-
+    //cout << "here slave 4" << endl;
     // Update the in-sample predicted vector
     setf();
-
+    //cout << "here slave 5" << endl;
     // Update the in-sample residual vector
     setr();
+    //cout << "here slave 6" << endl;  
   }
 }
 //--------------------------------------------------
@@ -104,18 +114,19 @@ void ambrt::setdata(dinfo *di) {
   for(size_t j=0;j<m;j++)
     for(size_t i=0;i<di->n;i++)
       notjmus[j][i]=this->di->y[i]/((double)m);
-
+  
   for(size_t j=0;j<m;j++)
-    divec[j]=new dinfo(this->di->p,this->di->n,this->di->x,&notjmus[j][0],this->di->tc);
-
+    divec[j]=new dinfo(this->di->p,this->di->n,this->di->x,&notjmus[j][0],this->di->tc);  
+  
   // each mb[j]'s data is the appropriate row in notjmus
   for(size_t j=0;j<m;j++)
     mb[j].setdata(divec[j]);
-
   resid.resize(di->n);
   yhat.resize(di->n);
   setf();
   setr();
+  
+  
 }
 //--------------------------------------------------
 //set vector of predicted values for psbrt model

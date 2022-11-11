@@ -284,6 +284,7 @@ public:
   double* getyp() { return di.y+i; }
   double gety() { return *(getyp()); }
   void sety(double val) { di.y[i]=val; }
+  size_t geti(){return i;} //added to allow easy reference for the row vectors of f in model mixing
   size_t until() { return end; }
   bool operator==(const diterator& rhs) { return i==rhs.i; }
   bool operator==(size_t last) { return i==last; }
@@ -297,6 +298,5 @@ public:
   bool operator>(size_t last) { return i>last; }
   size_t operator*() { return i; }
 };
-
 
 #endif
