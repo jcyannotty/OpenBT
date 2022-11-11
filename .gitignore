@@ -47,8 +47,17 @@
 # Rhistory
 .Rhistory
 
+# Python cache
+__pycache__ 
+
 # Other folders
 .deps/*
 .libs/*
 .vscode/*
 autom4te.cache/*
+
+# Other files
+config.guess
+config.log
+config.status
+config.sub
