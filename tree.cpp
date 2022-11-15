@@ -351,6 +351,28 @@ void tree::getpathtorootlr(npv& nl, npv& nr)
    if(this->p) //has a parent?  then not at root yet..
       this->p->getpathtorootlr(nl,nr);
 }
+//--------------------------------------------------
+// Get a subtree where this node is the "root". 
+// The subtree is declared if the root is split on one of the specified 
+// variables listed in vvec
+void tree::getsubtreeonv(std::vector<size_t> subvec, std::vector<size_t> vvec, size_t subtreeidx, size_t& nsubtrees)
+{
+   // Does the node have children?
+   if(l){
+      // Is this node still in the original tree and does a split on one of the specified values occurs?
+      if(subtreeidx == 0 && std::find(vvec.begin(), vvec.end(), (p->v)) != vvec.end()){
+         // Yes - new subtree and split occurs
+         nsubtrees = nsubtrees + 1; // increase total number of subtrees
+         subtreeidx = nsubtrees; // assign the index to this new subtree
+      }
+      // Pass this information to the children
+      l->getsubtreeonv(subvec, vvec, subtreeidx, nsubtrees);
+      r->getsubtreeonv(subvec, vvec, subtreeidx, nsubtrees);
+   }else{
+      // terminal node, store the subtree index
+      subvec.push_back(subtreeidx);
+   }   
+}
 
 //--------------------------------------------------
 // does x map along the path?

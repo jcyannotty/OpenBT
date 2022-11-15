@@ -116,6 +116,7 @@ public:
    void getnodesonvc(npv& v, size_t var, size_t cut); //get all nodes that split on variable v at cutpoint c
    void getpathtoroot(npv& n);     //get all nodes from this node back to root of tree.
    void getpathtorootlr(npv& nl, npv& nr); //get all "left" and "right" nodes from this node back to root of tree EXCLUDING this.
+   void getsubtreeonv(std::vector<size_t> subvec,std::vector<size_t> vvec,size_t subtreeidx,size_t& nsubtrees); //get all nodes below this current node if a split on a specified v is used
    bool xonpath(npv& path, size_t nodedx, double *x, xinfo& xi);  //true if x follows path down tree, false otherwise
    void swaplr();                  //swap the left and right branches of this node in a tree
    tree_p bn(double *x,xinfo& xi); //find Bottom Node
@@ -143,7 +144,9 @@ public:
    tree_p l; //left child
    tree_p r; //right child
 
-   //Tree functions when using vector parameters-------------------
+   //--------------------------------------------------------------
+   //Tree functions when using vector parameters
+   //--------------------------------------------------------------
    // Vectorized nput/output methods to support saving/loading to R.
    void treetovec(int* id, int* v, int* c, double* thetavec, int k); //needs an input value of k
    void vectotree(size_t inn, int* id, int* iv, int* ic, double* ithetavec, int ik); //needs an input value of k

@@ -500,11 +500,11 @@ void brt::local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, t
 void brt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
    tree::npv path;
-
+   
    bnv.clear();
    nx->getpathtoroot(path);  //path from n back to root
    nx->getbots(bnv);  //all bots ONLY BELOW node n!!
-
+   
    #ifdef _OPENMP
       typedef tree::npv::size_type bvsz;
       siv.clear(); //need to setup space threads will add into
