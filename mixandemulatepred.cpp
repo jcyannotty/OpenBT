@@ -472,7 +472,7 @@ int main(int argc, char* argv[])
       }
       // Now get the mixing predictions for the ith iteration of the mcmc
       axb.loadtree_vec(0,m_list[0],onn[0],oid[0],ov[0],oc[0],otheta[0]);
-      axb.predict_mix(&dip_list[0],&fi);
+      axb.predict_vec(&dip_list[0],&fi);
       for(size_t j=0;j<np;j++){
          tedraw_list[0][i][j] = fp_list[0][j];
       }

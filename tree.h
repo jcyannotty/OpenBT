@@ -116,7 +116,6 @@ public:
    void getnodesonvc(npv& v, size_t var, size_t cut); //get all nodes that split on variable v at cutpoint c
    void getpathtoroot(npv& n);     //get all nodes from this node back to root of tree.
    void getpathtorootlr(npv& nl, npv& nr); //get all "left" and "right" nodes from this node back to root of tree EXCLUDING this.
-   void getsubtreeonv(std::vector<size_t> subvec,std::vector<size_t> vvec,size_t subtreeidx,size_t& nsubtrees); //get all nodes below this current node if a split on a specified v is used
    bool xonpath(npv& path, size_t nodedx, double *x, xinfo& xi);  //true if x follows path down tree, false otherwise
    void swaplr();                  //swap the left and right branches of this node in a tree
    tree_p bn(double *x,xinfo& xi); //find Bottom Node
@@ -125,6 +124,15 @@ public:
    void ru(size_t v, int *U);      // find upper region
    void rg(size_t v, int* L, int* U); //recursively find region [L,U] for var v
    void rgi(size_t v, int* L, int* U);  //recursively rind the inteval [L,U] for var v, used in Sobol indices calculations.
+   
+   // Working -- calibration functions - working with subtrees
+   //bool subtreeroot; // Should this be in the constructor ?
+   //void setsubtreeroot(bool isroot){this->subtreeroot = isroot;}
+   void getsubtreeroots(npv &uroots, std::vector<size_t> uvec);
+   void getsubtreeonv(std::vector<size_t> subvec,std::vector<size_t> vvec,size_t subtreeidx,size_t& nsubtrees); //******get all nodes below this current node if a split on a specified v is used
+   void nodeinsubtree(tree_p &n, npv &uroots); //******is this node in the subtree defined by slitting on a v in uvec 
+   
+
    //node functions--------------------
    size_t nid() const; //nid of a node
    size_t depth();  //depth of a node

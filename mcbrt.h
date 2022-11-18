@@ -122,7 +122,8 @@ public:
 
     // Methods which are not overridden in other inherited classes (mbrt, mxbrt) - but override is required here
     void allsuff(tree::npv& bnv,std::vector<sinfo*>& siv);  //assumes brt.t is the root node
-    void subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv); //does NOT assume brt.t is the root node.
+    void local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv); //does NOT assume brt.t is the root node.
+    void local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& siv);
     
     protected:
     //--------------------
@@ -134,8 +135,8 @@ public:
     //mcmc info
     //--------------------
     //methods
-    void getsuff(tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir);  //assumes brt.t is the root node
-    void getsuff(tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);       //assumes brt.t is the root node
+    void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
+    void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
 };
 
 #endif

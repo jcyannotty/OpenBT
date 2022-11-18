@@ -44,7 +44,7 @@ public:
       this->fisd = fsd; this->nsprior= true; 
       for(size_t j=0;j<m;j++) mb[j].setfsd(fsd);}
    void setk(size_t k) {this->k = k; for(size_t j=0;j<m;j++) mb[j].setk(k); }
-   void setdata_mix(dinfo *di);
+   void setdata_vec(dinfo *di);
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }
    tree::tree_p gettree(size_t i) { return &mb[i].t; }
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
@@ -81,9 +81,9 @@ protected:
     //mcmc info
     //--------------------
     //methods
-    virtual void local_setf_mix(diterator& diter);  //set the vector of predicted values
-    virtual void local_setr_mix(diterator& diter);  //set the vector of residuals
-    virtual void local_predict_mix(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
+    virtual void local_setf_vec(diterator& diter);  //set the vector of predicted values
+    virtual void local_setr_vec(diterator& diter);  //set the vector of residuals
+    virtual void local_predict_vec(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
     virtual void local_get_mix_wts(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
     virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
     virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,

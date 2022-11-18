@@ -352,6 +352,7 @@ void tree::getpathtorootlr(npv& nl, npv& nr)
       this->p->getpathtorootlr(nl,nr);
 }
 //--------------------------------------------------
+// *** Calibration, working
 // Get a subtree where this node is the "root". 
 // The subtree is declared if the root is split on one of the specified 
 // variables listed in vvec
@@ -372,6 +373,43 @@ void tree::getsubtreeonv(std::vector<size_t> subvec, std::vector<size_t> vvec, s
       // terminal node, store the subtree index
       subvec.push_back(subtreeidx);
    }   
+}
+
+//--------------------------------------------------
+// **** Calibration working
+// Gets all subtree roots, starts at root node of the entire tree and works its way down
+void tree::getsubtreeroots(npv& uroots, std::vector<size_t> uvec)
+{
+   // Does this node have children? If so lets check the splitting point v to see if it is a subtree
+   if(l){
+      // check to see if the splitting variable v is in the uvec list
+      if(std::find(uvec.begin(), uvec.end(), v) != uvec.end()){
+         // We found a subtree root. So store its pointed in the uroots vector and exit exit this process
+         uroots.push_back(this); 
+      }else{
+         // This node doesn't split on a v in u. So we are not at a subtree yet. Check the children now
+         l->getsubtreeroots(uroots, uvec);
+         r->getsubtreeroots(uroots, uvec);
+      }
+   }
+}
+
+
+//--------------------------------------------------
+// Check to see if a node is in the subtree
+void tree::nodeinsubtree(tree_p& n, npv& uroots)
+{
+   // Get path from current node to the tree root
+   npv path;
+   n->getpathtoroot(path);
+
+   // Check to see if any of the uroots are on this path
+   for(size_t i=0;i<uroots.size();i++){
+      if(std::find(path.begin(), path.end(), uroots[i]) != path.end()){
+         // Create a map
+         // break out of the loop
+      }   
+   }
 }
 
 //--------------------------------------------------

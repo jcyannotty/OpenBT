@@ -19,10 +19,10 @@ void mxbrt::drawvec(rn& gen){
     brt::drawvec(gen);
 
     // Update the in-sample predicted vector
-    setf_mix();
+    setf_vec();
 
     // Update the in-sample residual vector
-    setr_mix();
+    setr_vec();
 }
 
 //--------------------------------------------------
@@ -32,10 +32,10 @@ void mxbrt::drawvec_mpislave(rn& gen){
     brt::drawvec_mpislave(gen);
 
     // Update the in-sample predicted vector
-    setf_mix();
+    setf_vec();
 
     // Update the in-sample residual vector
-    setr_mix();
+    setr_vec();
 }
 
 //--------------------------------------------------

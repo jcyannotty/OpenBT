@@ -637,7 +637,7 @@ int main(int argc, char* argv[])
     //function output information
     axb.setfi(&fi, nummodels+1);
     //data objects
-    axb.setdata_mix(&dinfo_list[0]);  //set the data
+    axb.setdata_vec(&dinfo_list[0]);  //set the data
     //thread count
     axb.settc(tc-1);      //set the number of slaves when using MPI.
     //mpi rank

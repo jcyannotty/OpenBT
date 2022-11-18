@@ -239,6 +239,7 @@ if(modeltype==MODEL_PROBIT || modeltype==MODEL_MODIFIEDPROBIT)
 if(modeltype==MODEL_MIXBART){
   tau =  (1)/(2*sqrt(m)*k)
   beta0 = 1/(2*m)
+  overallsd = sqrt((overallnu+2)*overallsd^2/overallnu)
 }else{
   tau =  (rgy[2]-rgy[1])/(2*sqrt(m)*k)
   beta0=0

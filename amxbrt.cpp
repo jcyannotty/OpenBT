@@ -20,10 +20,10 @@ void amxbrt::drawvec(rn& gen){
         mb[j].drawvec(gen);
         
         // Update the in-sample predicted vector
-        setf_mix();
+        setf_vec();
 
         // Update the in-sample residual vector
-        setr_mix();
+        setr_vec();
     }
     // overall statistics from the subtrees.  Need to divide by m*N to get
     // useful numbers after the MCMC is done.
@@ -48,10 +48,10 @@ void amxbrt::drawvec_mpislave(rn& gen){
         mb[j].drawvec_mpislave(gen);
         
         // Update the in-sample predicted vector
-        setf_mix();
+        setf_vec();
 
         // Update the in-sample residual vector
-        setr_mix();
+        setr_vec();
     }
 }
 
@@ -69,7 +69,7 @@ void amxbrt::adapt(){
 
 //--------------------------------------------------
 //setdata for amxbrt
-void amxbrt::setdata_mix(dinfo *di) {
+void amxbrt::setdata_vec(dinfo *di) {
     this->di=di;
         
     // initialize notjsigmavs.
@@ -93,17 +93,17 @@ void amxbrt::setdata_mix(dinfo *di) {
     */
     // each mb[j]'s data is the appropriate row in notjmus
     for(size_t j=0;j<m;j++){
-        mb[j].setdata_mix(divec[j]); //setdata_mix is a method of mb[j] which is a member of mxbrt class. This is different than setdata_mix in mxbrt
+        mb[j].setdata_vec(divec[j]); //setdata_vec is a method of mb[j] which is a member of mxbrt class. This is different than setdata_vec in mxbrt
     }
     resid.resize(di->n);
     yhat.resize(di->n);
-    setf_mix();
-    setr_mix();
+    setf_vec();
+    setr_vec();
 }
 
 //--------------------------------------------------
 //set vector of predicted values for psbrt model
-void amxbrt::local_setf_mix(diterator& diter){
+void amxbrt::local_setf_vec(diterator& diter){
    for(;diter<diter.until();diter++){
       yhat[*diter]=0.0;
       for(size_t j=0;j<m;j++)
@@ -113,7 +113,7 @@ void amxbrt::local_setf_mix(diterator& diter){
 
 //--------------------------------------------------
 //set vector of residuals for psbrt model
-void amxbrt::local_setr_mix(diterator& diter){
+void amxbrt::local_setr_vec(diterator& diter){
    for(;diter<diter.until();diter++) {
       resid[*diter]=di->y[*diter]-f(*diter);
    }
@@ -122,7 +122,7 @@ void amxbrt::local_setr_mix(diterator& diter){
 //--------------------------------------------------
 //predict the response at the (npred x p) input matrix *x
 //Note: the result appears in *dipred.y.
-void amxbrt::local_predict_mix(diterator& diter, finfo& fipred){
+void amxbrt::local_predict_vec(diterator& diter, finfo& fipred){
     tree::tree_p bn;
     double temp;
     vxd thetavec_temp(k); 

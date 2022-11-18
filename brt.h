@@ -146,7 +146,7 @@ public:
                           for(size_t i=0;i<(*xi).size();i++) 
                             if(this->ncp1<(double)((*xi)[i].size()+1.0))
                               this->ncp1=(double)((*xi)[i].size()+1.0);
-                         }
+                         } 
    void setdata(dinfo *di) {this->di=di;resid.resize(di->n);yhat.resize(di->n);setf();setr();}
    void pr();
    void settp(double alpha, double beta) {tp.alpha=alpha;tp.beta=beta;}
@@ -192,7 +192,7 @@ public:
    void adapt();
 
    //--------------------------------------------------
-   //Methods for vector parameters and model mixing
+   //Methods for vector parameters, calibration, and model mixing
    //--------------------------------------------------
    //draw theta vector -- used for vector parameter
    void drawvec(rn& gen);
@@ -202,18 +202,21 @@ public:
    //Birth and Death for vector parameters
    void bd_vec(rn& gen);
 
+   //Set the index for calibration parameters (u) 
+   void setuparams(std::vector<size_t> u) {this->uvec = u;}
+
    //Set the data, the vector of predicted values, and residuals
-   void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix();}
+   void setdata_vec(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_vec(); setr_vec();}
    void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);this->nsprior = false;} //sets the pointer for the f matrix and k as members of brt 
    void setk(size_t k){this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the number of models for mixing--used in programs that do not need to read in function data (ex: mixingwts.cpp))
-   void setfsd(finfo *fsd){this->fisd = fsd; this->nsprior = true;} //sets the function discrepancies 
-   void setf_mix();
-   void setr_mix(); 
-   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
-   void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // predict y at the (npred x p) settings *di.x with functional discrepancy mean & sd
+   void setfsd(finfo *fsd){this->fisd = fsd; this->nsprior = true;} //sets the function discrepancies (remove?) 
+   void setf_vec();
+   void setr_vec(); 
+   void predict_vec(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
+   void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // predict y at the (npred x p) settings *di.x with functional discrepancy mean & sd (remove?)
    void get_mix_wts(dinfo* dipred, mxd* wts);
    void get_mix_theta(dinfo* dipred, mxd* wts);
-   void get_fi(){std::cout << "fi = \n" << *fi << std::endl;}
+   void get_fi(){std::cout << "fi = \n" << *fi << std::endl;} //getter for function info
     
    //Print brt object with vector parameters
    void pr_vec(); 
@@ -297,17 +300,18 @@ protected:
 
 
    //-------------------------------------------
-   //Protected Model Mixing functions and data
+   //Protected vector parameter, calibration, and model mixing functions and data
    //-------------------------------------------
    finfo *fi; //pointer to the f matrix
    finfo *fisd; //pointer to the std matrix for fhat  
    bool nsprior; //True/False -- use stationary or nonstationy prior
    size_t k;
-   
+   std::vector<size_t> uvec;
+
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
-   virtual void local_setf_mix(diterator& diter);
-   virtual void local_setr_mix(diterator& diter);
-   virtual void local_predict_mix(diterator& diter, finfo& fipred);
+   virtual void local_setf_vec(diterator& diter);
+   virtual void local_setr_vec(diterator& diter);
+   virtual void local_predict_vec(diterator& diter, finfo& fipred);
    virtual void local_get_mix_wts(diterator& diter, mxd& wts);
    virtual void local_get_mix_theta(diterator& diter, mxd& wts);
    
@@ -316,9 +320,9 @@ protected:
    //void local_ompgetsuff_mix(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir);
    //void local_ompallsuff_mix(dinfo di, tree::npv bnv,std::vector<sinfo*>& siv);
    //void local_ompsubsuff_mix(dinfo di, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv);
-   void local_ompsetf_mix(dinfo di);
-   void local_ompsetr_mix(dinfo di);
-   void local_omppredict_mix(dinfo dipred, finfo fipred);
+   void local_ompsetf_vec(dinfo di);
+   void local_ompsetr_vec(dinfo di);
+   void local_omppredict_vec(dinfo dipred, finfo fipred);
    void local_ompget_mix_wts(dinfo dipred, mxd wts);
    void local_ompget_mix_theta(dinfo dipred, mxd wts);
 
