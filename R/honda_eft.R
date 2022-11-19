@@ -45,7 +45,7 @@ flg = function(g, nl){
 # Compute cbar for the sg truncation error
 get_cbar = function(g, ns){
   #Get the term number
-  k = 0:(ns+1)
+  k = 0:ns
   #Get the coefficients -- only even coefficients are non-zero
   sk = ifelse(k %% 2 == 0,sqrt(2)*gamma(k + 1/2)*(-4)^(k/2)/(factorial(k/2)*factorial(k)), 0)
   #Estimate cbar
