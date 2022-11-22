@@ -911,9 +911,10 @@ eft_unc.variance_low(g = x_eft_train, loworder=6)
 
 eft_unc.variance_high(g = x_eft_train, highorder=4)
 
-eft_models = Models(2,4)
+eft_models = Models(3,3)
 eft_models.low_g(np.linspace(0.03, 0.5, 20))
 eft_models.high_g(np.linspace(0.03, 0.5, 20))
+
 
 
 x_train = np.linspace(0.03, 0.5, 20)
@@ -922,3 +923,7 @@ p4 = 1/eft_unc.variance_low(g = x_train, loworder=4)
 p6 = 1/eft_unc.variance_low(g = x_train, loworder=6)
 
 p2/(p2+p4+p6)
+
+
+eft_unc.variance_low(g = x_train, loworder=3)
+eft_unc.variance_high(g = x_train, highorder=3)
