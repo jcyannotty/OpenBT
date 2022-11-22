@@ -161,6 +161,7 @@ m = ntree
 mh = ntreeh
 #--------------------------------------------------
 #data
+if(!is.matrix(x.train)){x.train = matrix(x.train, ncol = 1)}
 n = length(y.train)
 p = ncol(x.train)
 #np = nrow(x.test)

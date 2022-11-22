@@ -8,7 +8,8 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### SETUP TUTORIAL LIKE THINGS
-setwd("/home/johnyannotty/Documents/Model Mixing BART/Publications")
+setwd("/home/johnyannotty/Documents/Open BT Project SRC")
+source("/home/johnyannotty/Documents/Open BT Project SRC/openbt.R")
 source('/home/johnyannotty/Documents/Model Mixing BART/Model Mixing R Code/physics expansion r functions.R')
 source('/home/johnyannotty/Documents/Model Mixing BART/Model Mixing R Code/Model Mixing Helper Functions.R')
 
@@ -63,15 +64,16 @@ fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
 fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = K, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
+detach(ex1_data)
 
 #-----------------------------------------------------
 # Ex1 Informative Prior
 #-----------------------------------------------------
 # Perform model mixing with the Non-informative prior.
 # Note, f.sd.train is not specified, hence the non-informative prior is used by default.
-fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,model="mixbart"
+fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,model="mixbart",
            ntree = 10,k = 5, overallsd = sqrt(sig2_hat), overallnu = 8, power = 2.0, base = 0.95, 
            ntreeh=1,numcut=300,tc=4,minnumbot = 3,
            ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 500,
@@ -82,7 +84,7 @@ fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,mode
 fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = K, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -131,3 +133,200 @@ grid.arrange(arrangeGrob(w1 + theme(legend.position = "none"),
                          w2 + theme(legend.position = "none"),
                          nrow = 1),nrow=2, heights = c(10,1), legend = legend_w1,
                         top = textGrob("Posterior Weight Functions", gp = gpar(fontsize = 16)))
+
+
+
+#-----------------------------------------------------
+# Ex2 Non-Informative Prior
+#-----------------------------------------------------
+# Attach example 2 data
+attach(ex2_data)
+
+# Get the initial estimate of sigma^2 
+sig2_hat = max(apply(apply(f_train, 2, function(x) (x-y_train)^2),2,min))
+
+# Perform model mixing with the Non-informative prior.
+# Note, f.sd.train is not specified, hence the non-informative prior is used by default.
+fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
+            ntree = 10,k = 3.5, overallsd = sqrt(sig2_hat), overallnu = 5,power = 2.0, base = 0.95,
+            ntreeh=1,numcut=300,tc=4,minnumbot = 4,
+            ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 1000,
+            summarystats = FALSE,modelname="eft_mixing")
+
+# Get predictions at the test points specified by x_test with mean predictions stored in f_test.
+fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
+
+# Get the weight functions from the fit model
+fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
+
+
+#-----------------------------------------------------
+# Ex2 - Informative Prior
+#-----------------------------------------------------
+# Get the initial estimate of sigma^2 
+sig2_hat = max(apply(apply(f_train, 2, function(x) (x-y_train)^2),2,min))
+
+# Perform model mixing with the Non-informative prior.
+# Note, f.sd.train is not specified, hence the non-informative prior is used by default.
+fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,model="mixbart",
+            ntree = 10,k = 5, overallsd = sqrt(sig2_hat), overallnu = 5, power = 2.0, base = 0.95, 
+            ntreeh=1,numcut=300,tc=4,minnumbot = 3,
+            ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 500,
+            modelname="eft_mixing"
+)
+
+# Get predictions at the test points specified by x_test with mean predictions stored in f_test.
+fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
+
+# Get the weight functions from the fit model
+fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
+
+# Attach example 2 data
+detach(ex2_data)
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Ex2 - Plot the predictions
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# Set the labels in the legend
+g_labs = c(expression(paste(f[1], '(x)')), expression(paste(f[2], '(x)')), expression(paste(f["\u2020"],'(x)')),
+           "Post. Mean")
+# Plot the predictions from the non-informative prior
+p1 = plot_fit_gg2(ex2_data, fitp1, in_labs = g_labs, colors = color_list, line_type_list = lty_list,
+                  y_lim = c(1.9,2.8), grid_on = TRUE, title = "Non-Informative Prior")
+
+# Plot the predictions from the informative prior
+p2 = plot_fit_gg2(ex2_data, fitp2, in_labs = g_labs, colors = color_list, line_type_list = lty_list,
+                  y_lim = c(1.9,2.8), title = "Informative Prior", grid_on = TRUE)
+
+# Resize the plot text
+p1 = p1+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+p2 = p2+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+
+# Create the figure with both plots
+legend1 = g_legend(p1)
+grid.arrange(arrangeGrob(p1 + theme(legend.position = "none"),
+                         p2 + theme(legend.position = "none"),
+                         nrow = 1), nrow=2, heights = c(10,1), legend = legend1,
+             top = textGrob("Posterior Mean Predictions", gp = gpar(fontsize = 16)))
+
+#------------------------------------------------
+# Ex2 - Plot the weight functions
+#------------------------------------------------
+# Create the plot for weights under the non-informative prior
+w1 = plot_wts_gg2(fitw1, ex1_data$x_test, y_lim = c(-0.05, 1.05),title = 'Non-Informative Prior', colors = color_list,
+                  line_type_list = lty_list, gray_scale = FALSE)
+# Create the plot for weights under the informative prior
+w2 = plot_wts_gg2(fitw2, ex1_data$x_test, y_lim = c(-0.05, 1.05), title = 'Informative Prior',colors = color_list,
+                  line_type_list = lty_list, gray_scale = FALSE)
+# Resize text elements
+w1 = w1+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+w2 = w2+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+
+# Create the figure with both plots 
+legend_w1 = g_legend(w1)
+grid.arrange(arrangeGrob(w1 + theme(legend.position = "none"),
+                         w2 + theme(legend.position = "none"),
+                         nrow = 1),nrow=2, heights = c(10,1), legend = legend_w1,
+             top = textGrob("Posterior Weight Functions", gp = gpar(fontsize = 16)))
+
+
+#-----------------------------------------------------
+# Ex3 - Non-Informative Prior
+#-----------------------------------------------------
+# Attach example 2 data
+attach(ex3_data)
+
+# Get the initial estimate of sigma^2 
+sig2_hat = max(apply(apply(f_train, 2, function(x) (x-y_train)^2),2,min))
+
+# Perform model mixing with the Non-informative prior.
+# Note, f.sd.train is not specified, hence the non-informative prior is used by default.
+fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
+            ntree = 10,k = 5.5, overallsd = sqrt(sig2_hat), overallnu = 3,power = 2.0, base = 0.95,
+            ntreeh=1,numcut=300,tc=4,minnumbot = 4,
+            ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 1000,
+            summarystats = FALSE,modelname="eft_mixing")
+
+# Get predictions at the test points specified by x_test with mean predictions stored in f_test.
+fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
+
+# Get the weight functions from the fit model
+fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
+
+
+#-----------------------------------------------------
+# Informative Prior
+#-----------------------------------------------------
+# Get the initial estimate of sigma^2 
+sig2_hat = max(apply(apply(f_train, 2, function(x) (x-y_train)^2),2,min))
+
+# Perform model mixing with the Non-informative prior.
+# Note, f.sd.train is not specified, hence the non-informative prior is used by default.
+fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,model="mixbart",
+            ntree = 8, k = 6.5, overallsd = sqrt(sig2_hat), overallnu = 5, power = 2.0, base = 0.95, 
+            ntreeh=1,numcut=300,tc=4,minnumbot = 3,
+            ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 500,
+            modelname="eft_mixing"
+)
+
+# Get predictions at the test points specified by x_test with mean predictions stored in f_test.
+fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
+
+# Get the weight functions from the fit model
+fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
+
+# Attach example 2 data
+detach(ex3_data)
+
+#------------------------------------------------
+# Ex3 - Plot the predictions
+#------------------------------------------------
+# Set the labels in the legend
+g_labs = c(expression(paste(f[1], '(x)')), expression(paste(f[2], '(x)')),
+           expression(paste(f[3], '(x)')), expression(paste(f["\u2020"],'(x)')),
+           "Post. Mean")
+# Generate the first plot
+p1 = plot_fit_gg2(ex3_data, fitp1, in_labs = g_labs, colors = color_list, line_type_list = lty_list,
+                  y_lim = c(1.8,2.7), title = "Non-Informative Prior", grid_on = TRUE)
+# Generate the first plot
+p2 = plot_fit_gg2(ex3_data, fitp2, in_labs = g_labs, colors = color_list, line_type_list = lty_list,
+                  y_lim = c(1.8,2.7), title = "Informative Prior", grid_on = TRUE)
+# Resize plot text
+p1 = p1+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+p2 = p2+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+
+# Create the figure with both plots
+legend1 = g_legend(p1)
+grid.arrange(arrangeGrob(p1 + theme(legend.position = "none"),
+                         p2 + theme(legend.position = "none"),
+                         nrow = 1), nrow=2, heights = c(10,1), legend = legend1,
+             top = textGrob("Posterior Mean Predictions", gp = gpar(fontsize = 16)))
+
+#------------------------------------------------
+# Ex3 - Plot the weight functions 
+#------------------------------------------------
+# Plot the weights from the non-informative prior
+w1 = plot_wts_gg2(fitw1, ex3_data$x_test, y_lim = c(-0.05, 1.05), title = 'Non-Informative Prior', 
+                  colors = color_list, line_type_list = lty_list, gray_scale = FALSE)
+# Plot the weights from the informative prior
+w2 = plot_wts_gg2(fitw2, ex3_data$x_test, y_lim = c(-0.05, 1.05), title = 'Informative Prior', 
+                  colors = color_list, line_type_list = lty_list, gray_scale = FALSE)
+# Resize text elements
+w1 = w1+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+w2 = w2+theme(axis.text=element_text(size=12),axis.title=element_text(size=13), 
+              plot.title = element_text(size = 15))
+
+# Create the figure with both plots
+legend_w1 = g_legend(w1)
+grid.arrange(arrangeGrob(w1 + theme(legend.position = "none"),
+                         w2 + theme(legend.position = "none"),
+                         nrow = 1),nrow=2, heights = c(10,1), legend = legend_w1,
+             top = textGrob("Posterior Weight Functions", gp = gpar(fontsize = 16)))
