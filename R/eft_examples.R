@@ -66,8 +66,6 @@ fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.02
 # Get the weight functions from the fit model
 fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
-detach(ex1_data)
-
 #-----------------------------------------------------
 # Ex1 Informative Prior
 #-----------------------------------------------------
@@ -86,6 +84,7 @@ fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.02
 # Get the weight functions from the fit model
 fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
+detach(ex1_data)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # Ex 1 Plot the predictions
@@ -148,7 +147,7 @@ sig2_hat = max(apply(apply(f_train, 2, function(x) (x-y_train)^2),2,min))
 # Perform model mixing with the Non-informative prior.
 # Note, f.sd.train is not specified, hence the non-informative prior is used by default.
 fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
-            ntree = 10,k = 3.5, overallsd = sqrt(sig2_hat), overallnu = 5,power = 2.0, base = 0.95,
+            ntree = 8,k = 3.0, overallsd = sqrt(sig2_hat), overallnu = 5,power = 2.0, base = 0.95,
             ntreeh=1,numcut=300,tc=4,minnumbot = 4,
             ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 1000,
             summarystats = FALSE,modelname="eft_mixing")
@@ -247,7 +246,7 @@ sig2_hat = max(apply(apply(f_train, 2, function(x) (x-y_train)^2),2,min))
 # Perform model mixing with the Non-informative prior.
 # Note, f.sd.train is not specified, hence the non-informative prior is used by default.
 fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
-            ntree = 10,k = 5.5, overallsd = sqrt(sig2_hat), overallnu = 3,power = 2.0, base = 0.95,
+            ntree = 10,k = 5.5, overallsd = sqrt(sig2_hat), overallnu = 5,power = 2.0, base = 0.95,
             ntreeh=1,numcut=300,tc=4,minnumbot = 4,
             ndpost = 30000, nskip = 2000, nadapt = 5000, adaptevery = 500, printevery = 1000,
             summarystats = FALSE,modelname="eft_mixing")

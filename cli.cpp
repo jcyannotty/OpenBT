@@ -1179,7 +1179,7 @@ return 0;
    }
    */
 }
-if(mpirank == 1){axb.pr_vec();}
+//if(mpirank == 1){axb.pr_vec();}
 
 #ifdef _OPENMPI
    if(mpirank==0) {
