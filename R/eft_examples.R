@@ -8,8 +8,8 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### SETUP TUTORIAL LIKE THINGS
-setwd("/home/johnyannotty/Documents/Open BT Project SRC")
-source("/home/johnyannotty/Documents/Open BT Project SRC/openbt.R")
+setwd("/home/johnyannotty/Documents/openbt")
+source("/home/johnyannotty/Documents/openbt/openbt.R")
 source('/home/johnyannotty/Documents/Model Mixing BART/Model Mixing R Code/physics expansion r functions.R')
 source('/home/johnyannotty/Documents/Model Mixing BART/Model Mixing R Code/Model Mixing Helper Functions.R')
 
