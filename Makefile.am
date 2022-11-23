@@ -28,7 +28,7 @@ openbtmopareto_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la liba
 openbtmixingwts_SOURCES = mixingwts.cpp
 openbtmixingwts_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
-openbtmixing_SOURCES = mixandemulate.cpp
+openbtmixing_SOURCES = mixing.cpp
 openbtmixing_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
 openbtmixingpred_SOURCES = mixandemulatepred.cpp

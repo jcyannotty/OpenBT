@@ -1572,7 +1572,7 @@ openbt.mixingwts = function(
   MODEL_MERCK_TRUNCATED=8
   MODEL_MIXBART=9
   
-  model_types = c("mixbart", "mix_emulate")
+  model_types = c("mixbart", "mix_emulate", "mix_modular")
   #--------------------------------------------------
   # params
   if(is.null(fit)) stop("No fitted model specified!\n")
@@ -1708,10 +1708,11 @@ modelname="model"
 #--------------------------------------------------
 # model type definitions and check default arguments
 modeltype=0
-MODEL_MIX_EMULATE=1 #Full problem 
-MODEL_MIX_ORTHOGONAL=2 # Full problem with orthogonal discrepancy
+MODEL_MIX_EMULATE=1 #Joint emulation and mixing KOH style
+MODEL_MIX_MODULAR=2 #Modularization analogue to 1
+MODEL_MIX_ORTHOGONAL=3 # Full problem with orthogonal discrepancy
 
-modeltype_list = c('mix_emulate','mix_orthogonal')
+modeltype_list = c('mix_emulate','mix_modular','mix_orthogonal')
 
 if(is.null(model)){
   stop(cat("Enter a model type. Valid types include:\n", paste(modeltype_list,collapse = ', ')))
@@ -1723,9 +1724,14 @@ if(!(model %in% modeltype_list)){
   
 if(model == 'mix_emulate'){
   modeltype = MODEL_MIX_EMULATE
-  if(is.null(mix_model_args$overallsd)) ntreeh=1
+  if(is.null(mix_model_args$ntreeh)) ntreeh=1
 }
-  
+ 
+if(model == 'mix_modular'){
+  modeltype = MODEL_MIX_MODULAR
+  if(is.null(mix_model_args$ntreeh)) ntreeh=1
+}
+ 
 #--------------------------------------------------
 # Define terms
 nd = ndpost
@@ -1916,7 +1922,7 @@ if(length(pb)>1) {
 
 
 #--------------------------------------------------
-# Process other arguments
+# Process other arguments --- rewrite the sigmavs for the KOH style calibration when using tc>2
 #--------------------------------------------------
 stepwperth=stepwpert
 if(length(stepwpert)>1) {
@@ -1936,22 +1942,35 @@ if(length(minnumbot)>1) {
   minnumbot=minnumbot[1]
 }
 
+# Define simgav_n = number of data points in each sigmav_n required
+sigmav_n = 0
+for(l in 0:nummodels){
+  if(model == "mix_emulate"){
+    sigmav_n[l+1] = ifelse(l == 0, n, nc_vec[l]+n)  
+  }else if(model == "mix_modular"){
+    sigmav_n[l+1] = ifelse(l == 0, n, nc_vec[l])  
+  }else{
+    sigmav_n[l+1] = ifelse(l == 0, n, nc_vec[l])
+  }
+  
+}
+
 # Set default argument for the sigmavs
 if(is.null(sigmav_list)){
   for(l in 0:nummodels){
-    sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
-    sigmav_list[[l+1]] = rep(1,sigmav_n)
+    #sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
+    sigmav_list[[l+1]] = rep(1,sigmav_n[l+1])
   }
 }else{
   if(!is.list(sigmav_list)){
     stop("Invalid data type: sigmav_list must be a list object with length K+1.")
   }
   for(l in 0:nummodels){
-    sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
-    if(length(sigmav_list[[l+1]]) != sigmav_n){
+    #sigmav_n = ifelse(l == 0, n, nc_vec[l]+n)
+    if(length(sigmav_list[[l+1]]) != sigmav_n[l+1]){
       stop(cat("Invalid sigmav_list entry at item",l+1,"\n Length of sigmav_list[[l]] is incorrect. Required lengths are listed below: \n",
                "\t Mixing (l=1): ", n, " (number of field obs) \n",
-               "\t Emulation (l>1): ", n + nc_vec[l+1], " (number of field obs + number of model runs))"))  
+               "\t Emulation (l>1): ", sigmav_n[l+1], " (number of field obs + number of model runs))"))  
     }
     
   }
@@ -1962,10 +1981,12 @@ if(is.null(chv_list)){
   for(l in 0:nummodels){
     if(l == 0){
       chv_data = mix_model_data$x_train   
-    }else{
+    }else if(l>0 & model == 'mix_emulate'){
       xmixtemp = mix_model_data$x_train[,unlist(xc_col_list[l])]
       if(length(unlist(xc_col_list[l])) == 1){xmixtemp = matrix(xmixtemp,ncol = 1)}
       chv_data = rbind(emu_model_data[[l]]$x_train, xmixtemp)  
+    }else{
+      chv_data = emu_model_data[[l]]$x_train
     }
     chv_list[[l+1]] = cor(chv_data,method="spearman")
   }  
@@ -2089,9 +2110,9 @@ for(l in 1:nummodels){
 # Write the ids per mpi
 #for(i in 1:nslv) write(t(idlist[[i]]),file=paste(folder,"/",idroots,i,sep=""))
 
-# Variance and rotation data
+# Variance and perturbation data
 for(l in 0:nummodels){
-  ntemp = ifelse(l==0, n, nc_vec[l]+n)
+  ntemp = sigmav_n[l+1]
   slist=split(sigmav_list[[l+1]],(seq(ntemp)-1) %/% (ntemp/nslv))
   for(i in 1:nslv) write(slist[[i]],file=paste(folder,"/",sroots[l+1],i,sep=""))
   
@@ -2158,8 +2179,9 @@ return(res)
 # Predict function for mixing and emulation
 openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q.upper=0.975){
   # model type definitions
-  MODEL_MIX_EMULATE=1 #Full problem 
-  MODEL_MIX_ORTHOGONAL=2 # Full problem with orthogonal discrepancy
+  MODEL_MIX_EMULATE=1 #Full problem
+  MODEL_MIX_MODULAR=2 #Modularization analogue to Full problem
+  MODEL_MIX_ORTHOGONAL=3 # Full problem with orthogonal discrepancy
   
   #--------------------------------------------------
   # Define objects

@@ -449,17 +449,8 @@ int main(int argc, char* argv[])
             curdx[k]+=(size_t)onn[k][j];
          }
          cumdx[k]+=curdx[k];
-         // Load tree and draw relization
-         if(k == 0){
-            /*
-            axb.loadtree_vec(0,m_list[k],onn[k],oid[k],ov[k],oc[k],otheta[k]);
-            axb.predict_mix(&dip_list[k],&fi);
-            // Set prediction and update finfo
-            for(size_t j=0;j<np;j++){
-               tedraw_list[k][i][j] = fp_list[k][j];
-            }
-            */
-         }else{
+         // Load tree and draw relization for emulators
+         if(k > 0){
             ambm_list[k-1]->loadtree(0,m_list[k],onn[k],oid[k],ov[k],oc[k],otheta[k]);
             ambm_list[k-1]->predict(&dip_list[k]);
             // Set prediction and update finfo
@@ -471,6 +462,7 @@ int main(int argc, char* argv[])
          
       }
       // Now get the mixing predictions for the ith iteration of the mcmc
+      // This is done after all the emualtors are loaded for the ith mcmc run and finfo is updated
       axb.loadtree_vec(0,m_list[0],onn[0],oid[0],ov[0],oc[0],otheta[0]);
       axb.predict_mix(&dip_list[0],&fi);
       for(size_t j=0;j<np;j++){
@@ -478,26 +470,7 @@ int main(int argc, char* argv[])
       }
    }
    
-   // Now get Model Mixing Predictions using the emualtor results to update finfo
-   /*
-   for(size_t i=0;i<nd;i++){
-      // Set prediction and update finfo
-      for(size_t k=1;k<=nummodels;k++){
-         for(size_t j=0;j<np;j++){
-            fi(j,k) = tedraw_list[k][i][j];
-         }
-      }
-      
-      axb.loadtree_vec(0,m_list[0],onn[0],oid[0],ov[0],oc[0],otheta[0]);
-      axb.predict_mix(&dip_list[0],&fi);
-      // Set prediction and update finfo
-      for(size_t j=0;j<np;j++){
-         tedraw_list[0][i][j] = fp_list[0][j];
-      }      
-   }
-   */
-
-   // Variance trees third
+   // Variance trees second
    if(mpirank==0) cout << "Drawing sd response from posterior predictive" << endl;
    for(size_t k=0;k<=nummodels;k++){
       // Set values

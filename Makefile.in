@@ -191,7 +191,7 @@ openbtcli_OBJECTS = $(am_openbtcli_OBJECTS)
 openbtcli_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
 	libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la \
 	libtree.la libcrn.la libamxbrt.la libmxbrt.la
-am_openbtmixing_OBJECTS = mixandemulate.$(OBJEXT)
+am_openbtmixing_OBJECTS = mixing.$(OBJEXT)
 openbtmixing_OBJECTS = $(am_openbtmixing_OBJECTS)
 openbtmixing_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
 	libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la \
@@ -289,7 +289,7 @@ am__depfiles_remade = ./$(DEPDIR)/ambrt.Plo ./$(DEPDIR)/amxbrt.Plo \
 	./$(DEPDIR)/brt.Plo ./$(DEPDIR)/brtfuns.Plo \
 	./$(DEPDIR)/brtmoves.Plo ./$(DEPDIR)/cli.Po \
 	./$(DEPDIR)/crn.Plo ./$(DEPDIR)/mbrt.Plo \
-	./$(DEPDIR)/mixandemulate.Po ./$(DEPDIR)/mixandemulatepred.Po \
+	./$(DEPDIR)/mixandemulatepred.Po ./$(DEPDIR)/mixing.Po \
 	./$(DEPDIR)/mixingwts.Po ./$(DEPDIR)/mopareto.Po \
 	./$(DEPDIR)/mxbrt.Plo ./$(DEPDIR)/pred.Po \
 	./$(DEPDIR)/psbrt.Plo ./$(DEPDIR)/sbrt.Plo \
@@ -556,7 +556,7 @@ openbtmopareto_SOURCES = mopareto.cpp
 openbtmopareto_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la
 openbtmixingwts_SOURCES = mixingwts.cpp
 openbtmixingwts_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
-openbtmixing_SOURCES = mixandemulate.cpp
+openbtmixing_SOURCES = mixing.cpp
 openbtmixing_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
 openbtmixingpred_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
@@ -857,8 +857,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cli.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crn.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mbrt.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixandemulate.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixandemulatepred.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixing.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixingwts.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mopareto.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mxbrt.Plo@am__quote@ # am--include-marker
@@ -1203,8 +1203,8 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/cli.Po
 	-rm -f ./$(DEPDIR)/crn.Plo
 	-rm -f ./$(DEPDIR)/mbrt.Plo
-	-rm -f ./$(DEPDIR)/mixandemulate.Po
 	-rm -f ./$(DEPDIR)/mixandemulatepred.Po
+	-rm -f ./$(DEPDIR)/mixing.Po
 	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
@@ -1285,8 +1285,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/cli.Po
 	-rm -f ./$(DEPDIR)/crn.Plo
 	-rm -f ./$(DEPDIR)/mbrt.Plo
-	-rm -f ./$(DEPDIR)/mixandemulate.Po
 	-rm -f ./$(DEPDIR)/mixandemulatepred.Po
+	-rm -f ./$(DEPDIR)/mixing.Po
 	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
