@@ -48,7 +48,7 @@
 .Rhistory
 
 # Python cache
-__pycache__/*
+.pyc
 
 # Other folders
 .deps/*
@@ -56,7 +56,6 @@ __pycache__/*
 .vscode/*
 autom4te.cache/*
 temp
-__pycache__
 
 # Other files
 config.guess

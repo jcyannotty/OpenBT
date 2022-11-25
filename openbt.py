@@ -236,6 +236,11 @@ class OPENBT(BaseEstimator):
         # overall lambda calibration
         self.overalllambda = self.overallsd**2
         
+        # Mode calibration for mixingS
+        if self.modeltype == 9:
+            self.overalllambda = (self.overallnu+2)*self.overallsd**2/self.overallnu
+
+
         # Birth and Death probability -- set product tree pbd to 0 for selected models 
         if (self.modeltype == 6) & (isinstance(self.pbd, float)):
             self.pbd = [self.pbd, 0]
@@ -362,11 +367,6 @@ class OPENBT(BaseEstimator):
         cmd = "openbtcli" if train else "openbtpred"
         sp = subprocess.run(["mpirun", "-np", str(self.tc), cmd, str(self.fpath)],
                             stdin=subprocess.DEVNULL, capture_output=True)
-        # print(sp)
-        # A check:
-        # if not(train):
-        #     print(os.path.abspath(self.fpath)); sys.exit('Examining tmp file(s)')
-
 
 
     def predict(self, X, q_lower=0.025, q_upper=0.975, F = None, **kwargs):
@@ -819,9 +819,9 @@ class OPENBT(BaseEstimator):
             for j in range(len(self.wdraws[wtname][0])):
                 self.wmean[j][k] = np.mean(self.wdraws[wtname][:, j])
                 self.wsd[j][k] = np.std(self.wdraws[wtname][:, j], ddof = 1)
-                self.w_5[j][k] = np.percentile(self.wdraws[wtname][:, j], 0.50)
-                self.w_lower[j][k] = np.percentile(self.wdraws[wtname][:, j], self.q_lower)
-                self.w_upper[j][k] = np.percentile(self.wdraws[wtname][:, j], self.q_upper)
+                self.w_5[j][k] = np.quantile(self.wdraws[wtname][:, j], 0.50)
+                self.w_lower[j][k] = np.quantile(self.wdraws[wtname][:, j], self.q_lower)
+                self.w_upper[j][k] = np.quantile(self.wdraws[wtname][:, j], self.q_upper)
 
 
     def set_wts_prior(self, betavec, tauvec):
