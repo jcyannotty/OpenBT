@@ -152,7 +152,8 @@ get_data = function(n_train, n_test, s, sg, lg, minx, maxx, seed, random_x = FAL
     x_train = seq(minx, maxx, length = n_train)
   }
   y_train = fg(x_train) + rnorm(n_train, 0, s)
-  
+  fg_train = fg(x_train)
+
   #Set a grid of test points
   x_test = seq(minx, maxx, length = n_test)
   fg_test = fg(x_test)
@@ -205,7 +206,7 @@ get_data = function(n_train, n_test, s, sg, lg, minx, maxx, seed, random_x = FAL
   }  
   
   out = list(x_train = x_train, x_test = x_test, y_train = y_train, y_test = y_test, f_train = f_train, 
-             f_test = f_test, fg_test = fg_test, f_train_dmean = f_train_dmean, f_train_dsd = f_train_dsd,
+             f_test = f_test, fg_train = fg_train, fg_test = fg_test, f_train_dmean = f_train_dmean, f_train_dsd = f_train_dsd,
              f_test_dmean = f_test_dmean, f_test_dsd = f_test_dsd)
   return(out)
 }
