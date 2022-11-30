@@ -9,9 +9,9 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### SETUP TUTORIAL LIKE THINGS
 setwd("/home/johnyannotty/Documents/openbt")
-source("/home/johnyannotty/Documents/openbt/openbt.R")
-source('/home/johnyannotty/Documents/Model Mixing BART/Model Mixing R Code/physics expansion r functions.R')
-source('/home/johnyannotty/Documents/Model Mixing BART/Model Mixing R Code/Model Mixing Helper Functions.R')
+source("https://github.com/jcyannotty/OpenBT/blob/main/openbt.R?raw=TRUE")
+source("https://github.com/jcyannotty/OpenBT/blob/main/R/honda_eft.R?raw=TRUE")
+source("https://github.com/jcyannotty/OpenBT/blob/main/R/eft_mixing_helper_functions.R?raw=TRUE")
 
 #----------------------------------------------------------
 #Get training data
@@ -64,7 +64,7 @@ fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
 fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw1=mixingwts.openbt(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 #-----------------------------------------------------
 # Ex1 Informative Prior
@@ -82,7 +82,7 @@ fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,mode
 fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw2 = mixingwts.openbt(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 detach(ex1_data)
 
@@ -156,7 +156,7 @@ fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
 fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw1=mixingwts.openbt(fit1, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 
 #-----------------------------------------------------
@@ -178,7 +178,7 @@ fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,mode
 fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw2 = mixingwts.openbt(fit2, x.test = x_test, numwts = 2, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 # Attach example 2 data
 detach(ex2_data)
@@ -255,7 +255,7 @@ fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
 fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw1=mixingwts.openbt(fit1, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 
 #-----------------------------------------------------
@@ -277,7 +277,7 @@ fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,mode
 fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw2 = mixingwts.openbt(fit2, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 # Attach example 2 data
 detach(ex3_data)
