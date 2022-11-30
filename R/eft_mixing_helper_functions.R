@@ -204,10 +204,14 @@ plot_mean_gg2 = function(mean_fit, ex_data,colors = color_list, line_type_list =
 }
 
 # Plot prior wts
-plot_prior_wts_gg2 = function(x, betax, k = 2, m = 1, ci = 0.95,y_lim = c(0,1),title = "Prior Weight Functions",colors = color_list, 
+plot_prior_wts_gg2 = function(x, betax, k = 2, m = 1, ci = 0.95,y_lim = c(0,1),title = "Prior Weight Functions",inform_prior = TRUE,colors = color_list, 
                               line_type_list = lty_list, gray_scale = FALSE , w_labs = NULL){
   # Get the variance of the sum-of-trees under the informative prior  
-  tau = 1/(2*m*k) # tau for one tree
+  if(inform_prior){
+    tau = 1/(2*m*k) # tau for one tree
+  }else{
+    tau = 1/(2*sqrt(m)*k) # tau for one tree 
+  }
   tau2x = m*tau^2 # sum of variances from each tree 
   taux = sqrt(tau2x) # std of the sum-of-trees
   
