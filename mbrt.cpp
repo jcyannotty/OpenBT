@@ -99,7 +99,6 @@ void mbrt::add_observation_to_suff(diterator& diter, sinfo& si)
 // MPI virtualized part for sending/receiving left,right suffs
 void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 {
-//cout << "Here1 mpi" << endl;
 #ifdef _OPENMPI
    msinfo& msil=static_cast<msinfo&>(sil);
    msinfo& msir=static_cast<msinfo&>(sir);
@@ -129,7 +128,7 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
          msil+=tsil;
          msir+=tsir;
       }
-      //cout << "Here3 mpi" << endl;
+
       delete &tsil;
       delete &tsir;
    }
@@ -138,7 +137,6 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
       char buffer[SIZE_UINT6];
       int position=0;  
       unsigned int ln,rn;
-      //cout << "Here4 mpi" << endl;
       ln=(unsigned int)msil.n;
       rn=(unsigned int)msir.n;
       MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
@@ -147,12 +145,8 @@ void mbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
       MPI_Pack(&msir.sumw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msil.sumwy,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
       MPI_Pack(&msir.sumwy,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-      //cout << "Here5 mpi" << endl;
       MPI_Send(buffer,SIZE_UINT6,MPI_PACKED,0,0,MPI_COMM_WORLD);
-      //cout << "msir.sumw = " << msir.sumw << endl;
-      //cout << "msir.sumwy = " << msir.sumwy << endl;
-      //cout << "msir.n = " << msir.n << endl;
-      
+            
    }
 #endif   
 }

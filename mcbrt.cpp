@@ -44,7 +44,7 @@ void mcbrt::drawvec_mpislave(rn& gen){
 //draw theta for a single bottom node for the brt model
 vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
     //initialize variables
-    mcsinfo& mcsi=static_cast<mcsinfo&>(si);
+    mcinfo& mci=static_cast<mcinfo&>(si);
     mxd I(k,k), Sig_inv(k,k), Sig(k,k), Ev(k,k), E(k,k), Sp(k,k), Prior_Sig_Inv(k,k);
     vxd muhat(k), evals(k), stdnorm(k), betavec(k);
     double tau1_sqr = ci.tau1*ci.tau1;
@@ -71,32 +71,191 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
 }
 
 //--------------------------------------------------
-//local_getsuff used for birth.
-void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir)    
+void mcbrt::add_observation_to_suff(diterator& diter, sinfo& si)
 {
-    double *xx;//current x
+   mcinfo& mci=static_cast<mcinfo&>(si);
+   double w;
+   w=1.0/(ci.sigma[*diter]*ci.sigma[*diter]);
+   mci.n+=1;
+   //mci.sumw+=w;
+   //mci.sumwy+=w*diter.gety();
+}
+
+
+//--------------------------------------------------
+//local_getsuff used for birth.
+void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir)    
+{
+    double *xx; // current x
+    tree::tree_p xbn; // store bottom node of x
+    tree::tree_p subtree; // subtree pointer root
+    tree::npv subbnv; // bottom nodes for the subtree of interest
+    tree::npv uroots; // roots to subtree(s)
+    std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
     sil.n=0; sir.n=0;
 
-    // Check is the node nx in a subtree? void checksubtree(...)
+    // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
+    // but we need it here to set 
+    mcinfo& mcr=static_cast<mcinfo&>(sir);
+    mcinfo& mcl=static_cast<mcinfo&>(sil);
 
-    for(;diter<diter.until();diter++)
-    {
-        xx = diter.getxp();
-        if(nx==t.bn(diter.getxp(),*xi)) { //does the bottom node = xx's bottom node
-            if(xx[v] < (*xi)[v][c]) {
+    // Get roots of the subtree(s) in t
+    t.getsubtreeroots(uroots, uvec);
+    // Check is the node nx in a subtree
+    t.nodeinsubtree(nx,uroots,subtree);
+
+    // If nx is not in a subtree - i.e. subtree == 0
+    if(!subtree){
+        // The left and right node suff stats can be computed as normal 
+        for(;diter<diter.until();diter++){
+            xx = diter.getxp();
+            if(nx==t.bn(diter.getxp(),*xi)){ //does the bottom node = xx's bottom node
+                if(xx[v] < (*xi)[v][c]){
+                    //sil.n +=1;
+                    add_observation_to_suff(diter,sil);
+                } else {
+                    //sir.n +=1;
+                    add_observation_to_suff(diter,sir);
+                }
+            }
+        }
+    }else{
+        // nx is a node in a subtree, so the birth ratio compares the two subtrees
+        // Get bottom nodes in this tree
+        subtree->getbots(subbnv);
+        
+        // initialize suff stat vector 
+        std::map<tree::tree_cp,size_t> bnmap;
+
+        // Resize mcv to be the number of term nodes in the subtree which are not changing
+        mcv.resize(subbnv.size()-1); 
+        size_t j = 0;
+        size_t ni = 0; //node index
+        for(size_t i=0;i<subbnv.size();i++){ 
+            // Is this a different node in the subtree other than nx
+            if(subbnv[i] != nx){
+                // If so, initialize its sufficient stat instance 
+                bnmap[subbnv[i]]=j; 
+                mcv[j] = new mcinfo();
+                j+=1;
+            }  
+        }
+
+        for(;diter<diter.until();diter++){
+            // Get x and its bottom node pointer
+            xx = diter.getxp();
+            xbn = t.bn(diter.getxp(),*xi);
+            // Is x's term node xbn in the subtree
+            if(std::find(subbnv.begin(), subbnv.end(), xbn) != subbnv.end()) { 
+                // The node xbn is one of the other ones in the subtree
+                if(xbn != nx){
+                    ni = bnmap[xbn];
+                    add_observation_to_suff(diter,*(mcv[ni]));
+                }else{
+                    // xbn is the one we are splitting on so handle the left and right
+                    if(xx[v] < (*xi)[v][c]) {
+                        add_observation_to_suff(diter,mcl);
+                    }else{
+                        add_observation_to_suff(diter,mcr);
+                    }
+                }   
+            }
+        } 
+        // Now add the suff stats from the unchanged part of the subtree in sir (could use sil wlog)   
+        mcr.setsubtreeinfo(mcv,ci.mu1,ci.tau1);        
+    }
+}
+
+
+//--------------------------------------------------
+//getsuff used for death
+void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir)
+{
+    tree::tree_p xbn; // bottom node pointer for an x
+    tree::tree_p subtree; // subtree pointer root
+    tree::npv subbnv; // bottom nodes for the subtree of interest
+    tree::npv uroots; // roots to subtree(s)
+    std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
+    sil.n=0; sir.n=0;
+
+    // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
+    // but we need it here to set 
+    mcinfo& mcr=static_cast<mcinfo&>(sir);
+    mcinfo& mcl=static_cast<mcinfo&>(sil);
+
+    // Get roots of the subtree(s) in t
+    t.getsubtreeroots(uroots, uvec);
+    
+    // Check is the the parent in a subtree
+    t.nodeinsubtree(l->p,uroots,subtree);
+
+    // Now check to see if p is the root of the subtree, if so we can just set subtree to 0  
+    if(l->p == subtree){subtree == 0;}
+    if(!subtree){
+        // Do the regular steps
+        for(;diter<diter.until();diter++){
+            tree::tree_cp bn = t.bn(diter.getxp(),*xi);
+            if(bn==l) {
                 //sil.n +=1;
                 add_observation_to_suff(diter,sil);
-            } else {
+            }
+            if(bn==r) {
                 //sir.n +=1;
                 add_observation_to_suff(diter,sir);
             }
         }
+    }else{
+        // handle the special case for subtree
+        // nx is a node in a subtree, so the birth ratio compares the two subtrees
+        // Get bottom nodes in this tree
+        subtree->getbots(subbnv);
+        
+        // initialize suff stat vector 
+        std::map<tree::tree_cp,size_t> bnmap;
+
+        // Resize mcv to be the number of term nodes in the subtree which are not changing
+        mcv.resize(subbnv.size()-2); 
+        size_t j = 0;
+        size_t ni = 0; //node index
+        for(size_t i=0;i<subbnv.size();i++){ 
+            // Is this a different node in the subtree other than l or r
+            if(subbnv[i] != l && subbnv[i] != r){
+                // If so, initialize its sufficient stat instance 
+                bnmap[subbnv[i]]=j; 
+                mcv[j] = new mcinfo();
+                j+=1;
+            }  
+        }
+
+        for(;diter<diter.until();diter++){
+            // Get x and its bottom node pointer
+            xbn = t.bn(diter.getxp(),*xi);
+            // Is x's term node xbn in the subtree
+            if(std::find(subbnv.begin(), subbnv.end(), xbn) != subbnv.end()) { 
+                // The node xbn is one of the other ones in the subtree
+                if(xbn != l && xbn != r){
+                    ni = bnmap[xbn];
+                    add_observation_to_suff(diter,*(mcv[ni]));
+                }else{
+                    // xbn is l or r
+                    if(xbn == l) {
+                        add_observation_to_suff(diter,mcl);
+                    }else{
+                        add_observation_to_suff(diter,mcr);
+                    }
+                }   
+            }
+        } 
+        // Now add the suff stats from the unchanged part of the subtree in sir (could use sil wlog)   
+        mcr.setsubtreeinfo(mcv,ci.mu1,ci.tau1);
     }
+    
 }
+
 
 //--------------------------------------------------
 //local_subsuff
-void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv)
+void mcbrt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
    tree::tree_cp tbn; //the pointer to the bottom node for the current observation
    size_t ni;         //the  index into vector of the current bottom node

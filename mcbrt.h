@@ -11,7 +11,7 @@
 #include "Eigen/Dense"
 
 //Define the mxinfo class -- inherits from sinfo
-class mcsinfo : public sinfo{
+class mcinfo : public sinfo{
     public:
         //Notation:
         /* y = field data, z = model runs, w = data precision (wf or wc for field/computer data when needed to differentiate), 
@@ -19,16 +19,16 @@ class mcsinfo : public sinfo{
         */ 
         
         //Constructors:
-        mcsinfo():sinfo(),sumyw(0.0), sumzw(0.0), sumwf(0.0), sumwc(0.0), nf(0){} //Initialize mxinfo with default settings
-        mcsinfo(const mcsinfo& is):sinfo(is),sumyw(is.sumyw),sumzw(is.sumzw),sumwf(is.sumwf),sumwc(is.sumwc),nf(is.nf) {}
+        mcinfo():sinfo(),sumyw(0.0), sumzw(0.0), sumwf(0.0), sumwc(0.0), nf(0), subtree_info(false){} //Initialize mxinfo with default settings
+        mcinfo(const mcinfo& is):sinfo(is),sumyw(is.sumyw),sumzw(is.sumzw),sumwf(is.sumwf),sumwc(is.sumwc),nf(is.nf), subtree_info(false) {}
         /*
-        mcsinfo(size_t ik):sinfo(),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(ik)), sumyyw(0.0), sump(vxd::Zero(ik)) {} //Initialize mxinfo with number of columns in fi matrix
-        mcsinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(vxd::Zero(ik)) {} //Construct mxinfo instance with values -- need to use references 
-        mcsinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy, vxd sp, vxd sp2):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(sp) {} //Construct mxinfo instance with values with input for discrepancy -- need to use references
-        mcsinfo(const mcsinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw), sump(is.sump) {} //Input object of mxinfro (is) and instantiate new mxinfo 
+        mcinfo(size_t ik):sinfo(),sumffw(mxd::Zero(2,2)), sumfyw(vxd::Zero(ik)), sumyyw(0.0), sump(vxd::Zero(ik)) {} //Initialize mxinfo with number of columns in fi matrix
+        mcinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(vxd::Zero(ik)) {} //Construct mxinfo instance with values -- need to use references 
+        mcinfo(sinfo& is, int ik, mxd sff, vxd sfy, double syy, vxd sp, vxd sp2):sinfo(is), k(ik), sumffw(sff), sumfyw(sfy), sumyyw(syy), sump(sp) {} //Construct mxinfo instance with values with input for discrepancy -- need to use references
+        mcinfo(const mcinfo& is):sinfo(is),k(is.k),sumffw(is.sumffw),sumfyw(is.sumfyw),sumyyw(is.sumyyw), sump(is.sump) {} //Input object of mxinfro (is) and instantiate new mxinfo 
         */
         
-        virtual ~mcsinfo() {} 
+        virtual ~mcinfo() {} 
 
         //Initialize sufficient stats
         double sumyw; // Sum of field data weighted by precision
@@ -37,17 +37,56 @@ class mcsinfo : public sinfo{
         double sumwc; // Sum of model run precision  
         size_t nf; // number of field obs 
         
+        // Sufficient stats that are collected for a subtree 
+        // These are NEVER passed through the MPI, rather they are computed after all data has been passed
+        // Important for the proposals and drawing theta
+        std::vector<double> subtree_var; // Variances for the common nodes in the subtree (those that are not involved in birth/death) 
+        std::vector<double> subtree_mean; // Means for the common nodes in the subtree (those that are not involved in birth/death)
+        bool subtree_info; // Does this instance of mcinfo contain information for the rest of the subtree (other than its individual node info)?
+
+        // Setters for the subtree info
+        void setsubtreeinfo(std::vector<mcinfo*> mcv, double mu1, double tau1){            
+            size_t nc = 0;
+            double t1_sqr = tau1*tau1;
+            double mtilde, vtilde, vhat, rhat;
+            for(int i=0;i<mcv.size();i++){
+                // Compute the mean and variance of theta1 given model runs
+                vtilde = 1/((*mcv[i]).sumwc + 1/t1_sqr);
+                mtilde = vtilde*((*mcv[i]).sumyw + mu1/t1_sqr);
+                
+                // Compute the required field data information 
+                rhat = (*mcv[i]).sumyw/(*mcv[i]).sumwf;
+                vhat = 1/(*mcv[i]).sumwf;
+
+                // Pushback into the subtree vectors
+                subtree_var.push_back(vhat + vtilde);
+                subtree_mean.push_back(rhat - mtilde);
+                subtree_info = true;
+            }
+        }
 
         //Define Operators -- override from sinfo class
         //Compound addition operator - used when adding sufficient statistics
         virtual sinfo& operator+=(const sinfo& rhs){
+            // Standard overload operations
             sinfo::operator+=(rhs); 
-            const mcsinfo& mrhs = static_cast<const mcsinfo&>(rhs); //Cast rhs as an mxinfo instance.  
+            const mcinfo& mrhs = static_cast<const mcinfo&>(rhs); //Cast rhs as an mxinfo instance.  
             sumyw += mrhs.sumyw;
             sumzw += mrhs.sumzw;
             sumwf += mrhs.sumwf;
             sumwc += mrhs.sumwc;
             nf += mrhs.nf;
+
+            // Overloading addition operator for the subtree vectors IF mrhs.subtree_info = true
+            if(mrhs.subtree_info){
+                // mrhs has subtree_info -- add it to this instance of mcinfo
+                subtree_info = true;
+                // using push_back here just incase this mcinfo instance already has subtree info and this mrhs is just adding more
+                for(int i=0;i<mrhs.subtree_mean.size();i++){
+                    subtree_mean.push_back(mrhs.subtree_mean[i]);
+                    subtree_var.push_back(mrhs.subtree_var[i]);
+                }
+            }
             return *this; //returning *this should indicate that we return updated sumffw and sumfyw while also using a pointer
         }
 
@@ -55,20 +94,26 @@ class mcsinfo : public sinfo{
         virtual sinfo& operator=(const sinfo& rhs){
             if(&rhs != this){
                 sinfo::operator=(rhs); 
-                const mcsinfo& mrhs=static_cast<const mcsinfo&>(rhs);
+                const mcinfo& mrhs=static_cast<const mcinfo&>(rhs);
                 this->sumyw = mrhs.sumyw; 
                 this->sumzw = mrhs.sumzw;
                 this->sumwf = mrhs.sumwf;
                 this->sumwc = mrhs.sumwc;
-                this->nf = mrhs.nf; 
+                this->nf = mrhs.nf;
+
+                // Overlod for subtree info when applicable
+                if(mrhs.subtree_info){
+                    this->subtree_mean = mrhs.subtree_mean;
+                    this->subtree_var = mrhs.subtree_var;
+                }
                 return *this; 
             }
             return *this; //returning *this should indicate that we return updated sumffw and sumfr while also using a pointer
         }
 
         //Addition operator -- defined in terms of the compund operator above. Use for addition across two instances of mxinfo
-        const mcsinfo operator+(const mcsinfo& other) const{
-            mcsinfo result = *this;
+        const mcinfo operator+(const mcinfo& other) const{
+            mcinfo result = *this;
             result += other;
             return result;
         }
@@ -113,9 +158,9 @@ public:
     virtual vxd drawnodethetavec(sinfo& si, rn& gen);
     virtual double lm(sinfo& si);
     virtual void add_observation_to_suff(diterator& diter, sinfo& si);
-    virtual sinfo* newsinfo() { return new mcsinfo(); }
+    virtual sinfo* newsinfo() { return new mcinfo(); }
     virtual std::vector<sinfo*>& newsinfovec() { std::vector<sinfo*>* si= new std::vector<sinfo*>; return *si; }
-    virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mcsinfo()); return *si; }
+    virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mcinfo()); return *si; }
     virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
     virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
     void pr_vec();

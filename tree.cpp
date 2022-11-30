@@ -396,9 +396,9 @@ void tree::getsubtreeroots(npv& uroots, std::vector<size_t> uvec)
 
 
 //--------------------------------------------------
-// *** Calibratio working (keep)
-// Check to see if a node is in the subtree
-void tree::nodeinsubtree(tree_p& n, npv& uroots)
+// *** Calibration working (keep)
+// Check to see if a node n is in the subtree
+void tree::nodeinsubtree(tree_p& n, npv& uroots, tree::tree_p& outroot)
 {
    // Get path from current node to the tree root
    npv path;
@@ -407,12 +407,14 @@ void tree::nodeinsubtree(tree_p& n, npv& uroots)
    // Check to see if any of the uroots are on this path
    for(size_t i=0;i<uroots.size();i++){
       if(std::find(path.begin(), path.end(), uroots[i]) != path.end()){
-         // This node's path includes uroot[i]
-         
-         // Create a map
-         // break out of the loop
+         // found the subtree root that n is under - return this root
+         outroot = uroots[i];
+         break;         
       }   
    }
+   // Reach this point if we've looped through all subtrees and n is not in any of them
+   // In that case, set out_root = 0
+   outroot = 0;
 }
 
 //--------------------------------------------------
