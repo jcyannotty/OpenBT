@@ -255,7 +255,7 @@ fit1=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),model="mixbart",
 fitp1=predict.openbt(fit1,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw1=openbt.mixingwts(fit1, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw1=mixingwts.openbt(fit1, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 
 #-----------------------------------------------------
@@ -277,7 +277,7 @@ fit2=openbt(x_train,y_train,f_train,pbd=c(0.7,0.0),f.sd.train = f_train_dsd,mode
 fitp2=predict.openbt(fit2,x.test = x_test, f.test = f_test, tc=4, q.lower = 0.025, q.upper = 0.975)
 
 # Get the weight functions from the fit model
-fitw2 = openbt.mixingwts(fit2, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
+fitw2 = mixingwts.openbt(fit2, x.test = x_test, numwts = 3, tc = 4, q.lower = 0.025, q.upper = 0.975)
 
 # Attach example 2 data
 detach(ex3_data)

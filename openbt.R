@@ -1552,7 +1552,7 @@ setvarcuts<-function(xi,id,cutvec)
 #--------------------------------------------------
 #Get model mixing weights
 #--------------------------------------------------
-openbt.mixingwts = function(
+mixingwts.openbt = function(
   fit=NULL,
   x.test=NULL,
   tc=2,
