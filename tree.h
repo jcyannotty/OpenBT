@@ -130,7 +130,7 @@ public:
    //void setsubtreeroot(bool isroot){this->subtreeroot = isroot;}
    void getsubtreeroots(npv &uroots, std::vector<size_t> uvec);
    void getsubtreeonv(std::vector<size_t> subvec,std::vector<size_t> vvec,size_t subtreeidx,size_t& nsubtrees); //******get all nodes below this current node if a split on a specified v is used
-   void nodeinsubtree(tree_p &n, npv &uroots, tree::tree_p &outroot); //******is this node in the subtree defined by slitting on a v in uvec 
+   void nodeinsubtree(npv &uroots, tree::tree_p &outroot); //******is this node pointer in the subtree defined by slitting on a v in uvec 
    
 
    //node functions--------------------

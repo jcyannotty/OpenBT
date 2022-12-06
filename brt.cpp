@@ -1696,7 +1696,6 @@ void brt::local_setr_vec(diterator& diter)
 
    for(;diter<diter.until();diter++) {
       bn = t.bn(diter.getxp(),*xi);
-      bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec();
       resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
    }

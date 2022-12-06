@@ -352,7 +352,7 @@ void tree::getpathtorootlr(npv& nl, npv& nr)
       this->p->getpathtorootlr(nl,nr);
 }
 //--------------------------------------------------
-// *** Calibration, working
+// *** Calibration, working (delete)
 // Get a subtree where this node is the "root". 
 // The subtree is declared if the root is split on one of the specified 
 // variables listed in vvec
@@ -396,13 +396,16 @@ void tree::getsubtreeroots(npv& uroots, std::vector<size_t> uvec)
 
 
 //--------------------------------------------------
-// *** Calibration working (keep)
+// *** Calibration working (keep) -- could rewrite, similar to path idea
 // Check to see if a node n is in the subtree
-void tree::nodeinsubtree(tree_p& n, npv& uroots, tree::tree_p& outroot)
+void tree::nodeinsubtree(npv& uroots, tree::tree_p& outroot)
 {
    // Get path from current node to the tree root
    npv path;
-   n->getpathtoroot(path);
+   this->getpathtoroot(path);
+
+   // Set default outroot to 0. Return this if we've looped through all subtrees and n is not in any of them
+   outroot = 0;
 
    // Check to see if any of the uroots are on this path
    for(size_t i=0;i<uroots.size();i++){
@@ -412,9 +415,7 @@ void tree::nodeinsubtree(tree_p& n, npv& uroots, tree::tree_p& outroot)
          break;         
       }   
    }
-   // Reach this point if we've looped through all subtrees and n is not in any of them
-   // In that case, set out_root = 0
-   outroot = 0;
+
 }
 
 //--------------------------------------------------

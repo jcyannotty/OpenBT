@@ -52,13 +52,10 @@ void mbrt::draw_mpislave(rn& gen)
 {
    //All the usual steps
    brt::draw_mpislave(gen);
-   //cout << "HERE mbrt slave 1" << endl;
-   // Update the in-sample predicted vector
+
    setf();
-   //cout << "HERE mbrt slave 2" << endl;
-   // Update the in-sample residual vector
+
    setr();
-   //cout << "HERE mbrt slave 3" << endl;
 }
 //--------------------------------------------------
 //draw theta for a single bottom node for the brt model
