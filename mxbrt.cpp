@@ -290,8 +290,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
                 array_to_vector(tsil.sump,&sump_larray[0]);    
                 array_to_vector(tsir.sump,&sump_rarray[0]);
             }
-
-
+            
             //convert sumffw_larray/sumffw_rarray to a matrix defined in tsil/tsir
             array_to_matrix(tsil.sumffw,&sumffw_larray[0]);
             array_to_matrix(tsir.sumffw,&sumffw_rarray[0]);
