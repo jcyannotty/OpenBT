@@ -551,12 +551,14 @@ int main(int argc, char* argv[])
 
     //Initialize the model mixing bart objects
     if(mpirank > 0){
-        fi = mxd::Ones(nvec[0], nummodels+1); //dummy initialize to matrix of 1's -- n0 x K+1 (1st column is discrepancy)
+        //fi = mxd::Ones(nvec[0], nummodels+1); //dummy initialize to matrix of 1's -- n0 x K+1 (1st column is discrepancy)
+        fi = mxd::Ones(nvec[0], nummodels); //dummy initialize to matrix of 1's -- n0 x K (no discrepancy)
     }
     //cutpoints
     axb.setxi(&xi_list[0]);   
     //function output information
-    axb.setfi(&fi, nummodels+1);
+    //axb.setfi(&fi, nummodels+1);
+    axb.setfi(&fi, nummodels);
     //data objects
     axb.setdata_mix(&dinfo_list[0]);  //set the data
     //thread count
@@ -582,6 +584,7 @@ int main(int argc, char* argv[])
             );
 
     //Set prior information
+    /*
     mxd prior_precision(nummodels+1,nummodels+1);
     vxd prior_mean(nummodels+1);
     prior_precision = (1/(tau_wts*tau_wts))*mxd::Identity(nummodels+1,nummodels+1);
@@ -591,7 +594,14 @@ int main(int argc, char* argv[])
     
     //Sets the model priors for the functions if they are different
     axb.setci(prior_precision, prior_mean, sig_vec[0]);
-
+    */
+    mxd prior_precision(nummodels,nummodels);
+    vxd prior_mean(nummodels);
+    prior_precision = (1/(tau_wts*tau_wts))*mxd::Identity(nummodels,nummodels);
+    prior_mean = beta_wts*vxd::Ones(nummodels);
+    
+    //Sets the model priors for the functions if they are different
+    axb.setci(prior_precision, prior_mean, sig_vec[0]);
     //--------------------------------------------------
     //setup psbrt object
     //make di for psbrt object
@@ -667,7 +677,7 @@ int main(int argc, char* argv[])
         ambm_list[l]->setmi(
                 pbd,  //probability of birth/death
                 pb,  //probability of birth
-                minnumbot,    //minimum number of observations in a bottom node
+                1,    //minimum number of observations in a bottom node
                 dopert, //do perturb/change variable proposal?
                 stepwpert,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
                 probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -812,7 +822,8 @@ int main(int argc, char* argv[])
         for(int j=0;j<nummodels;j++){
             ambm_list[j]->predict(&dimix_list[j]);
             for(size_t k=0;k<dimix_list[j].n;k++){
-                fi(k,j+1) = fmix_list[j][k] + means_list[j+1]; //fmix_list is K dimensional and the others are K+1 dimensional (hence j vs. j+1)
+                //fi(k,j+1) = fmix_list[j][k] + means_list[j+1]; //fmix_list is K dimensional and the others are K+1 dimensional (hence j vs. j+1)
+                fi(k,j) = fmix_list[j][k] + means_list[j+1];
             }   
         }
     }
@@ -832,7 +843,8 @@ int main(int argc, char* argv[])
                 //Update finfo column 
                 ambm_list[j]->predict(&dimix_list[j]);
                 for(size_t l=0;l<dimix_list[j].n;l++){
-                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                    //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                    fi(l,j) = fmix_list[j][l] + means_list[j+1];
                     //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
                 }
             }           
@@ -850,7 +862,8 @@ int main(int argc, char* argv[])
             // Update finfo column
             ambm_list[j]->predict(&dimix_list[j]);
             for(int l=0;l<nvec[0];l++){
-                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
+                //fi(l,j+1) = fmix_list[j][l] + means_list[j+1];
+                fi(l,j) = fmix_list[j][l] + means_list[j+1];
             }
         }
         
@@ -943,7 +956,8 @@ int main(int argc, char* argv[])
                 //Update finfo column 
                 ambm_list[j]->predict(&dimix_list[j]);
                 for(size_t l=0;l<dimix_list[j].n;l++){
-                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                    //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                    fi(l,j) = fmix_list[j][l] + means_list[j+1];
                     //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
                 }
             }           
@@ -961,7 +975,8 @@ int main(int argc, char* argv[])
             // Update finfo column
             ambm_list[j]->predict(&dimix_list[j]);
             for(int l=0;l<nvec[0];l++){
-                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
+                //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
+                fi(l,j) = fmix_list[j][l] + means_list[j+1];
             }
         }
 
@@ -1047,7 +1062,8 @@ int main(int argc, char* argv[])
                 //Update finfo column 
                 ambm_list[j]->predict(&dimix_list[j]);
                 for(size_t l=0;l<dimix_list[j].n;l++){
-                    fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                    //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                    fi(l,j) = fmix_list[j][l] + means_list[j+1];
                     //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
                 }
             }           
@@ -1065,7 +1081,8 @@ int main(int argc, char* argv[])
             // Update finfo column
             ambm_list[j]->predict(&dimix_list[j]);
             for(int l=0;l<nvec[0];l++){
-                fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; 
+                //fi(l,j+1) = fmix_list[j][l] + means_list[j+1];
+                fi(l,j) = fmix_list[j][l] + means_list[j+1]; 
             }
         }
 

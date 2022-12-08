@@ -240,12 +240,14 @@ int main(int argc, char* argv[])
    finfo fi;
 
    //finfo matrix
-   fi = mxd::Ones(np, nummodels+1); //dummy initialize to matrix of 1's -- n0 x K+1 (1st column is discrepancy)
-   
+   //fi = mxd::Ones(np, nummodels+1); //dummy initialize to matrix of 1's -- n0 x K+1 (1st column is discrepancy)
+   fi = mxd::Ones(np, nummodels);
+
    //Initialie the model mixing related objects
    axb.setxi(&xi_list[0]);   
    pxb.setxi(&xi_list[0]);
-   axb.setfi(&fi, nummodels+1);
+   //axb.setfi(&fi, nummodels+1);
+   axb.setfi(&fi, nummodels);
 
    // Initialize the emulators and associated variance models 
    for(size_t i=0;i<nummodels;i++){
@@ -426,7 +428,8 @@ int main(int argc, char* argv[])
    for(size_t i=0;i<nd;i++){      
       for(size_t a=0;a<=nummodels;a++){curdx[a] = 0;}
       for(size_t k=0;k<=nummodels;k++){
-         if(k==0){nt = nummodels+1;}else{nt = 1;}
+         //if(k==0){nt = nummodels+1;}else{nt = 1;}
+         if(k==0){nt = nummodels;}else{nt = 1;}
          for(size_t j=0;j<m_list[k];j++){
             onn[k][j]=e_ots[k].at(i*m_list[k]+j);
             oid[k][j].resize(onn[k][j]);
@@ -456,7 +459,8 @@ int main(int argc, char* argv[])
             // Set prediction and update finfo
             for(size_t j=0;j<np;j++){
                tedraw_list[k][i][j] = fp_list[k][j] + means_list[k];
-               fi(j,k) = tedraw_list[k][i][j];
+               //fi(j,k) = tedraw_list[k][i][j];
+               fi(j,k-1) = tedraw_list[k][i][j];
             }
          }
          
