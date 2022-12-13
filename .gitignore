@@ -48,12 +48,13 @@
 .Rhistory
 
 # Python cache
-.pyc
+*.pyc
 
 # Other folders
-.deps/*
-.libs/*
+src/.deps/*
+src/.libs/*
 .vscode/*
+src/autom4te.cache/*
 autom4te.cache/*
 temp
 
