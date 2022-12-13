@@ -8,7 +8,6 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ### SETUP TUTORIAL LIKE THINGS
-setwd("/home/johnyannotty/Documents/openbt")
 source("https://github.com/jcyannotty/OpenBT/blob/main/openbt.R?raw=TRUE")
 source("https://github.com/jcyannotty/OpenBT/blob/main/R/honda_eft.R?raw=TRUE")
 source("https://github.com/jcyannotty/OpenBT/blob/main/R/eft_mixing_helper_functions.R?raw=TRUE")

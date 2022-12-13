@@ -110,7 +110,7 @@ dlg = function(g,nl,dbar = NULL){
   return(s)
 }
 
-# Generate training and testing data
+# Generate training and testing data for eft models
 # n_train = training size
 # n_test = testing size
 # s = error standard deviation
