@@ -611,7 +611,7 @@ void mcbrt::local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& si
 
 //--------------------------------------------------
 // Establish the node cases for birth and death
-void local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove)
+void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove)
 {
     #ifdef _OPENMPI
     // Only need to initialize the sir and sil for rank 0
@@ -642,9 +642,62 @@ void local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool bir
 #endif
 }
 
+//--------------------------------------------------
+// subsuff
+void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
+{
+    tree::npv path;
+    tree::npv uroots, nxuroots; // Roots to all calibration subtree
+    tree::tree_p subtree, troot; // subtree pointer root
+
+    local_subsuff_setroot(nx,subtree,troot,uroots);
+
+    bnv.clear();
+    troot->getpathtoroot(path);  //path from subtree root troot back to root (troot = nx or subtree if subtree is a pointer above nx)
+    troot->getbots(bnv);  //all bots ONLY BELOW node troot!!
+    
+#ifdef _OPENMP
+    typedef tree::npv::size_type bvsz;
+    siv.clear(); //need to setup space threads will add into
+    siv.resize(bnv.size());
+    for(bvsz i=0;i!=bnv.size();i++) siv[i]=newsinfo();
+#     pragma omp parallel num_threads(tc)
+    local_ompsubsuff(*di,nx,path,bnv,siv); //faster if pass di and bnv by value.
+#elif _OPENMPI
+    diterator diter(di);
+    local_mpisubsuff(diter,nx,path,bnv,siv);
+#else
+    diterator diter(di);
+    local_subsuff(diter,nx,path,bnv,siv);
+#endif
+    // Now pool information across nodes depending of the calibration subtree status
+    local_subsuff_nodecases(nx,subtree,bnv,siv);
+
+}
+
+//--------------------------------------------------
+//local_subsuff_setroot
+void mcbrt::local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tree_p &troot,tree::npv &uroots){
+    // Get calibration subtree information
+    t.getsubtreeroots(uroots, uvec);
+    if(uroots.size()>0){
+        // Check is the node nx in a subtree
+        nx->nodeinsubtree(uroots,subtree); // see if nx is in a subtree...sets subtree as a tree pointer or null pointer
+    }else{
+        // set null pointer, no subtree
+        subtree = 0;
+    }
+    // if nx is in a subtree, then set the subsuff tree root to be the subtree root, else assign troot = nx
+    if(subtree){
+        troot = subtree;
+    }else{
+        troot = nx;
+    }
+}
 
 //--------------------------------------------------
 //local_subsuff
+/*
 void mcbrt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
     tree::npv uroots, nxuroots; // Roots to all calibration subtree
@@ -674,121 +727,48 @@ void mcbrt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tr
         local_subsuff_subtree(subtree, diter, nx, path, bnv, siv);
     } 
 }
+*/
 
 //--------------------------------------------------
 //local_getsuff_subtree (1) -- used when a subtree begins at or above the rotation node
-void mcbrt::local_subsuff_subtree(tree::tree_p subtree, diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv)
+void mcbrt::local_subsuff_subtree(std::vector<sinfo*>& siv)
 {
-    tree::tree_cp tbn; //the pointer to the bottom node for the current observation
-    size_t ni;         //the  index into vector of the current bottom node
-    size_t index;      //the index into the path vector.
-    double *x;
-    tree::tree_p root=path[path.size()-1];
-    typedef tree::npv::size_type bvsz;
-    bvsz nb;
-
     // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff but we need it here to set 
-    // Initialize mcinfo vector
-    std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
-    
-    // Inititialize bottom node vector and clear siv
-    std::map<tree::tree_cp,size_t> bnmap;    
-    siv.clear();
-
-    // Redefine the path and bnv if the subtree begins before nx
-    if(subtree != nx){
-        // Redefine the path to be from "subtree" to the root
-        path.clear();
-        subtree->getpathtoroot(path);
-        root=path[path.size()-1]; // Should be the same
-        
-        // The subtree begins before the rotation node nx
-        bnv.clear(); // Clear the original bottom node vector
-        subtree->getbots(bnv); // Get new bottom nodes relative to the calibration subtree root (above nx) 
-    }
-
-    //now resize suff stats, cast to mcinfo, and initialize the map
-    nb = bnv.size();
-    siv.resize(nb);
-    mcv.resize(nb);
-    // Initialize suff stat vectors
-    for(bvsz i=0;i!=bnv.size();i++) { 
-        bnmap[bnv[i]]=i; 
-        mcv[i] = static_cast<mcinfo*>(siv[i]);
-        mcv[i]= new mcinfo(true); // true means we have a calibration subtree
-    } 
-
-    // Calibration subtree map, stores roots of calibration tree
-    for(;diter<diter.until();diter++) {
-        index=path.size()-1;
-        x=diter.getxp();
-        if(root->xonpath(path,index,x,*xi)) { //x is on the subtree, 
-            tbn = path[0]->bn(x,*xi); // Get bottom node below the calibration subtree root (nx or subtree), path[0] should handle both cases.
-            ni = bnmap[tbn];
-            add_observation_to_suff(diter, *(siv[ni]));
-        }
-        //else this x doesn't map to the subtree so it's not added into suff stats. 
+    // Initialize mcinfo vector by casting siv to mcinfo
+    std::vector<mcinfo*> mcv(siv.size()); // mcinfo vector used for subtrees
+    for(size_t i=0;i<siv.size();i++){
+        mcv[i]=static_cast<mcinfo*>(siv[i]);
+        mcv[i]->subtree_node = true;
     }
     
-    // Compile suff stats across the calibration subtree
-    // WLOG, store everything in the first node of this vector
+    // Compile suff stats across the calibration subtree--WLOG, store everything in the first node of this vector
     std::vector<mcinfo*> mcv_not0(mcv.begin()+1,mcv.end()); // vector excluding the first element
-    for(size_t i=1;i<mcv.size();i++){
-        mcv[0]->setsubtreeinfo(mcv_not0);
-    }
+    mcv[0]->setsubtreeinfo(mcv_not0);
 }
 
 //--------------------------------------------------
 //local_getsuff_subtree (2) -- used when a subtree or subtrees begin below the rotation node
-void mcbrt::local_subsuff_subtree(tree::npv nxuroots, diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv)
+void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
-    tree::tree_cp tbn; //the pointer to the bottom node for the current observation
-    size_t ni;         //the  index into vector of the current bottom node
-    size_t index;      //the index into the path vector.
-    double *x;
-    tree::tree_p root=path[path.size()-1];
     typedef tree::npv::size_type bvsz;
     bvsz nb;
-    tree::tree_p subtree; 
-
-    // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff but we need it here to set 
-    // Initialize mcinfo vector
-    std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
+    std::vector<mcinfo*> mcv(bnv.size()); // mcinfo vector used for subtrees
 
     // Define bottom node vector map, unode map for calibration subtreen, and clear siv
-    std::map<tree::tree_cp,size_t> bnmap;    
     std::map<tree::tree_cp,std::vector<size_t>> unmap;
-    siv.clear();
 
-    // Initialize the maps and cast suff stats to mcinfo     
-    //now resize suff stats, cast to mcinfo, and initialize the map
-    nb = bnv.size();
-    siv.resize(nb);
-    mcv.resize(nb);
     // Initialize suff stat vectors
     for(bvsz i=0;i!=bnv.size();i++) { 
-        bnmap[bnv[i]]=i; 
         mcv[i] = static_cast<mcinfo*>(siv[i]);
         bnv[i]->nodeinsubtree(nxuroots,subtree);
+        // Append this nodes id to its corresponding unodemap if its in a subtree
         if(subtree){
-            // true means we have a calibration subtree
-            mcv[i]= new mcinfo(true);
+            // This node is in a calibration subtree
+            mcv[i]->subtree_node = true;
             unmap[subtree].push_back(i); // append the id to the utree id map -- keeps track of which nodes belong to which subtrees 
-        }else{
-            // No subtree (just use default constructor)
-            mcv[i]= new mcinfo();
         }
     }
-    // Calibration subtree map, stores roots of calibration tree
-    for(;diter<diter.until();diter++) {
-        index=path.size()-1;
-        x=diter.getxp();
-        if(root->xonpath(path,index,x,*xi)) { //x is on the subtree, 
-            tbn = nx->bn(x,*xi); // Get bottom node below the nx
-            ni = bnmap[tbn];
-            add_observation_to_suff(diter, *(siv[ni]));
-        }
-    }   
+
     // Compile suff stats across the calibration subtree(s)
     std::vector<mcinfo*> mcvtemp;
     for(size_t i=0;i<unmap.size();i++){
@@ -807,87 +787,30 @@ void mcbrt::local_subsuff_subtree(tree::npv nxuroots, diterator& diter, tree::tr
 // This is a helper function to resize the bottom node and suff stat vectors for rank 0 in local_mpisubsuff
 // Also sets which one will be in charge of the subtree info 
 // A lot of similar code to the above local_subsuff cases, try to clean up later
-void mcbrt::local_mpisubsuff_nodecases(tree::tree_p nx,tree::npv& bnv, std::vector<sinfo*>& siv){
-    tree::npv uroots, nxuroots; // Roots to all calibration subtree
-    tree::tree_p subtree; // subtree pointer root
-    typedef tree::npv::size_type bvsz;
-    bvsz nb;
-    size_t uind;
-    
-    // Initialize mcinfo vector
-    std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
+void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv){
+    tree::npv nxuroots; // Roots to all calibration subtree
 
-    // Define bottom node vector map, unode map for calibration subtreen, and clear siv
-    std::map<tree::tree_cp,size_t> bnmap;    
-    std::map<tree::tree_cp,std::vector<size_t>> unmap;
-
-    // Get calibration subtree information
-    t.getsubtreeroots(uroots, uvec);
-    // Check is the node nx in a subtree
-    nx->nodeinsubtree(uroots,subtree); // could make more efficeint by utilizing the path we read in
-    
     // if nx isn't in a calibration subtree or starts one, then check to see if it contains one (or many)
     if(!subtree){
         // Get subtree roots below nx
-        nx->getsubtreeroots(nxuroots,uvec);
+        nx->getsubtreeroots(nxuroots,uvec); 
     }
-
-    if(!subtree && nxuroots.size()==0){
-        // If no subtree is involved in the rotation, use the same three steps as in brt::local_mpisubsuff
-        siv.clear();
-        siv.resize(bnv.size());
-        for(bvsz i=0;i!=bnv.size();i++) siv[i]=newsinfo();
-    }else if(!subtree && nxuroots.size()>0){
-        // nx is not in calibration subtree nor does not split on calibration parameter
-        // But, a calibration subtree(s) are created below nx
-        nb = bnv.size();
-        siv.resize(nb);
-        mcv.resize(nb);
-        // Initialize suff stat vectors -- wrap into a function(??) appears twice
-        for(bvsz i=0;i!=bnv.size();i++) { 
-            bnmap[bnv[i]]=i; 
-            mcv[i] = static_cast<mcinfo*>(siv[i]);
-            bnv[i]->nodeinsubtree(nxuroots,subtree);
-            if(subtree){
-                // true means we have a calibration subtree
-                mcv[i]= new mcinfo(true);
-                unmap[subtree].push_back(i); // append the id to the utree id map -- keeps track of which nodes belong to which subtrees 
-            }else{
-                // No subtree (just use default constructor)
-                mcv[i]= new mcinfo();
-            }
-        }
-        // Assign the first suff stat instance in each calibration subtree to hold the pooled information across nodes
-        for(size_t i=0;i<unmap.size();i++){
-            uind = unmap[nxuroots[i]][0]; // this gets the index of the first suff stat instance on the subtree identified by nxuroots[i]  
-            mcv[uind]->resizesubtreeinfo(unmap[nxuroots[i]].size()-1); // subtract 1 because we store the remaining nodes on the subtree in the subtree info
-        }        
-    }else{
+    // Now check conditions for how to pool the information across nodes in a common subtree
+    if(!subtree && nxuroots.size()>0){
+        // If nx is not in a subtree, but nodes below nx are in subtree(s)
+        local_subsuff_subtree(nxuroots,nx,subtree,bnv,siv);        
+    }else if(subtree){
         // Either nx creates the calibration subtree or it is in one already
-        if(subtree != nx){
-            // The subtree begins before the rotation node nx
-            bnv.clear(); // Clear the original bottom node vector
-            subtree->getbots(bnv); // Get new bottom nodes relative to the calibration subtree root (above nx) 
-        }
-
-        //now resize suff stats, cast to mcinfo, and initialize the map
-        nb = bnv.size();
-        siv.resize(nb);
-        mcv.resize(nb);
-        // Initialize suff stat vectors
-        for(bvsz i=0;i!=bnv.size();i++) { 
-            bnmap[bnv[i]]=i; 
-            mcv[i] = static_cast<mcinfo*>(siv[i]);
-            mcv[i]= new mcinfo(true); // true means we have a calibration subtree
-        }
-        // Now assign mcv[0] to hold the subtree info across all nodes
-        mcv[0]->resizesubtreeinfo(nb-1); //subtract 1 to exclude this node
+        local_subsuff_subtree(siv);
+    }else{
+        // This set of suff stats is not associated with a claibration subtree -- no need to pool information    
     }
 }
 
 
 //--------------------------------------------------
 //local_mpisubsuff -- overload this function from brt to account for the three different cases in rotation on rank 0
+/*
 void mcbrt::local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
 #ifdef _OPENMPI
@@ -902,6 +825,7 @@ void mcbrt::local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path,
    }
 #endif
 }
+*/
 
 //--------------------------------------------------
 // MPI virtualized part for sending/receiving left,right suffs
@@ -935,8 +859,8 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             MPI_Recv(buffer,SIZE_UINT6,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
             MPI_Unpack(buffer,SIZE_UINT6,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
             MPI_Unpack(buffer,SIZE_UINT6,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD); // May not need to pass
+            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD); // May not need to pass
             MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
@@ -1034,12 +958,13 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
     double sumzy[siv.size()];
     double sumwf[siv.size()];
     double sumwc[siv.size()];
+    /*
     // Subtree versions
     std::vector<double> sb_sumyw_vec;
     std::vector<double> sb_sumzw_vec;
     std::vector<double> sb_sumwf_vec;
     std::vector<double> sb_sumwc_vec;
-
+    */
     for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
         mcinfo* msi=static_cast<msinfo*>(siv[i]);
         nvec[i]=(unsigned int)msi->n;    // cast to int
@@ -1050,15 +975,18 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
 
         // Populate vectors of subtree info (total subtree info across all nodes..
         //if there are multiple subtrees, then we can append to the vector and separate later)
+        /*
         if(mis->subtree_info){
             sb_sumyw_vec.insert(std::end(sb_sumyw_vec),std::begin(mis->subtree_sumyw),std::end(mis->subtree_sumyw));
             sb_sumzw_vec.insert(std::end(sb_sumzw_vec),std::begin(mis->subtree_sumzw),std::end(mis->subtree_sumzw));
             sb_sumwf_vec.insert(std::end(sb_sumwf_vec),std::begin(mis->subtree_sumwf),std::end(mis->subtree_sumwf));
             sb_sumwc_vec.insert(std::end(sb_sumwc_vec),std::begin(mis->subtree_sumwc),std::end(mis->subtree_sumwc));        
         }
+        */
     }
 
     // Now initialize the subtree suff stat mpi arrays
+    /*
     size_t sbtvs = sb_sumyw_vec.size():
     double subtree_sumyw[sbtvs];
     double subtree_sumzw[sbtvs];
@@ -1070,6 +998,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         copy(sb_sumwf_vec.begin(),sb_sumwf_vec.end(), subtree_sumwf);
         copy(sb_sumwc_vec.begin(),sb_sumwc_vec.end(), subtree_sumwc);
     }
+    */
 
     if(rank==0) {
         MPI_Status status;
@@ -1079,6 +1008,13 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         double tempsumwfvec[siv.size()];
         double tempsumwcvec[siv.size()];
         
+        /*
+        double temp_sb_sumyw_vec[sbtvs];
+        double temp_sb_sumzw_vec[sbtvs];
+        double temp_sb_sumwf_vec[sbtvs];
+        double temp_sb_sumwc_vec[sbtvs];
+        */
+
         // receive nvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempnvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
@@ -1092,49 +1028,85 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
-            msinfo* msi=static_cast<msinfo*>(siv[i]);
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->n=(size_t)nvec[i];    // cast back to size_t
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
 
-        // receive sumwvec, update and send back.
+        // receive sumywvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Recv(&tempsumwvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            MPI_Recv(&tempsumywvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
             for(size_t j=0;j<siv.size();j++)
-            sumwvec[j]+=tempsumwvec[j];
+            sumywvec[j]+=tempsumywvec[j];
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(&sumwvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(&sumywvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
-            msinfo* msi=static_cast<msinfo*>(siv[i]);
-            msi->sumw=sumwvec[i];
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumyw=sumywvec[i];
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
         
-        // receive sumwyvec, update and send back.
+        // receive sumzwvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Recv(&tempsumwyvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            MPI_Recv(&tempsumzwvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
             for(size_t j=0;j<siv.size();j++)
-            sumwyvec[j]+=tempsumwyvec[j];
+            sumzwvec[j]+=tempsumzwvec[j];
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(&sumwyvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(&sumzwvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
-            msinfo* msi=static_cast<msinfo*>(siv[i]);
-            msi->sumwy=sumwyvec[i];
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumzw=sumzwvec[i];
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
-    }
-    else {
+
+        // receive sumwfvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempsumwfvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++)
+            sumwfvec[j]+=tempsumwfvec[j];
+        }
+        request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&sumwfvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+        // cast back to msi
+        for(size_t i=0;i<siv.size();i++) {
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumwf=sumwfvec[i];
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+
+        // receive sumwcvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempsumwcvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++)
+            sumwcvec[j]+=tempsumwcvec[j];
+        }
+        request=new MPI_Request[tc];
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&sumwcvec,siv.size(),MPI_DOUBLE,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+        // cast back to msi
+        for(size_t i=0;i<siv.size();i++) {
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumwc=sumwcvec[i];
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+    
+    } else {
         MPI_Request *request=new MPI_Request;
         MPI_Status status;
 
@@ -1144,36 +1116,77 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         delete request;
         MPI_Recv(&nvec,siv.size(),MPI_UNSIGNED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-        // send sumwvec, update nvec, receive sumwvec
+        // send sumywvec, update nvec, receive sumywvec
         request=new MPI_Request;
-        MPI_Isend(&sumwvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(&sumywvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
-            msinfo* msi=static_cast<msinfo*>(siv[i]);
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->n=(size_t)nvec[i];    // cast back to size_t
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
-        MPI_Recv(&sumwvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        MPI_Recv(&sumywvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-        // send sumwyvec, update sumwvec, receive sumwyvec
+        // send sumzwvec, update sumywvec, receive sumzwvec
         request=new MPI_Request;
-        MPI_Isend(&sumwyvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(&sumzwvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
-            msinfo* msi=static_cast<msinfo*>(siv[i]);
-            msi->sumw=sumwvec[i];
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumyw=sumywvec[i];
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
-        MPI_Recv(&sumwyvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        MPI_Recv(&sumzwvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-        // update sumwyvec
+        // send sumwfvec, update sumzwvec, receive sumwfvec
+        request=new MPI_Request;
+        MPI_Isend(&sumwfvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        // cast back to msi
+        for(size_t i=0;i<siv.size();i++) {
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumzw=sumzwvec[i];
+        }
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&sumwfvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+        // send sumwcvec, update sumwfvec, receive sumwcvec
+        request=new MPI_Request;
+        MPI_Isend(&sumwcvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        // cast back to msi
+        for(size_t i=0;i<siv.size();i++) {
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->sumwf=sumwfvec[i];
+        }
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&sumwcvec,siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+        // update sumwcvec
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
             msinfo* msi=static_cast<msinfo*>(siv[i]);
-            msi->sumwy=sumwyvec[i];
+            msi->sumwc=sumwcvec[i];
         }
     }
 #endif
+}
+
+//--------------------------------------------------
+//Print mcbrt object
+void mcbrt::pr_vec()
+{
+   std::cout << "***** mcbrt object:\n";
+   std::cout << "Conditioning info:" << std::endl;
+   std::cout << "   mean:   tau =" << ci.tau1 << std::endl;
+   std::cout << "   mean:   tau =" << ci.tau2 << std::endl;
+   std::cout << "   mean:   beta0 =" << ci.mu1 << std::endl;
+   std::cout << "   mean:   beta0 =" << ci.mu2 << std::endl;
+   if(!ci.sigma)
+     std::cout << "         sigma=[]" << std::endl;
+   else
+     std::cout << "         sigma=[" << ci.sigma[0] << ",...," << ci.sigma[di->n-1] << "]" << std::endl;
+   brt::pr_vec();
 }

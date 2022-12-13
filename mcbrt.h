@@ -22,7 +22,7 @@ class mcinfo : public sinfo{
         //Constructors:
         mcinfo():sinfo(),sumyw(0.0),sumzw(0.0),sumwf(0.0),sumwc(0.0),nf(0),subtree_info(false),sibling_info(false),subtree_node(false) {} //Initialize mxinfo with default settings
         mcinfo(bool st):sinfo(),sumyw(0.0),sumzw(0.0),sumwf(0.0),sumwc(0.0),nf(0),subtree_info(false),sibling_info(false),subtree_node(st) {}
-        mcinfo(double syw, double szw, double swf, double swc):sinfo(),sumyw(syw),sumzw(szw),sumwf(swf),sumwc(swc),nf(0),subtree_info(false),sibling_info(false),subtree_node(false) {}
+        mcinfo(double syw, double szw, double swf, double swc, size_t nf):sinfo(),sumyw(syw),sumzw(szw),sumwf(swf),sumwc(swc),nf(nf),subtree_info(false),sibling_info(false),subtree_node(false) {}
         mcinfo(const mcinfo& is):sinfo(is),sumyw(is.sumyw),sumzw(is.sumzw),sumwf(is.sumwf),sumwc(is.sumwc),nf(is.nf),subtree_info(false), sibling_info(false),subtree_node(false) {}
         
         virtual ~mcinfo() {} 
@@ -82,7 +82,8 @@ class mcinfo : public sinfo{
             std::vector<double> node_vec;
             for(size_t i=0;i<subtree_sumwc.size();i++){
                 // Constructor to create a new instance of mcinfo that allows us to use the getmoments() method 
-                mcinfo mci(subtree_sumyw[i],subtree_sumzw[i],subtree_sumwf[i],subtree_sumwc[i]);
+                // set nf = 1 by default (nf value is not needed here)
+                mcinfo mci(subtree_sumyw[i],subtree_sumzw[i],subtree_sumwf[i],subtree_sumwc[i],1);
                 // Get the node mean and variance
                 node_vec = mci.getmoments(mu1, tau1);
                 node_mean = node_vec[0];
@@ -95,7 +96,7 @@ class mcinfo : public sinfo{
 
             // Now set sibling info if this node has it as well and do the same process
             if(sibling_info){
-                mcinfo mci(sibling_sumyw,sibling_sumzw,sibling_sumwf,sibling_sumwc);
+                mcinfo mci(sibling_sumyw,sibling_sumzw,sibling_sumwf,sibling_sumwc,1); // set nf = 1 by default, its not important here
                 node_vec = mci.getmoments(mu1, tau1);
                 sibling_mean = node_vec[0];
                 sibling_var = node_vec[1];            
@@ -190,6 +191,11 @@ class mcinfo : public sinfo{
             sumwc += mrhs.sumwc;
             nf += mrhs.nf;
 
+            // Overload subtree_node propoerty -- may need to consider other cases
+            if(mrhs.subtree_node && !subtree_node){
+                subtree_node = true;
+            }
+
             // Overloading addition operator for the subtree vectors IF mrhs.subtree_info = true
             if(mrhs.subtree_info && !subtree_info){
                 // mrhs has subtree_info but this one does not!-- add it to this instance of mcinfo
@@ -239,10 +245,12 @@ class mcinfo : public sinfo{
                     this->subtree_sumzw = mrhs.subtree_sumzw;
                     this->subtree_sumwf = mrhs.subtree_sumwf;
                     this->subtree_sumwc = mrhs.subtree_sumwc;
+                    this->subtree_mean = mrhs.subtree_mean;
+                    this->subtree_var = mrhs.subtree_var;
                     this->subtree_info = mrhs.subtree_info;
                 }
                 // Overlod for subtree info when applicable
-                if(mrhs.subtree_info){
+                if(mrhs.sibling_info){
                     this->sibling_sumyw = mrhs.sibling_sumyw;
                     this->sibling_sumzw = mrhs.sibling_sumzw;
                     this->sibling_sumwf = mrhs.sibling_sumwf;
@@ -261,7 +269,7 @@ class mcinfo : public sinfo{
             return result;
         }
 
-        //Print mxinfo instance
+        //Print mcinfo instance
         void print(){
             std::cout << "**************************************" << std::endl; 
             std::cout << "Model calibration sufficient statistics for this terminal node" << std::endl;
@@ -272,6 +280,23 @@ class mcinfo : public sinfo{
             std::cout << "nf = " << nf << std::endl;
             std::cout << "nc = " << n-nf << std::endl;
             std::cout << "n = " << n << std::endl;
+            std::cout << "is subtree node = " << subtree_node << std::endl;
+            std::cout << "has subtree info = " << subtree_info << std::endl;
+            std::cout << "has sibling info = " << sibling_info << std::endl;
+            if(subtree_info){
+                std::cout << "subtree size = " << subtree_sumyw.size() << std::endl;
+                std::cout << "subtree_sumyw = " << subtree_sumyw[0] << " ... " << subtree_sumyw[subtree_sumyw.size()-1] << std::endl;
+                std::cout << "subtree_sumzw = " << subtree_sumzw[0] << " ... " << subtree_sumzw[subtree_sumyw.size()-1] << std::endl;
+                std::cout << "subtree_sumwf = " << subtree_sumwf[0] << " ... " << subtree_sumwf[subtree_sumyw.size()-1] << std::endl;
+                std::cout << "subtree_sumwc = " << subtree_sumwc[0] << " ... " << subtree_sumwc[subtree_sumyw.size()-1] << std::endl;
+            }
+            if(sibling_info){
+                std::cout << "sibling_sumyw = " << sibling_sumyw << std::endl;
+                std::cout << "sibling_sumzw = " << sibling_sumzw << std::endl;
+                std::cout << "sibling_sumwf = " << sibling_sumwf << std::endl;
+                std::cout << "sibling_sumwc = " << sibling_sumwc << std::endl;
+            }
+
             std::cout << "**************************************" << std::endl;
         }
 };
@@ -313,11 +338,20 @@ public:
     void pr_vec();
 
     // Methods which are not overridden in other inherited classes (mbrt, mxbrt) - but override is required here
-    void local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv); //does NOT assume brt.t is the root node.
-    void local_subsuff_subtree(tree::tree_p subtree, diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
-    void local_subsuff_subtree(tree::npv nxuroots, diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
-    void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
-    void local_mpisubsuff_nodecases(tree::tree_p nx,tree::npv& bnv, std::vector<sinfo*>& siv);
+    void subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv);
+    //void local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv); //does NOT assume brt.t is the root node.
+    void local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv);
+    void local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tree_p &troot ,tree::npv &uroots);
+    void local_subsuff_subtree(std::vector<sinfo*>& siv);
+    void local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv);
+    //void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
+    
+    // Was protected
+    void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
+    void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
+    void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir); // birth version
+    void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir); // death version
+    void local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove);
 
     // Methods which are nested within the above methods. Used to deal with various cases and keep code concise
     double lmnode(mcinfo &mci); // Node outside of subtree -- Used when doing proposals outside of a subtree
@@ -334,10 +368,7 @@ public:
     //mcmc info
     //--------------------
     //methods
-    void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
-    void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
-    void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir); // birth version
-    void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir); // death version
+    
 };
 
 #endif

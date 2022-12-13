@@ -203,7 +203,7 @@ public:
    void bd_vec(rn& gen);
 
    //Set the index for calibration parameters (u) 
-   void setuparams(std::vector<size_t> u) {this->uvec = u;}
+   void setuvars(std::vector<size_t> u) {this->uvec = u;}
 
    //Set the data, the vector of predicted values, and residuals
    void setdata_vec(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_vec(); setr_vec();}

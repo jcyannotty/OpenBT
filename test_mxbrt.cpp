@@ -11,12 +11,6 @@
 #include "Eigen/Dense"
 
 int main(){
-    //-------------------------------------------------------
-    //---Choose to run example 1,2,3,or 4 
-    //-------------------------------------------------------
-
-
-    //-------------------------------------------------------
     //---Read in Data for mxbrt examples
     //-------------------------------------------------------
     crn gen;
@@ -29,7 +23,7 @@ int main(){
     std::vector<double> y;
     double ytemp;
 
-    std::ifstream yf("y.txt");
+    std::ifstream yf("/home/johnyannotty/Documents/Calibration BART/BallDropData/y_train.txt");
     while(yf >> ytemp)
         y.push_back(ytemp);
     size_t n = y.size();
@@ -484,8 +478,8 @@ int main(){
     
     //Setup the objects
     mxbrt b1, b2;
-    b1.setxi(&xi); b1.setfi(&fi,k); b1.setdata_mix(&di); b1.settc(tc); b1.settp(0.95,1.0); b1.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b1.setci(tau,beta0,sig);b1.setvi(nu, lambda);
-    b2.setxi(&xi); b2.setfi(&fi,k); b2.setdata_mix(&di); b2.settc(tc); b2.settp(0.95,1.0); b2.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b2.setci(tau,beta0,sig);b2.setvi(nu, lambda);
+    b1.setxi(&xi); b1.setfi(&fi,k); b1.setdata_vec(&di); b1.settc(tc); b1.settp(0.95,1.0); b1.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b1.setci(tau,beta0,sig);b1.setvi(nu, lambda);
+    b2.setxi(&xi); b2.setfi(&fi,k); b2.setdata_vec(&di); b2.settc(tc); b2.settp(0.95,1.0); b2.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b2.setci(tau,beta0,sig);b2.setvi(nu, lambda);
 
     //Populate the brt objects -- look through to get larger objects
     for(int i=0; i<20;i++){b1.drawvec(gen);}
@@ -521,8 +515,8 @@ int main(){
 
     //Load a tree -- use the containers from above
     mxbrt b11, b22;
-    b11.setxi(&xi); b11.setfi(&fi,k); b11.setdata_mix(&di); b11.settc(tc); b11.settp(0.95,1.0); b11.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b11.setci(tau,beta0,sig);b11.setvi(nu, lambda);
-    b22.setxi(&xi); b22.setfi(&fi,k); b22.setdata_mix(&di); b22.settc(tc); b22.settp(0.95,1.0); b22.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b22.setci(tau,beta0,sig);b22.setvi(nu, lambda);
+    b11.setxi(&xi); b11.setfi(&fi,k); b11.setdata_vec(&di); b11.settc(tc); b11.settp(0.95,1.0); b11.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b11.setci(tau,beta0,sig);b11.setvi(nu, lambda);
+    b22.setxi(&xi); b22.setfi(&fi,k); b22.setdata_vec(&di); b22.settc(tc); b22.settp(0.95,1.0); b22.setmi(0.7,0.5,5,true,0.2,0.2,&chgv);b22.setci(tau,beta0,sig);b22.setvi(nu, lambda);
     b11.loadtree_vec(0,1,nn_vec,id_vec,v_vec,c_vec,theta_vec);
     b22.loadtree_vec(1,1,nn_vec,id_vec,v_vec,c_vec,theta_vec);
     
