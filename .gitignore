@@ -51,9 +51,10 @@
 __pycache__ 
 
 # Other folders
-.deps/*
-.libs/*
+src/.deps/*
+src/.libs/*
 .vscode/*
+src/autom4te.cache/*
 autom4te.cache/*
 
 # Other files
