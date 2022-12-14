@@ -169,7 +169,7 @@ libmbrt_la_LIBADD =
 am_libmbrt_la_OBJECTS = mbrt.lo
 libmbrt_la_OBJECTS = $(am_libmbrt_la_OBJECTS)
 libmxbrt_la_LIBADD =
-am_libmxbrt_la_OBJECTS = mxbrt.lo
+am_libmxbrt_la_OBJECTS = mxbrt.lo calibratefuns.lo
 libmxbrt_la_OBJECTS = $(am_libmxbrt_la_OBJECTS)
 libpsbrt_la_LIBADD =
 am_libpsbrt_la_OBJECTS = psbrt.lo
@@ -287,8 +287,8 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/ambrt.Plo ./$(DEPDIR)/amxbrt.Plo \
 	./$(DEPDIR)/brt.Plo ./$(DEPDIR)/brtfuns.Plo \
-	./$(DEPDIR)/brtmoves.Plo ./$(DEPDIR)/cli.Po \
-	./$(DEPDIR)/crn.Plo ./$(DEPDIR)/mbrt.Plo \
+	./$(DEPDIR)/brtmoves.Plo ./$(DEPDIR)/calibratefuns.Plo \
+	./$(DEPDIR)/cli.Po ./$(DEPDIR)/crn.Plo ./$(DEPDIR)/mbrt.Plo \
 	./$(DEPDIR)/mixandemulatepred.Po ./$(DEPDIR)/mixing.Po \
 	./$(DEPDIR)/mixingwts.Po ./$(DEPDIR)/mopareto.Po \
 	./$(DEPDIR)/mxbrt.Plo ./$(DEPDIR)/pred.Po \
@@ -593,7 +593,7 @@ libtree_la_SOURCES = treefuns.cpp treefuns.h tree.cpp tree.h
 libbrt_la_SOURCES = brt.cpp brt.h brtmoves.cpp brtfuns.cpp brtfuns.h dinfo.h
 libmbrt_la_SOURCES = mbrt.cpp mbrt.h
 libsbrt_la_SOURCES = sbrt.cpp sbrt.h
-libmxbrt_la_SOURCES = mxbrt.cpp mxbrt.h
+libmxbrt_la_SOURCES = mxbrt.cpp mxbrt.h calibratefuns.cpp
 libambrt_la_SOURCES = ambrt.cpp ambrt.h
 libpsbrt_la_SOURCES = psbrt.cpp psbrt.h
 libamxbrt_la_SOURCES = amxbrt.cpp amxbrt.h
@@ -854,6 +854,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/brt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/brtfuns.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/brtmoves.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/calibratefuns.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/cli.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crn.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mbrt.Plo@am__quote@ # am--include-marker
@@ -1200,6 +1201,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/brt.Plo
 	-rm -f ./$(DEPDIR)/brtfuns.Plo
 	-rm -f ./$(DEPDIR)/brtmoves.Plo
+	-rm -f ./$(DEPDIR)/calibratefuns.Plo
 	-rm -f ./$(DEPDIR)/cli.Po
 	-rm -f ./$(DEPDIR)/crn.Plo
 	-rm -f ./$(DEPDIR)/mbrt.Plo
@@ -1282,6 +1284,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/brt.Plo
 	-rm -f ./$(DEPDIR)/brtfuns.Plo
 	-rm -f ./$(DEPDIR)/brtmoves.Plo
+	-rm -f ./$(DEPDIR)/calibratefuns.Plo
 	-rm -f ./$(DEPDIR)/cli.Po
 	-rm -f ./$(DEPDIR)/crn.Plo
 	-rm -f ./$(DEPDIR)/mbrt.Plo

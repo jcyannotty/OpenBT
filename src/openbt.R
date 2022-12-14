@@ -1681,21 +1681,22 @@ mixingwts.openbt = function(
 #----------------------------------------------
 openbt.mix_emulate = function(
 mix_model_data = list(y_train = NULL, x_train = NULL),
-emu_model_data = list('model1'=list(z_train = NULL, x_train = NULL),'model2'=list(z_train = NULL, x_train = NULL)),
-mix_model_args = list('ntree'=10,'ntreeh'=1,'k'=2,'overallnu'=10,'overallsd'=NA,'power'=2.0,'base'=0.95,'powerh'=NA,'baseh'=NA),
-emu_model_args = matrix(c(100,1,2,10,NA,2.0,0.95,NA,NA), nrow = 2, ncol = 9,byrow = TRUE, 
-                        dimnames = list(paste0('model',1:2),c('ntree','ntreeh','k','overallnu','overallsd','power','base','powerh','baseh'))),
+emu_model_data = list('model1'=list(z_train = NULL, x_train = NULL, theta_train = NULL),'model2'=list(z_train = NULL, x_train = NULL, theta_train = NULL)),
+mix_model_args = list('ntree'=10,'ntreeh'=1,'k'=2,'overallnu'=10,'overallsd'=NA,'power'=2.0,'base'=0.95,'powerh'=NA,'baseh'=NA,'minnumbot'=5),
+emu_model_args = matrix(c(100,1,2,10,NA,2.0,0.95,NA,NA,1), nrow = 2, ncol = 9,byrow = TRUE, 
+                        dimnames = list(paste0('model',1:2),c('ntree','ntreeh','k','overallnu','overallsd','power','base','powerh','baseh','minnumbot'))),
 discrep_model_args = list('k' = 10, 'beta0' = NA),
+calibration_param_priors = list(a=NULL, b=NULL),
 ndpost=1000, nskip=100,nadapt=1000,adaptevery=100,
 pbd=.7,
 pb=.5,
 stepwpert=.1,
 probchv=.1,
-minnumbot=5,
 tc=2,
 printevery=100,
 numcut=100,
 xicuts=NULL,
+thetacuts=NULL,
 sigmav_list=NULL,
 chv_list = NULL,
 summarystats = FALSE,
@@ -1708,11 +1709,12 @@ modelname="model"
 #--------------------------------------------------
 # model type definitions and check default arguments
 modeltype=0
-MODEL_MIX_EMULATE=1 #Joint emulation and mixing KOH style
-MODEL_MIX_MODULAR=2 #Modularization analogue to 1
-MODEL_MIX_ORTHOGONAL=3 # Full problem with orthogonal discrepancy
+MODEL_MIX_EMULATE=10 #Joint emulation and mixing KOH style
+MODEL_MIX_MODULAR=10 #Modularization analogue to 1
+MODEL_MIX_CALIBRATE=11 #Modularization mixing with unknown theta 
+MODEL_MIX_ORTHOGONAL=4 # Full problem with orthogonal discrepancy
 
-modeltype_list = c('mix_emulate','mix_modular','mix_orthogonal')
+modeltype_list = c('mix_emulate','mix_modular','mix_calibrate','mix_orthogonal')
 
 if(is.null(model)){
   stop(cat("Enter a model type. Valid types include:\n", paste(modeltype_list,collapse = ', ')))
@@ -1722,16 +1724,16 @@ if(!(model %in% modeltype_list)){
   stop(cat("Invalid model type. Valid types include:\n", paste(modeltype_list,collapse = ', ')))
 }
   
-if(model == 'mix_emulate'){
+if(model %in% c('mix_emulate', 'mix_modular','mix_calibrate') ){
   modeltype = MODEL_MIX_EMULATE
   if(is.null(mix_model_args$ntreeh)) ntreeh=1
 }
- 
-if(model == 'mix_modular'){
-  modeltype = MODEL_MIX_MODULAR
+
+if(model %in% c('mix_calibrate') ){
+  modeltype = MODEL_MIX_CALIBRATE
   if(is.null(mix_model_args$ntreeh)) ntreeh=1
 }
- 
+
 #--------------------------------------------------
 # Define terms
 nd = ndpost
@@ -1758,21 +1760,35 @@ ymean = mean(mix_model_data$y_train)
 # Emulation data
 nc_vec = 0
 pc_vec = 0
+qc_vec = 0
 for(l in 1:nummodels){
   
+  # Quality checks for data
   if(is.null(emu_model_data[[l]]$x_train) || is.null(emu_model_data[[l]]$z_train)){
     stop(paste0('Invalid emulation inputs. Either x_train or y_train is NULL in model ', l,'.'))
   } 
   
+  if(is.null(emu_model_data[[l]]$theta_train) & model == 'mix_calibrate'){
+    stop(paste0('Invalid model mixing inputs, theta_train is NULL in model ',l, '. Specify a matrix in order to use mix_calibrate'))
+  } 
+  
   # Cast the x_train data to matrix
-  if(!is.matrix(mix_model_data$x_train)){
+  if(!is.matrix(emu_model_data[[l]]$x_train)){
     emu_model_data[[l]]$x_train = matrix(is.null(emu_model_data[[l]]$x_train), ncol = 1) 
+  }
+  
+  # Cast the x_train data to matrix
+  if(!is.matrix(emu_model_data[[l]]$theta_train) && model == 'mix_calibrate'){
+    emu_model_data[[l]]$theta_train = matrix(is.null(emu_model_data[[l]]$theta_train), ncol = 1) 
   }
   
   # Define terms
   nc_vec[l] = nrow(emu_model_data[[l]]$x_train)
   pc_vec[l] = ncol(emu_model_data[[l]]$x_train)
   
+  if(model == 'mix_calibrate'){
+    qc_vec[l] = ncol(emu_model_data[[l]]$theta_train)  
+  }
 } 
 
 # Get means of the model runs and mean center the data
@@ -1783,7 +1799,7 @@ for(l in 1:nummodels){
 }
 
 #--------------------------------------------------
-# cutpoints
+# xi cutpoints
 # get joint input matrix 
 col_list1 = colnames(mix_model_data$x_train)
 col_list2 = unique(unlist(lapply(emu_model_data, function(x) colnames(x$x_train))))
@@ -1836,6 +1852,61 @@ if(!is.null(xicuts)){
   }
 }
 
+#--------------------------------------------------
+# theta cutpoints for mixing and calibration
+q = 0
+if(model == 'mix_calibrate'){
+  # get joint theta input matrix 
+  tcol_list = unique(unlist(lapply(emu_model_data, function(x) colnames(x$theta_train))))
+  q = length(tcol_list)
+  
+  # Create a master list of thetas
+  t_matrix = matrix(NA,ncol = q,nrow = 0) # blank matrix
+  tc_col_list = list()
+  for(l in 1:nummodels){
+    # get matrix and Fill columns that are not present with NA
+    t_new = matrix(0, nrow = nc_vec[l], ncol = q, dimnames = list(NULL, tcol_list))
+    tc_cols = 0
+    ind = 1
+    for(j in 1:q){
+      cname = tcol_list[j]
+      if(cname %in% colnames(emu_model_data[[l]]$theta_train)){
+        # Add the corresponding data to the t_matrix
+        t_new[,cname] = emu_model_data[[l]]$theta_train[,cname]
+        # Keep track of which columns are in the thetas for the lth computer model
+        tc_cols[ind] = j 
+        ind = ind + 1
+      }else{
+        # If the predictor is not in the input space of lth computer model, then just use NA in the x_matrix 
+        t_new[,cname] = rep(NA, nc_vec[l])
+      }
+    }
+    tc_col_list = append(tc_col_list, list(tc_cols))
+    t_matrix = rbind(t_matrix, t_new)  
+  }
+  names(tc_col_list) = paste0('model',1:nummodels)
+  
+  # Use x_matrix to create cutpoints
+  if(!is.null(thetacuts)){
+    ti=thetacuts
+  }else{
+    ti=vector("list",q)
+    mint_temp=apply(t(t_matrix),1,function(x) min(x, na.rm = TRUE))
+    maxt_temp=apply(t(t_matrix),1,function(x) max(x, na.rm = TRUE))
+    
+    maxt = round(maxt_temp,1) + ifelse((round(maxt_temp,1)-maxt_temp)>0,0,0.1)
+    mint = round(mint_temp,1) - ifelse((mint_temp - round(mint_temp,1))>0,0,0.1)
+    for(i in 1:q){
+      tinc=(maxt[i]-mint[i])/(numcut+1)
+      ti[[i]]=(1:numcut)*tinc+mint[i]
+    }
+  }
+  
+  # Now append ti cutpoints to xi cutpoints
+  xi = append(xi, ti)
+  
+}
+
 #------------------------------------------------
 # Priors
 #------------------------------------------------
@@ -1866,7 +1937,7 @@ power_mix = mix_model_args$power
 base_mix = mix_model_args$base
 powerh_mix = mix_model_args$powerh
 baseh_mix = mix_model_args$baseh
-
+minnumbot_mix = mix_model_args$minnumbot
 if(is.na(powerh_mix)){
   powerh_mix=power_mix
 }
@@ -1879,6 +1950,7 @@ tau_emu = 0
 base_emu = baseh_emu = 0
 power_emu = powerh_emu = 0
 overalllambda_emu = overallnu_emu = 0
+minnumbot_emu = 0
 for(l in 1:nummodels){
   # -- Terminal node parameters
   m = emu_model_args[l,'ntree']
@@ -1898,6 +1970,7 @@ for(l in 1:nummodels){
   base_emu[l] = emu_model_args[l,'base']
   powerh_emu[l] = emu_model_args[l,'powerh']
   baseh_emu[l] = emu_model_args[l,'baseh']
+  minnumbot_emu[l] = emu_model_args[l,'minnumbot']
   
   if(is.na(powerh_emu[l])) {
     powerh_emu[l] = power_emu[l]
@@ -1920,7 +1993,6 @@ if(length(pb)>1) {
   pb=pb[1]
 }
 
-
 #--------------------------------------------------
 # Process other arguments --- rewrite the sigmavs for the KOH style calibration when using tc>2
 #--------------------------------------------------
@@ -1936,23 +2008,22 @@ if(length(probchv)>1) {
   probchv=probchv[1]
 }
 
-minnumboth=minnumbot
-if(length(minnumbot)>1) {
-  minnumboth=minnumbot[2]
-  minnumbot=minnumbot[1]
-}
+# minnumboth=minnumbot
+# if(length(minnumbot)>1) {
+#   minnumboth=minnumbot[2]
+#   minnumbot=minnumbot[1]
+# }
 
 # Define simgav_n = number of data points in each sigmav_n required
 sigmav_n = 0
 for(l in 0:nummodels){
   if(model == "mix_emulate"){
     sigmav_n[l+1] = ifelse(l == 0, n, nc_vec[l]+n)  
-  }else if(model == "mix_modular"){
+  }else if(model %in% c("mix_modular","mix_calibrate")){
     sigmav_n[l+1] = ifelse(l == 0, n, nc_vec[l])  
   }else{
     sigmav_n[l+1] = ifelse(l == 0, n, nc_vec[l])
   }
-  
 }
 
 # Set default argument for the sigmavs
@@ -1972,7 +2043,6 @@ if(is.null(sigmav_list)){
                "\t Mixing (l=1): ", n, " (number of field obs) \n",
                "\t Emulation (l>1): ", sigmav_n[l+1], " (number of field obs + number of model runs))"))  
     }
-    
   }
 }
 
@@ -1982,9 +2052,13 @@ if(is.null(chv_list)){
     if(l == 0){
       chv_data = mix_model_data$x_train   
     }else if(l>0 & model == 'mix_emulate'){
+      # Field data and model runs update emulators, hence use x's from both sets of data
       xmixtemp = mix_model_data$x_train[,unlist(xc_col_list[l])]
       if(length(unlist(xc_col_list[l])) == 1){xmixtemp = matrix(xmixtemp,ncol = 1)}
-      chv_data = rbind(emu_model_data[[l]]$x_train, xmixtemp)  
+      chv_data = rbind(emu_model_data[[l]]$x_train, xmixtemp)
+    }else if(l>0 & model == 'mix_calibrate'){
+      # Bind the x's and thetas for the emulators
+      chv_data = cbind(emu_model_data[[l]]$x_train,emu_model_data[[l]]$theta_train)
     }else{
       chv_data = emu_model_data[[l]]$x_train
     }
@@ -1996,6 +2070,7 @@ if(is.null(chv_list)){
   }
   for(l in 0:nummodels){
     chv_p = ifelse(l == 0, p, pc_vec[l])
+    chv_p = ifelse(l>0 & model == 'mix_calibrate', chv_p+qc_vec[l], chv_p)
     if(chv_list[[l+1]] != chv_p){
       stop(paste0("Invalid chv_list entry at item k = ",l+1,". Number of rows & columns in chv_list[[k]] must match",
           " the number of columns in the design matrix for emulator k-1. If k = 1, then the number of rows & columns in", 
@@ -2013,7 +2088,9 @@ if(modeltype==MODEL_MIX_EMULATE){
 if(modeltype==MODEL_MIX_ORTHOGONAL){
   cat("Model: Orthogonal Bayesian Additive Model Mixing Trees\n")
 }
-
+if(modeltype==MODEL_MIX_CALIBRATE){
+  cat("Model: Mixing and Calibration Bayesian Additive Model Mixing Trees\n")
+}
 #--------------------------------------------------
 #write out config file
 #--------------------------------------------------
@@ -2024,9 +2101,11 @@ zroots=paste0("zc",1:nummodels)
 sroots=c("sf",paste0("sc",1:nummodels))
 chgvroots=c("chgvf",paste0("chgvc",1:nummodels))
 idroots="id"
+cproot = 'cp'
 
 # cut points root
 xiroot="xi"
+tiroot="ti"
 
 # Design column numbers for computer models
 xc_design_cols = 0
@@ -2036,6 +2115,17 @@ for(l in 1:nummodels){
   xc_design_cols[h] = paste(pc_vec[l])
   xc_design_cols[(h+1):(h+pc_vec[l])] = paste(xc_col_list[[l]])
   h = h+pc_vec[l] + 1
+}
+
+# Design columns for thetas -- same as above when using calibration
+tc_design_cols = 0
+h = 1
+if(model == 'mix_calibrate'){
+  for(l in 1:nummodels){
+    tc_design_cols[h] = paste(qc_vec[l])
+    tc_design_cols[(h+1):(h+qc_vec[l])] = paste(tc_col_list[[l]])
+    h = h+qc_vec[l] + 1
+  }  
 }
 
 # Flatten the model arguments
@@ -2049,13 +2139,16 @@ power_vec = paste(c(power_mix, power_emu))
 powerh_vec = paste(c(powerh_mix, powerh_emu))
 lambda_vec = paste(c(overalllambda_mix, overalllambda_emu))
 nu_vec = paste(c(overallnu_mix, overallnu_emu))
+minnumbot_vec = c(minnumbot_mix, minnumbot_emu)
 means_vec = c(ymean,zmean_vec)
+
 
 # Bind all of the K+1 dimensional vectors together into one matrix
 # Then flatten by row -- this makes things easier when reading in the data in c++
 # This way, we read in all data for mixing, then read in the data for each emulator one at a time
 info_matrix = data.frame(xroots, yzroots = c(yroots,zroots),sroots,chgvroots,means = paste(means_vec),
-                         m_vec, mh_vec, base_vec, baseh_vec, power_vec, powerh_vec, lambda_vec, nu_vec)
+                         m_vec, mh_vec, base_vec, baseh_vec, power_vec, powerh_vec, lambda_vec, nu_vec,
+                         minnumbot_vec)
 
 info_vec = unlist(as.vector(t(info_matrix)))
   
@@ -2078,12 +2171,13 @@ fout=file(paste(folder,"/config",sep=""),"w")
 #              paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
 #              paste(printevery),paste(xiroot),paste(tc),paste(modelname),paste(summarystats)),fout)
 
-writeLines(c(paste(modeltype),paste(nummodels),info_vec,xc_design_cols,
+writeLines(c(paste(modeltype),paste(nummodels),info_vec,xc_design_cols,tc_design_cols,
              paste(nd),paste(burn),paste(nadapt),paste(adaptevery),
              tau_vec,beta_vec,
              paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
-             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
-             paste(printevery),paste(xiroot),paste(tc),paste(modelname),paste(summarystats)),fout)
+             paste(probchv),paste(probchvh),#paste(minnumbot),paste(minnumboth),
+             paste(printevery),paste(xiroot),paste(cproot),
+             paste(tc),paste(modelname),paste(summarystats)),fout)
 close(fout)
 
 #--------------------------------------------------
@@ -2103,7 +2197,12 @@ for(l in 1:nummodels){
   zlist=split(emu_model_data[[l]]$z_train,(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
   for(i in 1:nslv) write(zlist[[i]],file=paste(folder,"/",zroots[l],i,sep=""))
   
-  xlist=split(as.data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
+  # Write the x data, considering the calibration case where q>0
+  if(q>0){
+    xlist=split(as.data.frame(emu_model_data[[l]]$x_train,emu_model_data[[l]]$theta_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
+  }else{
+    xlist=split(as.data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))  
+  }
   for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[l+1],i,sep=""))  
 }
 
@@ -2121,8 +2220,20 @@ for(l in 0:nummodels){
 }
 
 # Cutpoints
-for(i in 1:p) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
+for(i in 1:(p+q)) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
+#for(i in 1:q) write(ti[[i]],file=paste(folder,"/",tiroot,i,sep=""))
 rm(chv_list)
+
+# Write out calibration priors if using mix_calibration
+if(model=='mix_calibrate'){
+  cpriorvec = c()
+  for(i in 1:q){
+    cpriorvec = c(cpriorvec,c(calibration_param_priors[[i]][1],calibration_param_priors[[i]][2]))  
+  }
+  write(cpriorvec,file=paste(folder,"/",cproot,sep=""))
+}
+
+
 
 #--------------------------------------------------
 #run program
@@ -2161,7 +2272,7 @@ res$means = means_vec; res$nummodels = nummodels;
 res$nd=nd; res$burn=burn; res$nadapt=nadapt; res$adaptevery=adaptevery; 
 res$mix_model_args = mix_model_args; res$emu_model_args = emu_model_args;
 res$pbd=pbd; res$pb=pb; res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
-res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
+res$probchv=probchv; res$probchvh=probchvh; #res$minnumbot=minnumbot; res$minnumboth=minnumboth
 res$printevery=printevery; res$xiroot=xiroot; res$minx=minx; res$maxx=maxx;
 res$summarystats=summarystats; res$tc=tc; res$modelname=modelname
 class(xi)="OpenBT_cutinfo"

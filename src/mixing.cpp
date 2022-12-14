@@ -3,6 +3,7 @@
 #include <string>
 #include <ctime>
 #include <sstream>
+#include <map>
 
 #include <fstream>
 #include <vector>
@@ -22,6 +23,7 @@
 #include "tnorm.h"
 #include "mxbrt.h"
 #include "amxbrt.h"
+#include "calibratefuns.cpp"
 
 using std::cout;
 using std::endl;
@@ -36,6 +38,10 @@ using std::endl;
 #define MODEL_MERCK_TRUNCATED 8
 #define MODEL_MIXBART 9
 #define MODEL_MIXEMULATE 10
+#define MODEL_MIXCALIBRATE 11
+
+#define MPI_TAG_CAL_ACCEPT 9001
+#define MPI_TAG_CAL_REJECT 9002
 
 
 int main(int argc, char* argv[])
@@ -81,11 +87,11 @@ int main(int argc, char* argv[])
     // extract the cores for the mix model and simulator inputs
     std::string xcore,ycore,score,ccore;
     double means,base,baseh,power,powerh,lam,nu;
-    size_t m,mh;
+    size_t m,mh,minnumbot;
 
     std::vector<std::string> xcore_list,ycore_list,score_list,ccore_list;
     std::vector<double> means_list,base_list,baseh_list,power_list,powerh_list, lam_list, nu_list;
-    std::vector<size_t> m_list, mh_list;
+    std::vector<size_t> m_list, mh_list, minnumbot_list;
     
     // Get model mixing cores & inputs then get each emulator cores & inputs 
     for(int i=0;i<=nummodels;i++){
@@ -127,6 +133,9 @@ int main(int argc, char* argv[])
         lam_list.push_back(lam);
         nu_list.push_back(nu);
 
+        // minnode size
+        conf >> minnumbot;
+        minnumbot_list.push_back(minnumbot);
 
         // Prints
         /*
@@ -143,13 +152,15 @@ int main(int argc, char* argv[])
         cout << "powerh = " << powerh << endl;
         cout << "lam = " << lam << endl;
         cout << "nu = " << nu << endl;
+        cout << "minnumbot = " << minnumbot << endl;
         */
     }
 
     // Get the design columns per emulator
     std::vector<std::vector<size_t>> x_cols_list(nummodels, std::vector<size_t>(1));
-    std::vector<size_t> xcols, pvec;
-    size_t p, xcol;
+    std::vector<std::vector<size_t>> u_cols_list(nummodels, std::vector<size_t>(1));
+    std::vector<size_t> pvec, qvec;
+    size_t p, xcol, q, ucol;
     for(int i=0;i<nummodels;i++){
         conf >> p;
         pvec.push_back(p);
@@ -158,7 +169,25 @@ int main(int argc, char* argv[])
             conf >> xcol;
             x_cols_list[i][j] = xcol;
         }
+    }
 
+    // Get the design columns per emulator for theta
+    std::map<size_t,std::vector<size_t>> umap; 
+    if(modeltype == MODEL_MIXCALIBRATE){
+        for(int i=0;i<nummodels;i++){
+            conf >> q;
+            qvec.push_back(q);
+            u_cols_list[i].resize(q);
+            for(size_t j = 0; j<q; j++){
+                conf >> ucol;
+                u_cols_list[i][j] = ucol; // store the column number in the ith model's vector
+                umap[ucol].push_back(i); // store the ith model's index in the calibration map
+            }
+        }
+    }else{
+        // Else read in the place holder for tc_cols_list, which is just zero
+        conf >> q;
+        qvec.resize(nummodels,0);
     }
 
     // Get the id root computer and field obs ids per emulator
@@ -189,10 +218,10 @@ int main(int argc, char* argv[])
     double stepwpert, stepwperth;
     double probchv, probchvh;
     int tc;
-    size_t minnumbot;
-    size_t minnumboth;
+    //size_t minnumbot;
+    //size_t minnumboth;
     size_t printevery;
-    std::string xicore;
+    std::string xicore, cpcore;
     std::string modelname;
     conf >> pbd;
     conf >> pb;
@@ -202,10 +231,11 @@ int main(int argc, char* argv[])
     conf >> stepwperth;
     conf >> probchv;
     conf >> probchvh;
-    conf >> minnumbot;
-    conf >> minnumboth;
+    //conf >> minnumbot;
+    //conf >> minnumboth;
     conf >> printevery;
     conf >> xicore;
+    conf >> cpcore;
     conf >> tc;
     conf >> modelname;
 
@@ -313,10 +343,15 @@ int main(int argc, char* argv[])
         }
         p = x.size()/nvec[i];
         if(i == 0){
-            pvec.insert(pvec.begin(), p);
+            pvec.insert(pvec.begin(), p); // The p for the mixing inputs is not read in from R, hence find it now
+            qvec.insert(qvec.begin(), 0); // place holder, 0 calibration parameters are used in the weight models
         }
+
+        // Update pvec - this works for any model since the default of qvec is 0
+        pvec[i] = pvec[i] + qvec[i];
+
         // Store into the vectors 
-        x_list[i].resize(nvec[i]*pvec[i]);
+        x_list[i].resize(nvec[i]*pvec[i]); //qvec[i] = 0 if not using calibration 
         x_list[i] = x;
 
         //reset stream variables
@@ -339,29 +374,24 @@ int main(int argc, char* argv[])
     // Ex: xf_list[0] uses the field inputs in x_list[0] to construct a n x p1 design matrix used to get predictions with emulator 1
     // Ex: xf_list[1] uses the field inputs in x_list[0] to construct a n x p2 design matrix used to get predictions with emulator 2  
     std::vector<std::vector<double>> xf_list(nummodels);
-    size_t xcolsize = 0;
+    std::vector<double> utemp;
+    size_t xcolsize = 0, ucolsize = 0;
     xcol = 0;
     // Get the appropriate x columns
     if(mpirank > 0){
         for(size_t i=0;i<nummodels;i++){
             xcolsize = x_cols_list[i].size(); //x_cols_list is nummodel dimensional -- only for emulators
+            if(modeltype==MODEL_MIXCALIBRATE){ ucolsize = u_cols_list[i].size(); utemp.resize(ucolsize,0);} // Initialize calibration vector
             for(size_t j=0;j<nvec[0];j++){
                 for(size_t k=0;k<xcolsize;k++){
                     xcol = x_cols_list[i][k] - 1;
                     xf_list[i].push_back(x_list[0][j*xcolsize + xcol]); //xf_list is nummodel dimensional -- only for emulators
                     //cout << "model = " << i+1 << "--x = " << x_list[0][j*xcolsize + xcol] << endl;
                 }
+                if(modeltype==MODEL_MIXCALIBRATE){
+                    xf_list[i].insert(xf_list[i].end(),utemp.begin(),utemp.end());
+                }
             }
-
-            // Add the field obs data to the computer obs data (x_list is not used in dimix but it is convenient to update here in this loop)
-            //x_list[i+1].insert(x_list[i+1].end(),xf_list[i].begin(),xf_list[i].end()); //x_list is nummodel+1  dimensional -- for mixing & emulators
-            //cout << "x_list[i+1].size = " << x_list[i+1].size() << endl;
-
-            /*
-            for(size_t k=0;k<x_list[i+1].size();k++){
-                cout << "x_list[i+1][k] = " << x_list[i+1][k] << endl;
-            }
-            */
         }
     }
 
@@ -379,7 +409,7 @@ int main(int argc, char* argv[])
         }
 #endif
     }
-   
+
     //--------------------------------------------------
     //read in sigmav  -- same as above.
     std::vector<std::vector<double>> sigmav_list(score_list.size(), std::vector<double>(1));
@@ -402,7 +432,7 @@ int main(int argc, char* argv[])
         sf.open(sfs);
         while(sf >> stemp)
             sigmav.push_back(stemp);
-        nsig=sigmav.size();
+        nsig=sigmav.size(); 
         // Store the results in the vector
         sigmav_list[i].resize(nsig);
         sigmav_list[i] = sigmav;
@@ -479,7 +509,7 @@ int main(int argc, char* argv[])
         lwr_vec[j][0]=-1; upr_vec[j][0]=-1;
         for(size_t i=1;i<(size_t)tc;i++) { 
             lwr_vec[j][i]=-1; upr_vec[j][i]=-1; 
-            calcbegend(pvec[j],i-1,tc-1,&lwr_vec[j][i],&upr_vec[j][i]);
+            calcbegend(pvec[j]+qvec[j],i-1,tc-1,&lwr_vec[j][i],&upr_vec[j][i]);
             if(pvec[j]>1 && lwr_vec[j][i]==0 && upr_vec[j][i]==0) { lwr_vec[j][i]=-1; upr_vec[j][i]=-1; }
         }
 #ifndef SILENT
@@ -504,7 +534,11 @@ int main(int argc, char* argv[])
             // Get the next column in the x_cols_list -- important since emulators may have different inputs
             // ind is used to located the file name
             if(i>0){ 
-                ind = (size_t)x_cols_list[i-1][j]; 
+                if(j<x_cols_list[i-1].size()){
+                    ind = (size_t)x_cols_list[i-1][j]; // from x list 
+                }else{
+                    ind = (size_t)u_cols_list[i-1][j-x_cols_list[i-1].size()]; // from calibration list
+                }
             }else{
                 ind = j+1;
             }
@@ -533,6 +567,27 @@ int main(int argc, char* argv[])
 #endif
     }
     
+    // Read in priors for thetas if using mixing and calibration
+    std::vector<double> avec, bvec, propwidth;
+    std::stringstream cfss;
+    std::string cfs;
+    std::ifstream cf;
+    double au, bu;
+    if(modeltype==MODEL_MIXCALIBRATE){
+        cfss << folder << xicore << (ind);
+        cfs=xifss.str();
+        cf.open(cfs);
+        for(size_t i=0;i<umap.size();i++){
+            cf >> au;
+            cf >> bu;
+            avec.push_back(au);
+            bvec.push_back(bu);
+            propwidth.push_back((bu-au)*.10); // propsal width
+        }
+        cf.close();
+    }
+
+
     //--------------------------------------------------
     //Set up model objects and MCMC
     //--------------------------------------------------    
@@ -576,7 +631,7 @@ int main(int argc, char* argv[])
     axb.setmi(
             pbd,  //probability of birth/death
             pb,  //probability of birth
-            minnumbot,    //minimum number of observations in a bottom node
+            minnumbot_list[0],    //minimum number of observations in a bottom node
             dopert, //do perturb/change variable proposal?
             stepwpert,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -644,7 +699,7 @@ int main(int argc, char* argv[])
     pxb.setmi(
             pbdh,  //probability of birth/death
             pbh,  //probability of birth
-            minnumboth,    //minimum number of observations in a bottom node
+            minnumbot_list[0],    //minimum number of observations in a bottom node
             doperth, //do perturb/change variable proposal?
             stepwperth,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
             probchvh,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -677,7 +732,7 @@ int main(int argc, char* argv[])
         ambm_list[l]->setmi(
                 pbd,  //probability of birth/death
                 pb,  //probability of birth
-                1,    //minimum number of observations in a bottom node
+                minnumbot_list[j],    //minimum number of observations in a bottom node
                 dopert, //do perturb/change variable proposal?
                 stepwpert,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
                 probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -735,7 +790,7 @@ int main(int argc, char* argv[])
         psbm_list[l]->setmi(
                 pbdh,  //probability of birth/death
                 pbh,  //probability of birth
-                minnumboth,    //minimum number of observations in a bottom node
+                minnumbot_list[j],    //minimum number of observations in a bottom node
                 doperth, //do perturb/change variable proposal?
                 stepwperth,  //initialize stepwidth for perturb proposal.  If no adaptation it is always this.
                 probchvh,  //probability of doing a change of variable proposal.  perturb prob=1-this.
@@ -809,6 +864,46 @@ int main(int argc, char* argv[])
         }
     }
 
+    // dinfo for calibration -- used to get predictions from each emulator at field obs inputs and proposed u
+    std::vector<dinfo> dimixprop_list(nummodels);
+    std::vector<double*> fmixprop_list(nummodels);
+    std::vector<double> propresid;
+    finfo fiprop;
+    if(modeltype==MODEL_MIXCALIBRATE){
+        for(int i=0;i<nummodels;i++){
+            // Initialize class objects
+            if(mpirank > 0){
+                fmixprop_list[i] = new double[nvec[0]];
+                dimixprop_list[i].y=fmix_list[i]; dimixprop_list[i].p = pvec[i+1];  
+                dimixprop_list[i].n=nvec[0];dimixprop_list[i].tc=1;dimixprop_list[i].x = &xf_list[i][0];
+                fiprop = mxd::Ones(nvec[0], nummodels);
+            }else{
+                fmixprop_list[i] = NULL;dimixprop_list[i].y = NULL;
+                dimixprop_list[i].x = NULL;dimixprop_list[i].p = pvec[i+1]; 
+                dimixprop_list[i].n=0; dimixprop_list[i].tc=1;
+            }
+        }
+    }
+
+    // dinfo for calibration -- used for getting predictions from mixed model
+    dinfo dipred;
+    dipred.n=0;dipred.p=pvec[0],dipred.x = NULL;dipred.y=NULL;dipred.tc=tc;
+    std::vector<double> fp=y_list[0];
+#ifdef _OPENMPI
+   if(mpirank>0) { 
+#endif
+        dipred.n=nvec[0]; dipred.x = &x_list[0][0]; dipred.y = &fp[0];
+#ifdef _OPENMPI
+   } 
+#endif
+
+    // Calibration vectors and sumwr2
+    double csumwr2=0, nsumwr2=0;
+    bool hardreject;
+    size_t usize = umap.size();
+    std::vector<double> unew(usize,0),ucur(usize,0);
+    std::vector<size_t> uaccept(usize,0),ureject(usize,0);
+
     // Start the MCMC
 #ifdef _OPENMPI
     double tstart=0.0,tend=0.0;
@@ -852,6 +947,56 @@ int main(int argc, char* argv[])
 
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
+
+        // Calibration steps
+        if(modeltype==MODEL_MIXCALIBRATE){
+            // get r2 from axb
+            csumwr2 = 0;
+            getsumwr2(csumwr2,y_list[0],*axb.getf(),sig_vec[0], nvec[0],mpirank,tc);
+            
+            // draw new u's
+            unew = getnewu(ucur, propwidth, gen);
+
+            // Check if unew is outside of the prior range
+            hardreject = false;
+            for(size_t j=0;j<usize;j++){
+                if(unew[j] < avec[j] || unew[j] > bvec[j]) hardreject = true;
+            }
+
+            if(!hardreject){
+                // update x
+                if(mpirank>0){
+                    for(size_t j=0;j<nummodels;j++){
+                        updatex(xf_list[j],u_cols_list[j],unew,nvec[0],pvec[j+1]);
+                    }
+                }
+
+                // get new predictions
+                if(mpirank>0){
+                    for(size_t j=0;j<nummodels;j++){
+                        //Update finfo column 
+                        ambm_list[j]->predict(&dimixprop_list[j]);
+                        for(size_t l=0;l<dimixprop_list[j].n;l++){
+                            //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                            fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
+                            //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                        }
+                    }
+                }
+
+                // get new residuals -- using dips so we don't have to create another instance of dinfo! 
+                // r_list is defefined anyway in the prodcut model
+                // This might be living on the edge though
+                if(mpirank>0){
+                    axb.predict_mix(&dips_list[0],&fiprop);
+                }
+                nsumwr2 = 0;
+                getsumwr2(nsumwr2,y_list[0],fp,sig_vec[0],nvec[0],mpirank,tc);
+
+                // MH step
+                logmhstep(nsumwr2, csumwr2, unew, ucur,uaccept,ureject,gen,mpirank,tc);
+            }
+        }
      
 #else
         // Emulation Steps
