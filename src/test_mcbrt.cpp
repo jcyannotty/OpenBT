@@ -75,6 +75,11 @@ int main(){
     diterator diter(&di);
     cout << "diter.gety = " << diter.gety() << endl;
     cout << "diter.getx = " << diter.getx() << endl;
+    /*
+    for(;diter<diter.until();diter++){
+        cout << "diter.gety = " << diter.gety() << endl;
+    }
+    */
 
     //--------------------------------------------------
     //make xinfo
@@ -230,6 +235,11 @@ int main(){
     ni8->nodeinsubtree(uroots, subtree8);
     ni9->nodeinsubtree(uroots, subtree9);
     
+    tree::tree_p ni3,ni18,ni19;
+    ni3 = mc.t.r;
+    ni19 = ni9->r;
+    ni18 = ni9->l;
+
     cout << "Node 4 in subtree = " << subtree4 << endl;
     cout << "Node 5 in subtree = " << subtree5 << endl;
     cout << "Node 8 in subtree = " << subtree8 << endl;
@@ -238,7 +248,7 @@ int main(){
     // Get suff stats at each bottom node
     tree::npv bnv;
     std::vector<sinfo*> siv;
-    mcinfo sil, sir;
+    mcinfo mil, mir,mil2, mir2;
     std::vector<mcinfo*> mcv;
     std::map<tree::tree_cp,size_t> bnmap;
     tree::tree_p nx;
@@ -249,6 +259,7 @@ int main(){
     cout << "bnv size = " << bnv.size() << endl;
     for(size_t i=0;i<bnv.size();i++){
         bnmap[bnv[i]] = i;
+        cout << "bnv[i] = " << bnv[i] << endl;
         mcv[i] = new mcinfo();
     }
 
@@ -257,14 +268,20 @@ int main(){
         mc.add_observation_to_suff(diter,(*mcv[bnmap[nx]]));
     }
     // Get suff stats using local_getsuff for birth at node 4 with (1,30)
-    mc.local_getsuff(diter,ni4,ni4->v,ni4->c,sil,sir);
+    //mc.local_getsuff(diter,ni3,0,25,mil,mir);
+    mc.getsuff(ni3,1,25,mil,mir);
 
-    // Print results
-    //sil.print();
-    //sir.print();
+    cout << "Split Node 3: ----" << endl;     
+    mil.print();
+    mir.print();
 
+    cout << "Split Node 18: ----" << endl;
+    mc.getsuff(ni18,0,10,mil2,mir2);
+    mil2.print();
+    mir2.print();
+
+    cout << "Compare with original 5 bns ----" << endl;
     // Print each individual suff stat
-    
     for(size_t i=0;i<bnv.size();i++){
         (*mcv[i]).print();
     }

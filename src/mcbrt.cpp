@@ -421,7 +421,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
     t.getsubtreeroots(uroots, uvec);
     // Check is the node nx in a subtree
     nx->nodeinsubtree(uroots,subtree);
-
+    
     // Now check to see if p is the root of the subtree, if so we can just set subtree to 0. 
     // When nx starts a subtree, we only need to consider the l & r nodes, hence no need to pool information across the rest of the subtree  
     if(nx == subtree){subtree == 0;}
@@ -432,6 +432,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         // brt::local_getsuff(diter,nx,v,c,sil,sir);
         for(;diter<diter.until();diter++){
             xx = diter.getxp();
+            cout << diter.gety() << endl;
             if(nx==t.bn(diter.getxp(),*xi)){ //does the bottom node = xx's bottom node
                 if(xx[v] < (*xi)[v][c]){
                     //sil.n +=1;
@@ -446,7 +447,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         // nx is a node in a subtree, so the birth ratio compares the two subtrees
         // Get bottom nodes in this tree
         subtree->getbots(subbnv);
-        
+
         // initialize suff stat vector 
         std::map<tree::tree_cp,size_t> bnmap;
 
@@ -455,7 +456,8 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         mcr.subtree_node = true;
 
         // Resize mcv to be the number of term nodes in the subtree which are not changing
-        mcv.resize(subbnv.size()-1); 
+        mcv.resize(subbnv.size()-1);
+        //cout << "mcv.size() = " << mcv.size() << endl; 
         size_t j = 0;
         size_t ni = 0; //node index
         for(size_t i=0;i<subbnv.size();i++){ 
@@ -489,7 +491,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         } 
         // Now add the suff stats from the unchanged part of the subtree in sir (could use sil wlog)   
         mcr.setsubtreeinfo(mcv); 
-
+        cout << "here4" << endl;
         // Add the sibling information from mcl to mcr
         mcr.setsiblinginfo(mcl);       
     }
@@ -594,6 +596,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
 void mcbrt::local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir)
 {
     // Define sil and sir to consider the calibration subtree cases
+    cout << "local_mpigetsuff" << endl;
     local_mpigetsuff_nodecases(nx,sil,sir,true); //true means this is a birth
     // Now that sil and sir are defined to account for calibration subtrees, run the usual brt version
     brt::local_mpigetsuff(nx,v,c,di,sil,sir);
@@ -613,6 +616,7 @@ void mcbrt::local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& si
 // Establish the node cases for birth and death
 void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove)
 {
+    cout << "local_mpigetsuff_nodecases" << endl;
     #ifdef _OPENMPI
     // Only need to initialize the sir and sil for rank 0
     tree::npv uroots;

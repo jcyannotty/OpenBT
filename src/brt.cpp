@@ -326,7 +326,6 @@ void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, s
 {
    double *xx;//current x
    sil.n=0; sir.n=0;
-
    for(;diter<diter.until();diter++)
    {
       xx = diter.getxp();

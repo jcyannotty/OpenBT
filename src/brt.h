@@ -226,7 +226,11 @@ public:
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
    void loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta); 
-
+   
+   void getsuff(tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir);  //assumes brt.t is the root node
+   void getsuff(tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);       //assumes brt.t is the root node
+   virtual void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); 
+   virtual void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);
 protected:
    //--------------------
    //model information
@@ -256,14 +260,12 @@ protected:
    //--------------------
    //methods
    virtual void add_observation_to_suff(diterator& diter, sinfo& si); //add in observation i (from di) into si (possibly using ci)
-   void getsuff(tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir);  //assumes brt.t is the root node
-   void getsuff(tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);       //assumes brt.t is the root node
+   
    void getchgvsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, 
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew);     //uses subsuff
    void getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,        //uses subsuff
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew);
-   void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); 
-   void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);
+   
    virtual double lm(sinfo& si); //uses pi. 
    virtual double drawnodetheta(sinfo& si, rn& gen);
    void local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& siv);
