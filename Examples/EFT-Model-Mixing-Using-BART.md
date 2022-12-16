@@ -44,7 +44,12 @@ model mixing with BART.
 
         $ cd /location/of/downloaded/.deb
 
-        $ sudo apt-get install ./openbt_0.current_amd64-MPI_Ubuntu_20.04.deb
+        $ sudo apt-get install ./openbt_mixing0.current_amd64-MPI_Ubuntu_20.04.deb
+
+    Note, in the case where the system does not update the Linux library
+    cache, one can run the following line to do so:
+
+        $ sudo ldconfig
 
 3.  Source in the required R scripts from GitHub, which are located at
     [jcyannotty/openbt](https://github.com/jcyannotty/OpenBT). The
@@ -242,6 +247,27 @@ paper. One can expect subtle differences in the results each time the
 MCMC is run. This is more apparent especially when using a lower amount
 of trees in the model because each tree is more influential on the
 results.
+
+The R script `honda_eft.R` implements the example EFTs and the pointwise
+approximation of the truncation errors. A random sample of data and all
+EFT information can be obtained by using the `get_data(...)` function
+defined in this script. The resulting object is a named list which
+includes information for training and testing the mixed-model. This step
+is shown below:
+
+``` r
+#Get training data for example 1. The function get_data() packages all of the EFT related data into one list
+ex1_data = get_data(n_train = 20, n_test = 300, s = 0.005, sg = 2, lg = 4, minx=0.03, maxx=0.5, seed=321, 
+                    random_x = FALSE, x_eft_train = c(0.05,0.2,0.3,0.45))
+
+#Get training data for example 2.
+ex2_data = get_data(n_train = 20, n_test = 300, s = 0.005, sg = 4, lg = 4, minx=0.03, maxx=0.5, seed=321, 
+                    random_x = FALSE, x_eft_train = c(0.05,0.2,0.3,0.45))
+
+#Get training data for example 3. Note, the sg argument can be a list if we want multiple orders of the small-g expansion. Meanwhile, the lg argument is set at NULL if we do not want to use any the large-g expansions in the model set. 
+ex3_data = get_data(n_train = 20, n_test = 300, s = 0.005, sg = c(2,4,6), lg = NULL, minx=0.03, maxx=0.5, seed=321, 
+                    random_x = FALSE, x_eft_train = c(0.05,0.2,0.3,0.45))
+```
 
 ## Example 1
 
