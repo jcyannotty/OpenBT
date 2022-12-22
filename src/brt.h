@@ -186,8 +186,9 @@ public:
    void pertcv(rn& gen);  //uses getpertsuff which in turn uses subsuff
    void drawtheta(rn& gen);
    void allsuff(tree::npv& bnv,std::vector<sinfo*>& siv);  //assumes brt.t is the root node
-   void subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv); //does NOT assume brt.t is the root node.
+   virtual void subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv); //does NOT assume brt.t is the root node.
                                                                            //Instead, uses the path from nx that it constructs.
+                                                                           // made virtual to work with mcbrt
    bool rot(tree::tree_p tnew, tree& x, rn& gen);  //uses subsuff
    void adapt();
 
@@ -197,7 +198,7 @@ public:
    //draw theta vector -- used for vector parameter
    void drawvec(rn& gen);
    void drawvec_mpislave(rn& gen);
-   void drawthetavec(rn& gen);
+   virtual void drawthetavec(rn& gen); // made virtual for mcbrt
 
    //Birth and Death for vector parameters
    void bd_vec(rn& gen);
@@ -214,7 +215,7 @@ public:
    void setr_vec(); 
    void predict_vec(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
    void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // predict y at the (npred x p) settings *di.x with functional discrepancy mean & sd (remove?)
-   void get_mix_wts(dinfo* dipred, mxd* wts);
+   void predict_thetavec(dinfo* dipred, mxd* wts);
    void get_mix_theta(dinfo* dipred, mxd* wts);
    void get_fi(){std::cout << "fi = \n" << *fi << std::endl;} //getter for function info
     
@@ -227,10 +228,6 @@ public:
    void loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta); 
    
-   void getsuff(tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir);  //assumes brt.t is the root node
-   void getsuff(tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);       //assumes brt.t is the root node
-   virtual void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); 
-   virtual void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);
 protected:
    //--------------------
    //model information
@@ -265,7 +262,12 @@ protected:
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew);     //uses subsuff
    void getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,        //uses subsuff
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew);
-   
+
+   void getsuff(tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir);  //assumes brt.t is the root node
+   void getsuff(tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);       //assumes brt.t is the root node
+   virtual void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir);  // made virtual to work with mcbrt
+   virtual void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);  // made virtual to work with mcbrt
+  
    virtual double lm(sinfo& si); //uses pi. 
    virtual double drawnodetheta(sinfo& si, rn& gen);
    void local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& siv);
@@ -292,10 +294,11 @@ protected:
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
 //#  endif
 //# ifdef _OPENMPI
+
    void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir);
    void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir);
    void local_mpiallsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& siv);
-   virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
+   virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv); 
    virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
    void mpi_resetrn(rn& gen);
    void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
@@ -314,7 +317,7 @@ protected:
    virtual void local_setf_vec(diterator& diter);
    virtual void local_setr_vec(diterator& diter);
    virtual void local_predict_vec(diterator& diter, finfo& fipred);
-   virtual void local_get_mix_wts(diterator& diter, mxd& wts);
+   virtual void local_predict_thetavec(diterator& diter, mxd& wts);
    virtual void local_get_mix_theta(diterator& diter, mxd& wts);
    
    // #ifdef _OPENMP
@@ -325,7 +328,7 @@ protected:
    void local_ompsetf_vec(dinfo di);
    void local_ompsetr_vec(dinfo di);
    void local_omppredict_vec(dinfo dipred, finfo fipred);
-   void local_ompget_mix_wts(dinfo dipred, mxd wts);
+   void local_omppredict_thetavec(dinfo dipred, mxd wts);
    void local_ompget_mix_theta(dinfo dipred, mxd wts);
 
    //Save and Load tree with vector parameters

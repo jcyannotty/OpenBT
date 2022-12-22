@@ -201,7 +201,7 @@ class mcinfo : public sinfo{
                 // mrhs has subtree_info but this one does not!-- add it to this instance of mcinfo
                 subtree_info = true;
                 // using push_back here just incase this mcinfo instance already has subtree info and this mrhs is just adding more
-                for(int i=0;i<mrhs.subtree_mean.size();i++){
+                for(int i=0;i<mrhs.subtree_sumyw.size();i++){
                     //subtree_mean.push_back(mrhs.subtree_mean[i]);
                     //subtree_var.push_back(mrhs.subtree_var[i]);
                     subtree_sumyw.push_back(mrhs.subtree_sumyw[i]);
@@ -211,7 +211,7 @@ class mcinfo : public sinfo{
                 }
             }else if(mrhs.subtree_info && subtree_info){
                 // mrhs has subtree_info and so does this one -- add the terms together to this instance of mcinfo
-                for(int i=0;i<mrhs.subtree_mean.size();i++){
+                for(int i=0;i<mrhs.subtree_sumyw.size();i++){
                     subtree_sumyw[i]+=mrhs.subtree_sumyw[i];
                     subtree_sumzw[i]+=mrhs.subtree_sumzw[i];
                     subtree_sumwf[i]+=mrhs.subtree_sumwf[i];

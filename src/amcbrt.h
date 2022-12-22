@@ -75,8 +75,7 @@ protected:
     virtual void local_setf_vec(diterator& diter);  //set the vector of predicted values
     virtual void local_setr_vec(diterator& diter);  //set the vector of residuals
     virtual void local_predict_vec(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
-    virtual void local_get_mix_wts(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
-    virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
+    virtual void local_predict_thetavec(diterator& diter, mxd& wts); // extract vector parameters at each *di.x settings
     virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
     virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,

@@ -137,6 +137,23 @@ void amcbrt::local_predict_vec(diterator& diter, finfo& fipred){
 }
 
 //--------------------------------------------------
+// Get predictions of each individual theta (originally used solely for bmm)
+void amcbrt::local_predict_thetavec(diterator& diter, mxd& wts){
+    tree::tree_p bn;
+    vxd thetavec_temp(k);
+    for(;diter<diter.until();diter++) {
+        //Initialize to zero 
+        thetavec_temp = vxd::Zero(k);
+        //Get sum of trees for the model weights
+        for(size_t j=0;j<m;j++) {
+            bn = mb[j].t.bn(diter.getxp(),*xi);
+            thetavec_temp = thetavec_temp + bn->getthetavec();
+        }
+        wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
+    }
+}
+
+//--------------------------------------------------
 //Local Save tree
 void amcbrt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
     std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta){

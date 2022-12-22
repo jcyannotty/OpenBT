@@ -29,6 +29,7 @@ int main(){
         y.push_back(ytemp);
     size_t n = y.size();
     cout << "n from y.txt: " << n <<endl;
+    cout << "y[50]: " << y[50] <<endl;
 
     //--------------------------------------------------
     //read in x
@@ -189,7 +190,7 @@ int main(){
     double *sig = new double[di.n];
     double tau1 = 0.5, tau2 = 0.25, mu1= 100, mu2 = 5.0;
     std::vector<size_t> uvec(1);
-    for(size_t i=0;i<di.n;i++) sig[i]=0.05; //True error std = 0.03    
+    for(size_t i=0;i<di.n;i++) sig[i]=0.05;    
     cout << "---------------------------------------------" << endl;
     cout << "Testing mcbrt...." << endl;
     
@@ -248,7 +249,7 @@ int main(){
     // Get suff stats at each bottom node
     tree::npv bnv;
     std::vector<sinfo*> siv;
-    mcinfo mil, mir,mil2, mir2;
+    mcinfo mil, mir,mil2, mir2, mil3, mir3, mit3;
     std::vector<mcinfo*> mcv;
     std::map<tree::tree_cp,size_t> bnmap;
     tree::tree_p nx;
@@ -266,9 +267,16 @@ int main(){
     for(;diter<diter.until();diter++){
         nx = mc.t.bn(diter.getxp(),xi);
         mc.add_observation_to_suff(diter,(*mcv[bnmap[nx]]));
+        /*
+        if(bnmap[nx] == 1){
+            cout << "sumzw = " << (*mcv[bnmap[nx]]).sumzw << endl;
+            //cout << "gety = " << diter.gety() << endl;
+        }
+        */
     }
     // Get suff stats using local_getsuff for birth at node 4 with (1,30)
-    //mc.local_getsuff(diter,ni3,0,25,mil,mir);
+    // Uncomment and move the getsuff functions into public
+    /*
     mc.getsuff(ni3,1,25,mil,mir);
 
     cout << "Split Node 3: ----" << endl;     
@@ -280,11 +288,40 @@ int main(){
     mil2.print();
     mir2.print();
 
+    cout << "Death at node 9: ----" << endl;
+    mc.getsuff(ni18,ni19,mil3,mir3);
+    mil3.print();
+    mir3.print();
+
+    cout << "--- Suff stats at node 9 after death: -----" << endl;
+    mit3 += mir3;
+    mit3 += mil3;
+    mit3.print();
+    
+    // Testing lm...
+    double lmstree, lmn;
+
+    // Get subtre lm if node contains subtree info        
+    lmstree = mc.lmsubtree(mir3);
+    lmn = mc.lmsubtreenode(mir3);
+    cout << "outlm = " << lmstree << endl;
+    cout << "outlm = " << lmn << endl;
+    */
+
+    // test subsuff, used in rotate and perturb
+    // Assume roation starts at node 4
+    //tree::npv bnv_rot4;
+    //std::vector<sinfo*> siv_rot4;
+    //mc.subsuff(ni4,bnv_rot4,siv_rot4); // to see results, uncomment the print statements in the local_subsuff_subtree functions    
+
     cout << "Compare with original 5 bns ----" << endl;
     // Print each individual suff stat
     for(size_t i=0;i<bnv.size();i++){
         (*mcv[i]).print();
     }
 
+    // Testing draw theta functions
+    mc.drawthetavec(gen);
+    mc.pr_vec();
 
 }

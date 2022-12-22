@@ -143,7 +143,7 @@ void amxbrt::local_predict_vec(diterator& diter, finfo& fipred){
 
 //--------------------------------------------------
 //extract model weights
-void amxbrt::local_get_mix_wts(diterator& diter, mxd& wts){
+void amxbrt::local_predict_thetavec(diterator& diter, mxd& wts){
     tree::tree_p bn;
     vxd thetavec_temp(k);
     for(;diter<diter.until();diter++) {

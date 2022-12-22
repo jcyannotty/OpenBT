@@ -30,7 +30,7 @@ void mcbrt::add_observation_to_suff(diterator& diter, sinfo& si)
         mci.sumyw+=w*diter.gety();
         mci.sumwf+=w;
     }else{
-        mci.sumzw=w*diter.gety();
+        mci.sumzw+=w*diter.gety();
         mci.sumwc+=w;
     }
 }
@@ -77,15 +77,15 @@ void mcbrt::drawthetavec(rn& gen)
     // Initialize theta1 and theta2 for the subtrees
     double theta1, theta2;
     vxd thetavec(2);
-
+    
     // Get all suff stats per node
     allsuff(bnv,siv);
 
     // Find the subtrees -- Get roots of the subtree(s) in t
     t.getsubtreeroots(uroots, uvec);
     
-    // Check is the node nx in a subtree
-    for(size_t i=0;i<unmap.size();i++){
+    // Check is the node in bnv is in a subtree
+    for(size_t i=0;i<bnv.size();i++){
         subtree = 0;
         bnv[i]->nodeinsubtree(uroots,subtree);
         if(subtree){
@@ -211,11 +211,14 @@ double mcbrt::drawtheta2(std::vector<sinfo*> sivec, rn &gen)
         if(mv[1]>0){w = 1/mv[1];}else{w = 0.0;}
         sumw += w;
         summeanw += mv[0]*w;
+        cout << "mv[0] = " << mv[0] << endl;
     }
 
     // Now get the posterior mean and variance
     postvar = 1/(sumw + 1/tau2_sqr);
     postmean = postvar*(summeanw + ci.mu2/tau2_sqr);
+    cout << "mu2 = " << ci.mu2 << endl;
+    cout << "postmean = " << postmean << endl;
 
     // Draw a random variable
     theta2 = postmean + gen.normal()*sqrt(postvar);
@@ -339,34 +342,40 @@ double mcbrt::lmsubtree(mcinfo &mci){
     double B; // number of nodes in the subtree
 
     // Set subtree and sibling moments
-    mci.setsubtreemoments(ci.tau1, ci.mu1);
+    mci.setsubtreemoments(ci.mu1, ci.tau1);
 
-    // Sum over the vector componenets
+    // Sum over the vector componenets with non-zero variances (meaning field data is on the ith node)
     for(size_t i = 0;i < mci.subtree_mean.size();i++){
-        w = 1/mci.subtree_var[i];
-        sum_meansqrw += mci.subtree_mean[i]*mci.subtree_mean[i]*w;
-        sum_meanw += mci.subtree_mean[i]*w;
-        sum_w+=w;
-        sum_logw+=log(w);
-        B+=1;
+        if(mci.subtree_var[i]>0){
+            w = 1/mci.subtree_var[i];
+            sum_meansqrw += mci.subtree_mean[i]*mci.subtree_mean[i]*w;
+            sum_meanw += mci.subtree_mean[i]*w;
+            sum_w+=w;
+            sum_logw+=log(w);
+            B+=1;
+        }
     }
-    // Add sibling info if this suff stat instance has it
+    // Add sibling info if this suff stat instance has it & if it has filed obs on it
     if(mci.sibling_info){
-        w = 1/mci.sibling_var;
-        sum_meansqrw += mci.sibling_mean*mci.sibling_mean*w;
-        sum_meanw += mci.sibling_mean*w;
+        if(mci.sibling_var>0){
+            w = 1/mci.sibling_var;
+            sum_meansqrw += mci.sibling_mean*mci.sibling_mean*w;
+            sum_meanw += mci.sibling_mean*w;
+            sum_w+=w;
+            sum_logw+=log(w);
+            B+=1;
+        }
+    }
+    // Now calculate and add in the mean and var from this node if it has field obs on it
+    nodemv = mci.getmoments(ci.mu1, ci.tau1);
+    if(nodemv[1]>0){
+        w = 1/nodemv[1];
+        sum_meansqrw += nodemv[0]*nodemv[0]*w;
+        sum_meanw += nodemv[0]*w;
         sum_w+=w;
         sum_logw+=log(w);
         B+=1;
     }
-    // Now calculate and add in the mean and var from this node
-    nodemv = mci.getmoments(ci.mu1, ci.tau1);
-    w = 1/nodemv[1];
-    sum_meansqrw += nodemv[0]*nodemv[0]*w;
-    sum_meanw += nodemv[0]*w;
-    sum_w+=w;
-    sum_logw+=log(w);
-    B+=1;
 
     // Now compute the lm contribution from all nodes in subtree
     lmstree = -0.5*(B*log(2*M_PI) + sum_logw + log(tau2_sqr*sum_w +1)); // Variance terms     
@@ -432,7 +441,6 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         // brt::local_getsuff(diter,nx,v,c,sil,sir);
         for(;diter<diter.until();diter++){
             xx = diter.getxp();
-            cout << diter.gety() << endl;
             if(nx==t.bn(diter.getxp(),*xi)){ //does the bottom node = xx's bottom node
                 if(xx[v] < (*xi)[v][c]){
                     //sil.n +=1;
@@ -596,7 +604,6 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
 void mcbrt::local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir)
 {
     // Define sil and sir to consider the calibration subtree cases
-    cout << "local_mpigetsuff" << endl;
     local_mpigetsuff_nodecases(nx,sil,sir,true); //true means this is a birth
     // Now that sil and sir are defined to account for calibration subtrees, run the usual brt version
     brt::local_mpigetsuff(nx,v,c,di,sil,sir);
@@ -616,7 +623,6 @@ void mcbrt::local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& si
 // Establish the node cases for birth and death
 void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove)
 {
-    cout << "local_mpigetsuff_nodecases" << endl;
     #ifdef _OPENMPI
     // Only need to initialize the sir and sil for rank 0
     tree::npv uroots;
@@ -654,6 +660,8 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
     tree::npv uroots, nxuroots; // Roots to all calibration subtree
     tree::tree_p subtree, troot; // subtree pointer root
 
+    // Set the root of the tree for the rotation. 
+    // If nx is in a subtree, then we need to use its subtree root rather than using nx 
     local_subsuff_setroot(nx,subtree,troot,uroots);
 
     bnv.clear();
@@ -743,11 +751,15 @@ void mcbrt::local_subsuff_subtree(std::vector<sinfo*>& siv)
     for(size_t i=0;i<siv.size();i++){
         mcv[i]=static_cast<mcinfo*>(siv[i]);
         mcv[i]->subtree_node = true;
+        //cout << "mcv[i] = ..." << endl;
+        //mcv[i]->print();
     }
     
     // Compile suff stats across the calibration subtree--WLOG, store everything in the first node of this vector
     std::vector<mcinfo*> mcv_not0(mcv.begin()+1,mcv.end()); // vector excluding the first element
     mcv[0]->setsubtreeinfo(mcv_not0);
+    //cout << "Pool subtree info, mcv[0] = ..." << endl;
+    //mcv[0]->print();
 }
 
 //--------------------------------------------------
@@ -779,7 +791,7 @@ void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tre
         // Get the first index of the nodes in this calibration subtree, then set subtree info 
         size_t uind = unmap[nxuroots[i]][0]; 
         mcvtemp.clear();
-        
+
         // Populate the temp vector with the subtree info on other nodes but the first
         for(size_t j=1;j<unmap[nxuroots[i]].size();j++){mcvtemp.push_back(mcv[unmap[nxuroots[i]][j]]);} 
         mcv[uind]->setsubtreeinfo(mcvtemp); // Load the subtree info on the representative node of this subtree
@@ -793,7 +805,7 @@ void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tre
 // A lot of similar code to the above local_subsuff cases, try to clean up later
 void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv){
     tree::npv nxuroots; // Roots to all calibration subtree
-
+    cout << "Local subsuff node cases" << endl;
     // if nx isn't in a calibration subtree or starts one, then check to see if it contains one (or many)
     if(!subtree){
         // Get subtree roots below nx
@@ -1184,10 +1196,10 @@ void mcbrt::pr_vec()
 {
    std::cout << "***** mcbrt object:\n";
    std::cout << "Conditioning info:" << std::endl;
-   std::cout << "   mean:   tau =" << ci.tau1 << std::endl;
-   std::cout << "   mean:   tau =" << ci.tau2 << std::endl;
-   std::cout << "   mean:   beta0 =" << ci.mu1 << std::endl;
-   std::cout << "   mean:   beta0 =" << ci.mu2 << std::endl;
+   std::cout << "   mean:   tau1 =" << ci.tau1 << std::endl;
+   std::cout << "   mean:   tau2 =" << ci.tau2 << std::endl;
+   std::cout << "   mean:   mu1 =" << ci.mu1 << std::endl;
+   std::cout << "   mean:   mu2 =" << ci.mu2 << std::endl;
    if(!ci.sigma)
      std::cout << "         sigma=[]" << std::endl;
    else
