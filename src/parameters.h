@@ -29,21 +29,21 @@
 
 class param{
     public:
-        param():p(1),ucur(1,0),unew(1,0),acceptvec(1,0),rejectvec(1,0),tc(1),rank(0) {}
-        param(size_t ip):p(ip),ucur(ip,0),unew(ip,0),acceptvec(ip,0),rejectvec(ip,0),tc(1),rank(0) {}
+        param():p(1),tc(1),rank(0),ucur(1,0),unew(1,0),acceptvec(1,0),rejectvec(1,0) {}
+        param(size_t ip):p(ip),tc(1),rank(0),ucur(ip,0),unew(ip,0),acceptvec(ip,0),rejectvec(ip,0) {}
         ~param(){} // destructor
 
         // Objects
         size_t p; // number of parameters
-        size_t rank;
         int tc;
+        size_t rank;
         bool accept;
         std::vector<double> ucur; // Current parameter vector u
         std::vector<double> unew; // New parameter vector u
-        std::vector<double> propvec; // mh proposal vector (distance or sd depending on the distribution)
-        std::vector<std::string> propdistvec; // mh proposal distributions
         std::vector<size_t> acceptvec; // Accept counter
         std::vector<size_t> rejectvec; // Reject counter
+        std::vector<std::string> propdistvec; // mh proposal distributions
+        std::vector<double> propvec; // mh proposal vector (distance or sd depending on the distribution)
         std::vector<std::string> priordistvec; // Prior distributions
         std::vector<double> priorp1vec; // Prior parameter 1
         std::vector<double> priorp2vec; // Prior parameter 2 

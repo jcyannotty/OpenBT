@@ -39,6 +39,7 @@ using std::endl;
 void brt::getchgvsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, 
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew)
 {
+   //cout << "pertnode = " << pertnode->nid() << " --- rank = " << rank << endl;
    subsuff(pertnode,bnv,sivnew);
    if(didswap) pertnode->swaplr();  //undo the swap so we can calculate the suff stats for the original variable, cutpoint.
    pertnode->setv(oldv);
@@ -52,6 +53,8 @@ void brt::getchgvsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t
 void brt::getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, 
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew)
 {
+   //cout << "getpertsuff..." << endl;
+   //cout << "pertnode = " << pertnode->nid() << " --- rank = " << rank << endl;
    subsuff(pertnode,bnv,sivnew);
    pertnode->setc(oldc);
    subsuff(pertnode,bnv,sivold);
@@ -61,7 +64,7 @@ void brt::getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,
 //peturb proposal for internal node cut points.
 void brt::pertcv(rn& gen)
 {
-//   cout << "--------------->>into pertcv" << endl;
+   cout << "--------------->>into pertcv" << endl;
    tree::tree_p pertnode;
    if(t.treesize()==1) // nothing to perturb if the tree is a single terminal node
       return;
@@ -304,7 +307,7 @@ void brt::pertcv(rn& gen)
 //do a rotation proposal at a randomly selected internal node.
 bool brt::rot(tree::tree_p tnew, tree& x, rn& gen)
 {
-//   cout << "--------------->>into rot" << endl;
+   cout << "--------------->>into rot" << endl;
    #ifdef _OPENMPI
    MPI_Request *request = new MPI_Request[tc];
    if(rank==0) {

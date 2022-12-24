@@ -345,7 +345,6 @@ void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, s
 void brt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir)
 {
    sil.n=0; sir.n=0;
-
    for(;diter<diter.until();diter++)
    {
       tree::tree_cp bn = t.bn(diter.getxp(),*xi);
@@ -421,7 +420,7 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
    bvsz nb = bnv.size();
    siv.clear();
    siv.resize(nb);
-
+   //cout << "nb = " << nb << " --- rank = " << rank << endl;
    std::map<tree::tree_cp,size_t> bnmap;
    for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
 
@@ -470,14 +469,17 @@ void brt::local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, t
    if(rank==0) {
       siv.clear(); //need to setup space threads will add into
       siv.resize(bnv.size());
+      //cout << "bnv size = " << bnv.size() << " --- rank = " << rank << endl;
       typedef tree::npv::size_type bvsz;
       for(bvsz i=0;i!=bnv.size();i++) siv[i]=newsinfo();
  
       // reduce all the sinfo's across the nodes, which is model-specific.
       local_mpi_reduce_allsuff(siv);
    }
+
    else
    {
+      //cout << "bnv size = " << bnv.size() << " --- rank = " << rank << endl;
       local_subsuff(diter,nx,path,bnv,siv);
 
       // reduce all the sinfo's across the nodes, which is model-specific.

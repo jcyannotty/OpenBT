@@ -108,7 +108,7 @@ class mcinfo : public sinfo{
         void setsubtreeinfo(std::vector<mcinfo*> mcv){
             // Set subtree info to true
             subtree_info = true;
-            for(int i=0;i<mcv.size();i++){
+            for(size_t i=0;i<mcv.size();i++){
                 // Store the required sufficient statistics
                 subtree_sumyw.push_back((*mcv[i]).sumyw);
                 subtree_sumzw.push_back((*mcv[i]).sumzw);
@@ -201,7 +201,7 @@ class mcinfo : public sinfo{
                 // mrhs has subtree_info but this one does not!-- add it to this instance of mcinfo
                 subtree_info = true;
                 // using push_back here just incase this mcinfo instance already has subtree info and this mrhs is just adding more
-                for(int i=0;i<mrhs.subtree_sumyw.size();i++){
+                for(size_t i=0;i<mrhs.subtree_sumyw.size();i++){
                     //subtree_mean.push_back(mrhs.subtree_mean[i]);
                     //subtree_var.push_back(mrhs.subtree_var[i]);
                     subtree_sumyw.push_back(mrhs.subtree_sumyw[i]);
@@ -211,7 +211,7 @@ class mcinfo : public sinfo{
                 }
             }else if(mrhs.subtree_info && subtree_info){
                 // mrhs has subtree_info and so does this one -- add the terms together to this instance of mcinfo
-                for(int i=0;i<mrhs.subtree_sumyw.size();i++){
+                for(size_t i=0;i<mrhs.subtree_sumyw.size();i++){
                     subtree_sumyw[i]+=mrhs.subtree_sumyw[i];
                     subtree_sumzw[i]+=mrhs.subtree_sumzw[i];
                     subtree_sumwf[i]+=mrhs.subtree_sumwf[i];
@@ -346,13 +346,6 @@ public:
     void local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv);
     //void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
     
-    // Was protected
-    void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
-    void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
-    void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir); // birth version
-    void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir); // death version
-    void local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove);
-
     // Methods which are nested within the above methods. Used to deal with various cases and keep code concise
     double lmnode(mcinfo &mci); // Node outside of subtree -- Used when doing proposals outside of a subtree
     double lmsubtree(mcinfo& mci); // Used to pool information together across nodes within a subtree
@@ -368,6 +361,14 @@ public:
     //mcmc info
     //--------------------
     //methods
+    
+    // Was protected
+    void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
+    void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir); //assumes brt.t is the root node
+    void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir); // birth version
+    void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir); // death version
+    void local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, bool birthmove);
+
     
 };
 

@@ -4,21 +4,17 @@
 # Calibration helper to create a prior object
 setprior.openbtcal = function(
     dist = c('uniform', 'normal', 'gamma'),
-    mean = NULL,
-    sd = NULL,
-    a = NULL,
-    b = NULL,
-    shape = NULL,
-    rate = NULL
-){
- 
+    mean = NULL,sd = NULL,
+    a = NULL,b = NULL,
+    shape = NULL,rate = NULL)
+{
   # Check arguments
   valid_priors = c('uniform', 'normal', 'gamma')
   if(!(dist %in% valid_priors)){
     stop(cat("Invalid prior distribution. Valid priors include: ", paste(valid_priors,sep = ', ')))
   }
     
-  if(dist == 'uniform' && (is.null(a) | is.null(b))){
+  if(dist == 'uniform'){
     if(is.null(a) | is.null(b)){
       stop("Invalid Uniform Prior: please enter values for a and b.")  
     }
@@ -57,10 +53,10 @@ openbtcal = function(
   nadapt=1000, adaptevery=100,
   power=2.0, base=.95, tc=2,
   prior_list = NULL,
-  sigmav=rep(1,length(y.train)),
+  sigmav=rep(1,length(y_train)),
   overallsdf = NULL, overallnuf= NULL,
   overallsdc = NULL, overallnuc= NULL,
-  chv = cor(x_train,method="spearman"),
+  chv = cor(xc_train,method="spearman"),
   pbd=.7, pb=.5,
   stepwpert=.1, probchv=.1,
   minnumbot=5,
@@ -86,10 +82,10 @@ openbtcal = function(
     modeltype=MODEL_OSBART
     if(is.null(ntree)) ntree=100
     if(is.null(ntreeh)) ntreeh=1
-    if(is.null(k1)) k=2
-    if(is.null(k2)) k=2
+    if(is.null(k1)) k1=2
+    if(is.null(k2)) k2=2
     if(is.null(overallsdf)) overallsdf=sd(yf_train)
-    if(is.null(overallsdc)) overallsdc=sd(yf_train)
+    if(is.null(overallsdc)) overallsdc=sd(yc_train)
     if(is.null(overallnuf)) overallnuf=10
     if(is.null(overallnuc)) overallnuc=10
     pbd=c(pbd,0.0)
@@ -100,18 +96,18 @@ openbtcal = function(
   #--------------------------------------------------
   # Flatten the prior objects in prior_list into a vector
   pu = length(prior_list) 
-  prior_info = 0
+  prior_info = c()
   uhat = 0
   for(i in 1:pu){
-    if(class(prior_list[i]) != 'OpenBT_prior'){
+    if(class(prior_list[[i]]) != 'OpenBT_prior'){
       stop(paste("Prior",i,"is not of type OpenBT_prior. Please create the prior using the function setprior.calibrate."))  
     }
-    prior_info = c(prior_info, unlist(prior_list[i]))
+    prior_info = c(prior_info, unlist(prior_list[[i]]))
     
-    if(prior_list[i]$dist == 'normal'){
-      uhat = prior_list[i]$param1
-    }else if(prior_list[i]$dist == 'normal'){
-      uhat = (prior_list[i]$param1 + prior_list[i]$param2)/2
+    if(prior_list[[i]]$prior == 'normal'){
+      uhat = prior_list[[i]]$param1
+    }else if(prior_list[[i]]$prior == 'uniform'){
+      uhat = (prior_list[[i]]$param1 + prior_list[[i]]$param2)/2
     }
   }
   
@@ -132,13 +128,18 @@ openbtcal = function(
   p = ncol(xc_train)
   
   # Initialize the calibration parameters in xf_train data
-  uf_train = matrix(uhat, nrow = nf, ncol = pu, byrow = TRUE)
+  #uf_train = matrix(uhat, nrow = nf, ncol = pu, byrow = TRUE)
+  uf_train = seq(8.5,10.8,length = nf)
   xf_train = cbind(xf_train, uf_train)
   
   # Realign calibration parameter columns to be at the end of the matrix if needed
   xcols = setdiff(1:p,ucols)
   out_ucols = seq(px,p-1,by=1) # col index for cpp, index starts at 0 
-  xc_train = as.matrix(rbind(xc_train[,xcols],xc_train[,ucols])) 
+  xc_train = as.matrix(xc_train[,c(xcols,ucols)]) 
+  
+  # Change column names
+  colnames(xc_train) = c(paste0('x',xcols),paste0('u',ucols-px))
+  colnames(xf_train) = c(paste0('x',xcols),paste0('u',ucols-px))
   
   # Get mean of field data and model runs
   yf_mean = mean(yf_train)
@@ -154,7 +155,8 @@ openbtcal = function(
   tau2 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k2)
   
   # Variance prior
-  overalllambda = overallsd^2
+  overalllambdaf = overallsdf^2
+  overalllambdac = overallsdc^2
 
   # Tree Prior 
   powerh=power
@@ -341,7 +343,6 @@ openbtcal = function(
   res$summarystats=summarystats; res$modelname=modelname
   class(xi)="OpenBT_cutinfo"
   res$xicuts=xi
-  res$fmean=fmean
   res$folder=folder
   class(res)="OpenBT_posterior"
   

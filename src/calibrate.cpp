@@ -46,7 +46,6 @@ int main(int argc, char* argv[])
         folder=folder+"/";
     }
 
-
     //-----------------------------------------------------------
     //random number generation
     crn gen;
@@ -89,15 +88,29 @@ int main(int argc, char* argv[])
 
     //Priors 
     double mu1,tau1,mu2,tau2;
+    conf >> mu1;
+    conf >> tau1;
+    conf >> mu2;
+    conf >> tau2;
+
     double overalllambdaf, overalllambdac, overallnuf, overallnuc;
+    conf >> overalllambdaf;
+    conf >> overalllambdac;
+    conf >> overallnuf;
+    conf >> overallnuc;
+
     double base, power, baseh, powerh;
+    conf >> base;
+    conf >> power;
+    conf >> baseh;
+    conf >> powerh;
 
     // Calibration parameter info
     size_t pu, tempucol;
     std::vector<size_t> ucols;
     std::vector<std::string> uprior;
     std::vector<double> uparam1, uparam2;
-    std::string upr;
+    std::string upr0;
     double up1, up2;
     
     // Column indexes
@@ -106,21 +119,21 @@ int main(int argc, char* argv[])
         conf >> tempucol;
         ucols.push_back(tempucol);
     }
-    
+
     // Priors and proposals
-    std::vector<double> propwidth(pu,0.25), u0(0,pu);
+    std::vector<double> propwidth(pu,0.25), u0(pu,0);
     for(size_t i=0;i<pu;i++){
-        conf >> upr;
+        conf >> upr0;
         conf >> up1;
         conf >> up2;
-        uprior.push_back(upr);
+        uprior.push_back(upr0);
         uparam1.push_back(up1);
         uparam2.push_back(up2);
 
-        if(upr == "normal"){
+        if(upr0 == "normal"){
             propwidth[i] = 0.25*4.0*up2; // 25% of +/- 2sd width
             u0[i] = up1; // init at prior mean
-        }else if(upr == "uniform"){
+        }else if(upr0 == "uniform"){
             propwidth[i] = 0.25*(up2-up1); // 25% of range 
             u0[i] = (up2+up1)/2; // init at prior mean
         }
@@ -130,7 +143,7 @@ int main(int argc, char* argv[])
     //thread count
     int tc;
     conf >> tc;
-    
+
     //control
     double pbd;
     double pb;
@@ -296,7 +309,12 @@ int main(int argc, char* argv[])
 #ifdef _OPENMPI
     }
 #endif
-
+    /*
+    diterator diter(&di);
+    for(;diter<diter.until();diter++){
+        cout << "gety = " << diter.gety() << endl;
+    }
+    */
     //--------------------------------------------------
     //read in sigmav  -- same as above.
     std::vector<double> sigmav;
@@ -463,9 +481,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     }
 #endif
 
-    double opm=1.0/((double)mh);
-    double nu=2.0*pow(overallnuf,opm)/(pow(overallnuf,opm)-pow(overallnuf-2.0,opm));
-    double lambda=pow(overalllambdaf,opm);
+    double opmf=1.0/((double)mh);
+    double nuf=2.0*pow(overallnuf,opmf)/(pow(overallnuf,opmf)-pow(overallnuf-2.0,opmf));
+    double lambdaf=pow(overalllambdaf,opmf);
 
     //cutpoints
     psbmf.setxi(&xi);    
@@ -481,7 +499,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     //tree prior, MCMC info, and conditioning info
     psbmf.settp(baseh,powerh);
     psbmf.setmi(pbdh,pbh,minnumboth,doperth,stepwperth,probchvh,&chgv);
-    psbmf.setci(nu,lambda);
+    psbmf.setci(nuf,lambdaf);
 
     //--------------------------------------------------
     // Product variance model for the error in the model runs
@@ -513,9 +531,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
    }
 #endif
 
-    double opm=1.0/((double)mh);
-    double nu=2.0*pow(overallnuc,opm)/(pow(overallnuc,opm)-pow(overallnuc-2.0,opm));
-    double lambda=pow(overalllambdac,opm);
+    double opmc=1.0/((double)mh);
+    double nuc=2.0*pow(overallnuc,opmc)/(pow(overallnuc,opmc)-pow(overallnuc-2.0,opmc));
+    double lambdac=pow(overalllambdac,opmc);
 
     //cutpoints
     psbmc.setxi(&xi);    //set the cutpoints for this model object
@@ -531,13 +549,13 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     //tree prior, MCMC info, and conditioning info
     psbmc.settp(baseh,powerh);
     psbmc.setmi(pbdh,pbh,minnumboth,doperth,stepwperth,probchvh,&chgv);
-    psbmc.setci(nu,lambda);
+    psbmc.setci(nuc,lambdac);
 
 
     //--------------------------------------------------
     // Set calibration parameters
     param uvec(pu);
-    uvec.settc(tc);
+    uvec.settc(tc-1);
     uvec.setmpirank(mpirank);
     uvec.setpriors(uprior,uparam1,uparam2);
     uvec.setproposals(uprior,propwidth);
@@ -573,7 +591,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     //brtMethodWrapper fpsbmc(&brt::f,psbmc);
 
     // Parameters
-    std::vector<double> udraws((nd+1)*pu,1);
+    std::vector<double> udraws;
     double csumwr2, nsumwr2; // current and new wtd residuals squared
     std::vector<double> xf_copy = xf; // used 
 
@@ -630,58 +648,69 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 #endif
         // Update the value of sigma in sig
         for(size_t j=0;j<nf;j++){
-            sig[j] = psbmf.f(j);    
+            sig[j] = psbmf.f(j);
+            //cout << "sig[j] = " << sig[j] << endl;    
         }
         for(size_t j=0;j<nc;j++){
-            sig[nf+j] = psbmc.f(j);    
+            sig[nf+j] = psbmc.f(j);
+            //cout << "sig[nf+j] = " << sig[nf+j] << endl;    
         }
         if((i+1)%adaptevery==0 && mpirank==0) psbmf.adapt();
         if((i+1)%adaptevery==0 && mpirank==0) psbmc.adapt();
         
         // Update calibration parameters
 #ifdef _OPENMPI
+        // Reset csumwr2 and nsumwr2
+        csumwr2 = 0.0; 
+        nsumwr2 = 0.0;
+        
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
-
+        
         // Get joint proposal and update xf_copy with new u
-        if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
-        if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
-
+        //if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        //if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
+        
         // Get predictions for field obs with new u
-        if(mpirank>0) acb.predict_vec(&di_prop,&fif);
-
+        //if(mpirank>0) acb.predict_vec(&di_prop,&fif);
         // Get new weight sum of residuals squared
-        for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
-
+        //for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
         // Now do the MH Step
-        uvec.mhstep(csumwr2,nsumwr2,gen);
-
+        //uvec.mhstep(csumwr2,nsumwr2,gen);
         // Update the x data if the propsed move was accepted
+        /*
         if(uvec.accept){
             uvec.updatex(x,ucols,p,nf); // used in the mean model
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
-        } 
+        }
+        */
+         
 
 #else
+        // Reset csumwr2 and nsumwr2
+        csumwr2 = 0.0; 
+        nsumwr2 = 0.0;
+
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         // Get joint proposal and update xf_copy with new u
         uvec.drawnew(gen);
         uvec.updatex(xf_copy,ucols,p,nf);
-        
         // Get predictions for field obs with new u
         acb.predict_vec(&di_prop,&fif);
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
 
         // Now do the MH Step
-        uvec.mhstep(csumwr2,nsumwr2,gen);
+        //uvec.mhstep(csumwr2,nsumwr2,gen);
 
         // Update the x data if the propsed move was accepted
+        /*
         if(uvec.accept){
             uvec.updatex(x,ucols,p,nf); // used in the mean model
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         }
+        */
 #endif 
     if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();
     }
@@ -723,6 +752,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         
         // Update calibration parameters
 #ifdef _OPENMPI
+        // Reset csumwr2 and nsumwr2
+        csumwr2 = 0.0; 
+        nsumwr2 = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
 
@@ -746,6 +778,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         } 
 
 #else
+        // Reset csumwr2 and nsumwr2
+        csumwr2 = 0.0; 
+        nsumwr2 = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         // Get joint proposal and update xf_copy with new u
@@ -806,6 +841,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         
         // Update calibration parameters
 #ifdef _OPENMPI
+        // Reset csumwr2 and nsumwr2
+        csumwr2 = 0.0; 
+        nsumwr2 = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
 
@@ -820,15 +858,20 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
 
         // Now do the MH Step
-        uvec.mhstep(csumwr2,nsumwr2,gen);
+        //uvec.mhstep(csumwr2,nsumwr2,gen);
 
+        /*
         // Update the x data if the propsed move was accepted
         if(uvec.accept){
             uvec.updatex(x,ucols,p,nf); // used in the mean model
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         } 
+        */
 
 #else
+        // Reset csumwr2 and nsumwr2
+        csumwr2 = 0.0; 
+        nsumwr2 = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         // Get joint proposal and update xf_copy with new u
@@ -949,9 +992,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         omf.close();
 
         //Write standard deviation -- sigma -- files
-        std::ofstream ouf(folder + modelname + ".udraws");
-        for(size_t i=0;i<udraws.size();i++) ouf << udraws.at(i) << endl;
-        ouf.close();
+        //std::ofstream ouf(folder + modelname + ".udraws");
+        //for(size_t i=0;i<udraws.size();i++) ouf << udraws.at(i) << endl;
+        //ouf.close();
         cout << " done." << endl;
     
     }

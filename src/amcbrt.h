@@ -34,11 +34,12 @@ public:
    void setmpirank(int rank) { this->rank = rank; for(size_t j=0;j<m;j++) mb[j].setmpirank(rank); }  //only needed for MPI
    void setmpicvrange(int* lwr, int* upr) { this->chv_lwr=lwr; this->chv_upr=upr; for(size_t j=0;j<m;j++) mb[j].setmpicvrange(lwr,upr); } //only needed for MPI
    void setci(double mu1, double mu2, double tau1, double tau2, double* sigma) { ci.tau1=tau1;ci.tau2=tau2;ci.mu1=mu1;ci.mu2=mu2;ci.sigma=sigma;
-                for(size_t j=0;j<m;j++) mb[j].setci(tau1,tau2,mu1,mu2,sigma); }
+                for(size_t j=0;j<m;j++) mb[j].setci(mu1,mu2,tau1,tau2,sigma); }
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
    void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> nsprior = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
-   void setdata_vec(dinfo *di);
+   void setdata_vec(dinfo *di); 
+   void setuvars(std::vector<size_t> u) {this->uvec = u;for(size_t j=0;j<m;j++) mb[j].setuvars(u);}
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }
    tree::tree_p gettree(size_t i) { return &mb[i].t; }
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)

@@ -78,7 +78,6 @@ int main(int argc, char* argv[])
       folder=folder+"/";
    }
 
-
    //-----------------------------------------------------------
    //random number generation
    crn gen;

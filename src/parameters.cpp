@@ -8,6 +8,9 @@
 #include "crn.h"
 #include "parameters.h"
 
+using std::cout;
+using std::endl;
+
 //----------------------------------------------
 // Adapt step for proposals
 void param::adapt(){
@@ -26,7 +29,8 @@ void param::adapt(){
 // Draw new parameter -- marginal update
 void param::drawnew(size_t ind, rn &gen){
     double u0;
-
+    u0 = 0;
+    cout << "here by mistake" << endl;
 }
 
 //----------------------------------------------
@@ -34,19 +38,18 @@ void param::drawnew(size_t ind, rn &gen){
 void param::drawnew(rn &gen){
     unew.clear();
     unew.resize(p);
-
     for(size_t i=0;i<p;i++){
         if(propdistvec[i] == "uniform"){
             unew[i] = ucur[i] + (gen.uniform() - 0.5)*propvec[i];
+            //std::cout << "unew[i] = " << unew[i] << std::endl; 
         }else if(propdistvec[i] == "normal"){
             unew[i] = ucur[i] + gen.normal()*propvec[i];
         }
     }
-    
     // Pass the unew vector (as an array) if using mpi  
 #ifdef _OPENMPI
     if(rank==0){ //should always be true when using mpi
-        char buffer[SIZE_UINT1*p];
+        char buffer[SIZE_UINT3*p];
         int position=0;
         MPI_Request *request=new MPI_Request[tc];
         const int tag=MPI_TAG_CP_PASSUNEW;
@@ -56,9 +59,9 @@ void param::drawnew(rn &gen){
         copy(unew.begin(),unew.end(),unarray);
 
         // Pack and send info to the slaves
-        MPI_Pack(&unarray,p,MPI_DOUBLE,buffer,SIZE_UINT1*p,&position,MPI_COMM_WORLD);
+        MPI_Pack(&unarray,p,MPI_DOUBLE,buffer,SIZE_UINT3*p,&position,MPI_COMM_WORLD);
         for(size_t i=1; i<=(size_t)tc; i++) {
-            MPI_Isend(buffer,SIZE_UINT1*p,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+            MPI_Isend(buffer,SIZE_UINT3*p,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
 
@@ -66,25 +69,24 @@ void param::drawnew(rn &gen){
     }
 #endif
 }    
-
  
 
 //----------------------------------------------
 // drawnew_mpi
 void param::drawnew_mpi(rn &gen){
 #ifdef _OPENMPI
-    int buffer_size = SIZE_UNIT1*p;
+    int buffer_size = SIZE_UINT3*p;
     char buffer[buffer_size];
     int position=0;
     MPI_Status status;
-
-    // Structural/topological proposal(s)
+ 
     // MPI receive the proposed u vector.
     MPI_Recv(buffer,buffer_size,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-   
     double unarray[p];
-    MPI_Unpack(buffer,buffer_size,&position,&nxid,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-    unew.insert(unew.begin(), std::begin(unarray),std::end(unarray));
+    MPI_Unpack(buffer,buffer_size,&position,&unarray,p,MPI_DOUBLE,MPI_COMM_WORLD);
+ 
+    unew.clear();
+    for(size_t j=0;j<p;j++){unew.push_back(unarray[j]);}
 #endif    
 }
 
@@ -118,6 +120,23 @@ double param::lm(double cursumwr2, double newsumwr2){
 // MH step
 void param::mhstep(double csumwr2, double nsumwr2, rn &gen){
 #ifdef _OPENMPI
+    if(rank>0){
+        // Sum the suff stats then get accept/reject status
+        MPI_Status status;
+        MPI_Reduce(&csumwr2,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+        MPI_Reduce(&nsumwr2,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+        MPI_Recv(NULL,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        // Carry out the accept/reject step
+        if(status.MPI_TAG==MPI_TAG_CP_ACCEPT) {
+            for(size_t j=0;j<p;j++) acceptvec[j]++;
+            ucur = unew;
+            accept=true;
+        }else{
+            for(size_t j=0;j<p;j++) rejectvec[j]++;
+            accept=false;
+        }
+    }           
+
     if(rank==0){
         // Reduce the suff stats
         MPI_Request *request = new MPI_Request[tc];
@@ -132,37 +151,20 @@ void param::mhstep(double csumwr2, double nsumwr2, rn &gen){
             ucur = unew;
             for(size_t j=0;j<p;j++) acceptvec[j]++;
             const int tag=MPI_TAG_CP_ACCEPT;
-            for(size_t k=1; k<(size_t)tc; k++){
+            for(size_t k=1; k<=(size_t)tc; k++){
                 MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
             }
         }else{ 
             // reject
             const int tag=MPI_TAG_CP_REJECT;
-            for(size_t k=1; k<(size_t)tc; k++) {
+            for(size_t k=1; k<=(size_t)tc; k++) {
                 MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
             }
             for(size_t j=0;j<p;j++) rejectvec[j]++;
         }
-        MPI_Waitall(tc-1,request,MPI_STATUSES_IGNORE);
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
-
-    }else{
-        // Sum the suff stats then get accept/reject status 
-        MPI_Status status;
-        MPI_Reduce(&csumr2,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-        MPI_Reduce(&nsumr2,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-        MPI_Recv(NULL,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-
-        // Carry out the accept/reject step
-        if(status.MPI_TAG==MPI_TAG_CP_ACCEPT) {
-            for(size_t j=0;j<p;j++) acceptvec[j]++;
-            ucur = unew;
-            accept=true;
-        }else{
-            for(size_t j=0;j<p;j++) rejectvec[j]++;
-            accept=false;
-        }
-    }           
+    }
 #else
     // Do mhstep
     double lmout = lm(csumwr2,nsumwr2);
@@ -177,7 +179,6 @@ void param::mhstep(double csumwr2, double nsumwr2, rn &gen){
         accept=false;
         for(size_t j=0;j<p;j++) rejectvec[j]++;
     }
-
 #endif
 }
 

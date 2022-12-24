@@ -6,7 +6,7 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = foreign subdir-objects no-installinfo no-installman dist-zip
 
 # main package installed binaries
-bin_PROGRAMS = openbtcli openbtpred openbtvartivity openbtsobol openbtmopareto openbtmixingwts openbtmixing openbtmixingpred
+bin_PROGRAMS = openbtcli openbtpred openbtvartivity openbtsobol openbtmopareto openbtmixingwts openbtmixing openbtmixingpred openbtcalibrate openbtcalibratepred
 
 
 # main package programs
@@ -33,6 +33,12 @@ openbtmixing_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libamb
 
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
 openbtmixingpred_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+
+openbtcalibrate_SOURCES = calibrate.cpp
+openbtcalibrate_LDADD = libparameters.la libpsbrt.la libamcbrt.la libsbrt.la libmcbrt.la libbrt.la libtree.la libcrn.la
+
+openbtcalibratepred_SOURCES = calibratepred.cpp
+openbtcalibratepred_LDADD = libparameters.la libpsbrt.la libamcbrt.la libsbrt.la libmcbrt.la libbrt.la libtree.la libcrn.la
 
 # test programs -- these are only built if 'make check' is run.
 check_PROGRAMS = testcrn testtree testbrt testbrtvp testmbrt testsbrt testmxbrt testambrt testpsbrt testamxbrt testsinglebinomial testsinglepoisson
@@ -64,7 +70,7 @@ testsinglepoisson_LDADD = libcrn.la libtree.la libbrt.la libsinglepoisson.la
 
 
 # libraries
-lib_LTLIBRARIES = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libmxbrt.la libamxbrt.la
+lib_LTLIBRARIES = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libmxbrt.la libamxbrt.la libmcbrt.la libamcbrt.la libparameters.la
 #libHelloWorld_la_LDFLAGS = -version-info 0:0:0
 libcrn_la_SOURCES = crn.cpp crn.h rn.h tnorm.cpp tnorm.h
 libtree_la_SOURCES = treefuns.cpp treefuns.h tree.cpp tree.h
@@ -72,9 +78,11 @@ libbrt_la_SOURCES = brt.cpp brt.h brtmoves.cpp brtfuns.cpp brtfuns.h dinfo.h
 libmbrt_la_SOURCES = mbrt.cpp mbrt.h
 libsbrt_la_SOURCES = sbrt.cpp sbrt.h
 libmxbrt_la_SOURCES = mxbrt.cpp mxbrt.h
+libmcbrt_la_SOURCES = mcbrt.cpp mcbrt.h
 libambrt_la_SOURCES = ambrt.cpp ambrt.h
 libpsbrt_la_SOURCES = psbrt.cpp psbrt.h
 libamxbrt_la_SOURCES = amxbrt.cpp amxbrt.h
+libamcbrt_la_SOURCES = amcbrt.cpp amcbrt.h
 libsinglepoisson_la_SOURCES = singlepoisson.cpp singlepoisson.h
 libsinglebinomial_la_SOURCES = singlebinomial.cpp singlebinomial.h
-
+libparameters_la_SOURCES = parameters.cpp parameters.h

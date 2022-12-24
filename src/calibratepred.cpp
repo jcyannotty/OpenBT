@@ -203,7 +203,6 @@ int main(int argc, char* argv[])
 
     // Split the data into xf and xc
     std::vector<double> xf, xc, xftemp;
-    size_t j=0,k=0;
     for(size_t i=0;i<np;i++){
         xftemp.clear();
         xftemp = {xp.begin()+p*i,xp.begin()+p*(i+1)};
@@ -380,6 +379,7 @@ int main(int argc, char* argv[])
     // Draw realizations of the posterior predictive.
     size_t curdx=0;
     size_t cumdx=0;
+    size_t k = 2;
 
 #ifdef _OPENMPI
     double tstart=0.0,tend=0.0;
@@ -400,10 +400,9 @@ int main(int argc, char* argv[])
                 ov[j][l]=e_ovar.at(cumdx+curdx+l);
                 oc[j][l]=e_oc.at(cumdx+curdx+l);
                 for(size_t r=0;r<k;r++){
-                otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
-                //cout << "Theta_i = " << otheta[j][l*k+r] << endl;;
-                }
-                
+                    otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
+                    //cout << "Theta_i = " << otheta[j][l*k+r] << endl;
+                }   
             }
             curdx+=(size_t)onn[j];
         }

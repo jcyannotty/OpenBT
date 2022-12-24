@@ -29,9 +29,11 @@ void mcbrt::add_observation_to_suff(diterator& diter, sinfo& si)
     if((*fi)(*diter,1) == 1){
         mci.sumyw+=w*diter.gety();
         mci.sumwf+=w;
+        //cout << "sumwf = " << mci.sumwf << endl;
     }else{
         mci.sumzw+=w*diter.gety();
         mci.sumwc+=w;
+        //cout << "sumwc = " << mci.sumwc << endl;
     }
 }
 
@@ -77,7 +79,6 @@ void mcbrt::drawthetavec(rn& gen)
     // Initialize theta1 and theta2 for the subtrees
     double theta1, theta2;
     vxd thetavec(2);
-    
     // Get all suff stats per node
     allsuff(bnv,siv);
 
@@ -100,11 +101,9 @@ void mcbrt::drawthetavec(rn& gen)
 #ifdef _OPENMPI
     mpi_resetrn(gen);
 #endif
-
     // Draw theta1 and theta2 from non subtree nodes
     for(size_t i=0;i<xnodes.size();i++) {
         bnv[xnodes[i]]->setthetavec(drawnodethetavec(*(siv[xnodes[i]]),gen));
-        delete siv[i]; //set it, then forget it!
     }
 
     // Loop through subtrees (the ids stored in uroots) and draw thetas
@@ -117,7 +116,7 @@ void mcbrt::drawthetavec(rn& gen)
         } 
         // Draw theta2 for the subtrees
         theta2 = drawtheta2(unodestats,gen);
-
+        cout << "drawthetavec here 2" << endl;
         // Draw theta1 per node conditional on theta2
         for(size_t j=0;j<unodestats.size();j++){
             ind = unmap[uroots[i]][j]; // bottom node/suff stat index
@@ -125,6 +124,7 @@ void mcbrt::drawthetavec(rn& gen)
             thetavec << theta1, theta2; // create the eigen thetavec
             bnv[ind]->setthetavec(thetavec); // Set thetavec
         }
+        cout << "drawthetavec here 3" << endl;
     }
 
     delete &siv;  //and then delete the vector of pointers.
@@ -181,16 +181,14 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
     //Print out matrix algebra step-by-step
     /*
     std::cout << "\nAll matrix Calculations:" << std::endl;
-    std::cout << "Sig_inv = \n" << Sig_inv << std::endl;
-    std::cout << "\n Sig = \n" << Sig << std::endl;
-    std::cout << "\n muhat = \n" << muhat << std::endl;
+    std::cout << "Prior_Sig_inv = \n" << Prior_Sig_Inv << std::endl;
+    std::cout << "\n PostSig = \n" << PostSig << std::endl;
+    std::cout << "\n postmean = \n" << postmean << std::endl;
     std::cout << "\n Ev = \n" << Ev << std::endl;
     std::cout << "\n evals = \n" << evals << std::endl;
     std::cout << "\n E = \n" << E << std::endl;
     std::cout << "\n Sp = \n" << Sp << std::endl;
-    std::cout << "\n thetavec = " << std::endl;
     */
-        
     //--Generate the MVN vector
     return postmean + Sp*stdnorm;
 }
@@ -211,14 +209,11 @@ double mcbrt::drawtheta2(std::vector<sinfo*> sivec, rn &gen)
         if(mv[1]>0){w = 1/mv[1];}else{w = 0.0;}
         sumw += w;
         summeanw += mv[0]*w;
-        cout << "mv[0] = " << mv[0] << endl;
     }
 
     // Now get the posterior mean and variance
     postvar = 1/(sumw + 1/tau2_sqr);
     postmean = postvar*(summeanw + ci.mu2/tau2_sqr);
-    cout << "mu2 = " << ci.mu2 << endl;
-    cout << "postmean = " << postmean << endl;
 
     // Draw a random variable
     theta2 = postmean + gen.normal()*sqrt(postvar);
@@ -327,7 +322,6 @@ double mcbrt::lmnode(mcinfo &mci){
 double mcbrt::lmsubtree(mcinfo &mci){
     // Initialize terms for lm
     double tau2_sqr = ci.tau2*ci.tau2;
-    double rhat, vhat;
 
     // Initialize terms for total lm from each piece
     double lmstree = 0.0;
@@ -339,7 +333,7 @@ double mcbrt::lmsubtree(mcinfo &mci){
     double sum_w = 0.0;
     double sum_logw = 0.0;
     double w = 1.0;
-    double B; // number of nodes in the subtree
+    double B = 0; // number of nodes in the subtree
 
     // Set subtree and sibling moments
     mci.setsubtreemoments(ci.mu1, ci.tau1);
@@ -420,7 +414,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
     tree::npv uroots; // roots to subtree(s)
     std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
     sil.n=0; sir.n=0;
-
+    cout << "BIRTH" << endl;
     // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
     // but we need it here to set 
     mcinfo& mcr=static_cast<mcinfo&>(sir);
@@ -433,10 +427,10 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
     
     // Now check to see if p is the root of the subtree, if so we can just set subtree to 0. 
     // When nx starts a subtree, we only need to consider the l & r nodes, hence no need to pool information across the rest of the subtree  
-    if(nx == subtree){subtree == 0;}
-
+    if(nx == subtree){subtree = 0;}
     // If nx is not in a subtree - i.e. subtree == 0 meaning we have a null pointer
     if(!subtree){
+        //cout << "mcbrt local getsuff for nonsubtree..." << endl;
         // The left and right node suff stats can be computed as normal 
         // brt::local_getsuff(diter,nx,v,c,sil,sir);
         for(;diter<diter.until();diter++){
@@ -499,7 +493,6 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         } 
         // Now add the suff stats from the unchanged part of the subtree in sir (could use sil wlog)   
         mcr.setsubtreeinfo(mcv); 
-        cout << "here4" << endl;
         // Add the sibling information from mcl to mcr
         mcr.setsiblinginfo(mcl);       
     }
@@ -516,7 +509,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
     tree::npv uroots; // roots to subtree(s)
     std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
     sil.n=0; sir.n=0;
-
+    cout << "DEATH" << endl;
     // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
     // but we need it here to set 
     mcinfo& mcr=static_cast<mcinfo&>(sir);
@@ -530,7 +523,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
 
     // Now check to see if p is the root of the subtree, if so we can just set subtree to 0. 
     // When p starts a subtree, we only need to consider the l & r nodes, hence no need to pool information across the rest of the subtree  
-    if(l->p == subtree){subtree == 0;} // Set to null pointer
+    if(l->p == subtree){subtree = 0;} // Set to null pointer
     if(!subtree){
         // Do the regular steps
         // brt::local_getsuff(diter,l,r,sil,sir);
@@ -625,7 +618,7 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
 {
     #ifdef _OPENMPI
     // Only need to initialize the sir and sil for rank 0
-    tree::npv uroots;
+    tree::npv uroots,subbnv;
     tree::tree_p subtree;
     if(rank==0){
         // Cast sil and sir to be mcinfo
@@ -636,7 +629,7 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
         // Check is the node nx in a subtree
         n->nodeinsubtree(uroots,subtree);
         // Now check to see if p is the root of the subtree, if so we can just set subtree to 0. 
-        if(n == subtree){subtree == 0;}
+        if(n == subtree){subtree = 0;}
 
         // If not a null pointer and a subtree is used, get bottom nodes and resize mcr subtree info        
         if(subtree){
@@ -646,7 +639,7 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
             mcr.subtree_node = true;
             //Set mcr as the subtree andn sibling info node
             mcr.sibling_info = true;
-            if(birthmove){mcr.resizesubtreeinfo(subbnv-1);}else{mcr.resizesubtreeinfo(subbnv-2);}
+            if(birthmove){mcr.resizesubtreeinfo(subbnv.size()-1);}else{mcr.resizesubtreeinfo(subbnv.size()-2);}
         }
     }
 #endif
@@ -654,6 +647,7 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
 
 //--------------------------------------------------
 // subsuff
+
 void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
     tree::npv path;
@@ -662,29 +656,35 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 
     // Set the root of the tree for the rotation. 
     // If nx is in a subtree, then we need to use its subtree root rather than using nx 
+    cout << "nx = " << nx->nid() << " --- " << rank << endl;
+    cout << "nx.treesize = " << nx->treesize() << " --- " << rank << endl;
     local_subsuff_setroot(nx,subtree,troot,uroots);
 
     bnv.clear();
+    //cout << "troot = " << troot->nid() << " --- " << rank << endl;
     troot->getpathtoroot(path);  //path from subtree root troot back to root (troot = nx or subtree if subtree is a pointer above nx)
     troot->getbots(bnv);  //all bots ONLY BELOW node troot!!
-    
+    //cout << "troot = " << troot->nid() << " --- " << rank << endl;
+    cout << "treesize = " << troot->treesize() << "-----" << rank << endl;
+
 #ifdef _OPENMP
     typedef tree::npv::size_type bvsz;
+    cout << "HERE????" << endl;
     siv.clear(); //need to setup space threads will add into
     siv.resize(bnv.size());
     for(bvsz i=0;i!=bnv.size();i++) siv[i]=newsinfo();
 #     pragma omp parallel num_threads(tc)
-    local_ompsubsuff(*di,nx,path,bnv,siv); //faster if pass di and bnv by value.
+    local_ompsubsuff(*di,troot,path,bnv,siv); //faster if pass di and bnv by value.
 #elif _OPENMPI
     diterator diter(di);
-    local_mpisubsuff(diter,nx,path,bnv,siv);
+    cout << "bnv.size = " << bnv.size() << " ---- rank = " << rank << endl;
+    local_mpisubsuff(diter,troot,path,bnv,siv);
 #else
     diterator diter(di);
-    local_subsuff(diter,nx,path,bnv,siv);
+    local_subsuff(diter,troot,path,bnv,siv);
 #endif
     // Now pool information across nodes depending of the calibration subtree status
-    local_subsuff_nodecases(nx,subtree,bnv,siv);
-
+    //local_subsuff_nodecases(troot,subtree,bnv,siv);
 }
 
 //--------------------------------------------------
@@ -705,6 +705,7 @@ void mcbrt::local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tr
     }else{
         troot = nx;
     }
+    cout << "subtree = " << subtree << "--- rank =" << rank << endl;
 }
 
 //--------------------------------------------------
@@ -751,8 +752,6 @@ void mcbrt::local_subsuff_subtree(std::vector<sinfo*>& siv)
     for(size_t i=0;i<siv.size();i++){
         mcv[i]=static_cast<mcinfo*>(siv[i]);
         mcv[i]->subtree_node = true;
-        //cout << "mcv[i] = ..." << endl;
-        //mcv[i]->print();
     }
     
     // Compile suff stats across the calibration subtree--WLOG, store everything in the first node of this vector
@@ -767,14 +766,13 @@ void mcbrt::local_subsuff_subtree(std::vector<sinfo*>& siv)
 void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
     typedef tree::npv::size_type bvsz;
-    bvsz nb;
+    //bvsz nb;
     std::vector<mcinfo*> mcv(bnv.size()); // mcinfo vector used for subtrees
 
     // Define bottom node vector map, unode map for calibration subtreen, and clear siv
     std::map<tree::tree_cp,std::vector<size_t>> unmap;
-
     // Initialize suff stat vectors
-    for(bvsz i=0;i!=bnv.size();i++) { 
+    for(bvsz i=0;i<bnv.size();i++) { 
         mcv[i] = static_cast<mcinfo*>(siv[i]);
         bnv[i]->nodeinsubtree(nxuroots,subtree);
         // Append this nodes id to its corresponding unodemap if its in a subtree
@@ -805,7 +803,6 @@ void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tre
 // A lot of similar code to the above local_subsuff cases, try to clean up later
 void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv){
     tree::npv nxuroots; // Roots to all calibration subtree
-    cout << "Local subsuff node cases" << endl;
     // if nx isn't in a calibration subtree or starts one, then check to see if it contains one (or many)
     if(!subtree){
         // Get subtree roots below nx
@@ -814,10 +811,12 @@ void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree:
     // Now check conditions for how to pool the information across nodes in a common subtree
     if(!subtree && nxuroots.size()>0){
         // If nx is not in a subtree, but nodes below nx are in subtree(s)
-        local_subsuff_subtree(nxuroots,nx,subtree,bnv,siv);        
+        local_subsuff_subtree(nxuroots,nx,subtree,bnv,siv);
+        cout << "local_subsuff_nx_subtree..." << endl;        
     }else if(subtree){
         // Either nx creates the calibration subtree or it is in one already
         local_subsuff_subtree(siv);
+        cout << "local_subsuff_subtree..." << endl;
     }else{
         // This set of suff stats is not associated with a claibration subtree -- no need to pool information    
     }
@@ -850,61 +849,68 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 #ifdef _OPENMPI
     mcinfo& msil=static_cast<mcinfo&>(sil);
     mcinfo& msir=static_cast<mcinfo&>(sir);
+    int buffer_size = SIZE_UINT6*100; 
     if(rank==0) { // MPI receive all the answers from the slaves
         MPI_Status status;
-        msinfo& tsil = (mcinfo&) *newsinfo();
-        msinfo& tsir = (mcinfo&) *newsinfo();
-        char buffer[SIZE_UINT6];
+        mcinfo& tsil = (mcinfo&) *newsinfo();
+        mcinfo& tsir = (mcinfo&) *newsinfo();
         int position=0;
         unsigned int ln,rn;
         for(size_t i=1; i<=(size_t)tc; i++) {
             // Pass subtree information if present
             // This should only apply to the right node
             size_t ns = 0;
-            ns = tsir.subtree_summyw.size();
-            double sbt_sumyw_array[ns],double sbt_sumzw_array[ns];
-            double sbt_sumwf_array[ns],double sbt_sumwc_array[ns];
+            ns = tsir.subtree_sumyw.size();
+            double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
+            double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
             if(tsir.subtree_info){
                 // Cast vectors to array
-                copy(tsir.subtree_sumyw.begin(),tsir.subtree_sumyw.end(),sbt_sumyw_array);
-                copy(tsir.subtree_sumzw.begin(),tsir.subtree_sumzw.end(),sbt_sumzw_array);
-                copy(tsir.subtree_sumwf.begin(),tsir.subtree_sumwf.end(),sbt_sumwf_array);
-                copy(tsir.subtree_sumwc.begin(),tsir.subtree_sumwc.end(),sbt_sumwc_array); 
-            }    
+                std::copy(tsir.subtree_sumyw.begin(),tsir.subtree_sumyw.end(),sbt_sumyw_array);
+                std::copy(tsir.subtree_sumzw.begin(),tsir.subtree_sumzw.end(),sbt_sumzw_array);
+                std::copy(tsir.subtree_sumwf.begin(),tsir.subtree_sumwf.end(),sbt_sumwf_array);
+                std::copy(tsir.subtree_sumwc.begin(),tsir.subtree_sumwc.end(),sbt_sumwc_array);
+                buffer_size = buffer_size*(ns+1);
+                cout << "buffer_size = " << buffer_size << endl; 
+            }
+            char buffer[buffer_size];    
             position=0;
-            MPI_Recv(buffer,SIZE_UINT6,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD); // May not need to pass
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD); // May not need to pass
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsil.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-
+            cout << "buffer_size = " << buffer_size << endl;
+            MPI_Recv(buffer,buffer_size,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
+            MPI_Unpack(buffer,buffer_size,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsil.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD); // May not need to pass
+            MPI_Unpack(buffer,buffer_size,&position,&tsir.nf,1,MPI_UNSIGNED,MPI_COMM_WORLD); // May not need to pass
+            MPI_Unpack(buffer,buffer_size,&position,&tsil.sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsir.sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsil.sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsir.sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsil.sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsir.sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsil.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+            MPI_Unpack(buffer,buffer_size,&position,&tsir.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
             // Now unpack the subtree information and cast back to std::vector 
             if(tsir.subtree_info){
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&sbt_array_sumyw,ns,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&sbt_array_sumzw,ns,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&sbt_array_sumwf,ns,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&sbt_array_sumwc,ns,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&sbt_sumyw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&sbt_sumzw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwf_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwc_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
 
-                tsir.subtree_sumyw.insert(tsir.subtree_sumyw.begin(), std::begin(sbt_array_sumyw),std::end(sbt_array_sumyw));
-                tsir.subtree_sumyw.insert(tsir.subtree_sumzw.begin(), std::begin(sbt_array_sumzw),std::end(sbt_array_sumzw));
-                tsir.subtree_sumyw.insert(tsir.subtree_sumwf.begin(), std::begin(sbt_array_sumwf),std::end(sbt_array_sumwf));
-                tsir.subtree_sumyw.insert(tsir.subtree_sumwc.begin(), std::begin(sbt_array_sumwc),std::end(sbt_array_sumwc));
+                for(size_t j=0;j<ns;j++){tsir.subtree_sumyw.push_back(sbt_sumyw_array[j]);}
+                for(size_t j=0;j<ns;j++){tsir.subtree_sumzw.push_back(sbt_sumzw_array[j]);}
+                for(size_t j=0;j<ns;j++){tsir.subtree_sumwf.push_back(sbt_sumwf_array[j]);}
+                for(size_t j=0;j<ns;j++){tsir.subtree_sumwc.push_back(sbt_sumwc_array[j]);}
+                //tsir.subtree_sumyw.insert(tsir.subtree_sumyw.begin(), std::begin(sbt_sumyw_array),std::end(sbt_sumyw_array));
+                //tsir.subtree_sumyw.insert(tsir.subtree_sumzw.begin(), std::begin(sbt_sumzw_array),std::end(sbt_sumzw_array));
+                //tsir.subtree_sumyw.insert(tsir.subtree_sumwf.begin(), std::begin(sbt_sumwf_array),std::end(sbt_sumwf_array));
+                //tsir.subtree_sumyw.insert(tsir.subtree_sumwc.begin(), std::begin(sbt_sumwc_array),std::end(sbt_sumwc_array));
             }
             // Unpack sibling info for the right node (if should have sibling info, otherwise there is a problem)
             // God willing, you'll find avoid having to pass this sibling info
             if(tsir.sibling_info){
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sibling_sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sibling_sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sibling_sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
-                MPI_Unpack(buffer,SIZE_UINT6,&position,&tsir.sibling_sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
             }
             tsil.n=(size_t)ln;
             tsir.n=(size_t)rn;
@@ -916,50 +922,51 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
     }
     else // MPI send all the answers to root
     {
-        char buffer[SIZE_UINT6];
         int position=0;  
         unsigned int ln,rn;
         
         size_t ns = 0;
-        ns = tsir.subtree_summyw.size();
-        double sbt_sumyw_array[ns],double sbt_sumzw_array[ns];
-        double sbt_sumwf_array[ns],double sbt_sumwc_array[ns];
-        if(tsir.subtree_info){
+        ns = msir.subtree_sumyw.size();
+        double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
+        double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
+        if(msir.subtree_info){
             // Cast vectors to array
-            copy(tsir.subtree_sumyw.begin(),msir.subtree_sumyw.end(),sbt_sumyw_array);
-            copy(tsir.subtree_sumzw.begin(),msir.subtree_sumzw.end(),sbt_sumzw_array);
-            copy(tsir.subtree_sumwf.begin(),msir.subtree_sumwf.end(),sbt_sumwf_array);
-            copy(tsir.subtree_sumwc.begin(),msir.subtree_sumwc.end(),sbt_sumwc_array); 
+            std::copy(msir.subtree_sumyw.begin(),msir.subtree_sumyw.end(),sbt_sumyw_array);
+            std::copy(msir.subtree_sumzw.begin(),msir.subtree_sumzw.end(),sbt_sumzw_array);
+            std::copy(msir.subtree_sumwf.begin(),msir.subtree_sumwf.end(),sbt_sumwf_array);
+            std::copy(msir.subtree_sumwc.begin(),msir.subtree_sumwc.end(),sbt_sumwc_array);
+            //buffer_size = buffer_size*(ns+1); 
         }
+        char buffer[buffer_size];
         ln=(unsigned int)msil.n;
         rn=(unsigned int)msir.n;
-        MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msil.nf,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msir.nf,1,MPI_UNSIGNED,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msil.sumwf,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msir.sumwf,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msil.sumwc,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msir.sumwc,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msil.sumyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msir.sumyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msil.sumzw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-        MPI_Pack(&msir.sumzw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+        MPI_Pack(&ln,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&rn,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msil.nf,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msir.nf,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msil.sumwf,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msir.sumwf,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msil.sumwc,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msir.sumwc,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msil.sumyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msir.sumyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msil.sumzw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+        MPI_Pack(&msir.sumzw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
         // Now Pack the subtree information 
         if(msir.subtree_info){
-            MPI_Pack(&sbt_array_sumyw,ns,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-            MPI_Pack(&sbt_array_sumzw,ns,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-            MPI_Pack(&sbt_array_sumwf,ns,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-            MPI_Pack(&sbt_array_sumwc,ns,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+            MPI_Pack(&sbt_sumyw_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&sbt_sumzw_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&sbt_sumwf_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&sbt_sumwc_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
         }
         // Pack the sibling info for the right node (if should have sibling info, otherwise there is a problem)
         if(msir.sibling_info){
-            MPI_Pack(&msir.sibling_sumyw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-            MPI_Pack(&msir.sibling_sumzw,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-            MPI_Pack(&msir.sibling_sumwf,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
-            MPI_Pack(&msir.sibling_sumwc,1,MPI_DOUBLE,buffer,SIZE_UINT6,&position,MPI_COMM_WORLD);
+            MPI_Pack(&msir.sibling_sumyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&msir.sibling_sumzw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&msir.sibling_sumwf,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&msir.sibling_sumwc,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
         }
-        MPI_Send(buffer,SIZE_UINT6,MPI_PACKED,0,0,MPI_COMM_WORLD);     
+        MPI_Send(buffer,buffer_size,MPI_PACKED,0,0,MPI_COMM_WORLD);     
     }
 #endif   
 }
@@ -968,12 +975,14 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 //allsuff(2) -- the MPI communication part of local_mpiallsuff.  This is model-specific.
 void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
 {
+    cout << "reduce reduce reduce" << endl;
+    cout << "siv.size() = " << siv.size() << "---- rank = " << rank << endl;
 #ifdef _OPENMPI
     unsigned int nvec[siv.size()];
-    double sumyw[siv.size()];
-    double sumzy[siv.size()];
-    double sumwf[siv.size()];
-    double sumwc[siv.size()];
+    double sumywvec[siv.size()];
+    double sumzwvec[siv.size()];
+    double sumwfvec[siv.size()];
+    double sumwcvec[siv.size()];
     /*
     // Subtree versions
     std::vector<double> sb_sumyw_vec;
@@ -982,7 +991,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
     std::vector<double> sb_sumwc_vec;
     */
     for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
-        mcinfo* msi=static_cast<msinfo*>(siv[i]);
+        mcinfo* msi=static_cast<mcinfo*>(siv[i]);
         nvec[i]=(unsigned int)msi->n;    // cast to int
         sumywvec[i]=msi->sumyw;
         sumzwvec[i]=msi->sumzw;
@@ -1030,19 +1039,22 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         double temp_sb_sumwf_vec[sbtvs];
         double temp_sb_sumwc_vec[sbtvs];
         */
-
+        //cout << "siv.size() (rank) = " << siv.size() << "----" << rank << endl;
         // receive nvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempnvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
-            nvec[j]+=tempnvec[j]; 
+            for(size_t j=0;j<siv.size();j++){
+                nvec[j]+=tempnvec[j];
+                //cout << "nvec = " << nvec[j] << endl; 
+            }
         }
         MPI_Request *request=new MPI_Request[tc];
+
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Isend(&nvec,siv.size(),MPI_UNSIGNED,i,0,MPI_COMM_WORLD,&request[i-1]);
         }
         
-        // cast back to msi
+        // cast back to mci
         for(size_t i=0;i<siv.size();i++) {
             mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->n=(size_t)nvec[i];    // cast back to size_t
@@ -1053,8 +1065,10 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         // receive sumywvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempsumywvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
-            sumywvec[j]+=tempsumywvec[j];
+            for(size_t j=0;j<siv.size();j++){
+                sumywvec[j]+=tempsumywvec[j];
+                //cout << "sumyw = " << sumywvec[j] << endl;
+            }
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -1071,8 +1085,10 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         // receive sumzwvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempsumzwvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
-            sumzwvec[j]+=tempsumzwvec[j];
+            for(size_t j=0;j<siv.size();j++){
+                sumzwvec[j]+=tempsumzwvec[j];
+                //cout << "sumzw = " << sumzwvec[j] << endl;
+            }
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -1089,8 +1105,10 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         // receive sumwfvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempsumwfvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
-            sumwfvec[j]+=tempsumwfvec[j];
+            for(size_t j=0;j<siv.size();j++){
+                sumwfvec[j]+=tempsumwfvec[j];
+                //cout << "sumwf = " << sumwfvec[j] << endl;
+            }
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -1107,8 +1125,10 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         // receive sumwcvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Recv(&tempsumwcvec,siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-            for(size_t j=0;j<siv.size();j++)
-            sumwcvec[j]+=tempsumwcvec[j];
+            for(size_t j=0;j<siv.size();j++){
+                sumwcvec[j]+=tempsumwcvec[j];
+                //cout << "sumwc = " << sumwcvec[j] << endl;
+            }
         }
         request=new MPI_Request[tc];
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -1125,7 +1145,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
     } else {
         MPI_Request *request=new MPI_Request;
         MPI_Status status;
-
+        //cout << "siv.size() (rank) = " << siv.size() << "----" << rank << endl;
         // send/recv nvec      
         MPI_Isend(&nvec,siv.size(),MPI_UNSIGNED,0,0,MPI_COMM_WORLD,request);
         MPI_Wait(request,MPI_STATUSES_IGNORE);
@@ -1139,6 +1159,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         for(size_t i=0;i<siv.size();i++) {
             mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->n=(size_t)nvec[i];    // cast back to size_t
+            //cout << "nvec = " << nvec[i] << endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
@@ -1151,6 +1172,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         for(size_t i=0;i<siv.size();i++) {
             mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->sumyw=sumywvec[i];
+            //cout << "sumywvec = " << sumywvec[i] << endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
@@ -1163,6 +1185,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         for(size_t i=0;i<siv.size();i++) {
             mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->sumzw=sumzwvec[i];
+            //cout << "sumzwvec = " << sumzwvec[i] << endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
@@ -1175,6 +1198,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         for(size_t i=0;i<siv.size();i++) {
             mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->sumwf=sumwfvec[i];
+            //cout << "sumwfvec = " << sumwfvec[i] << endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;
@@ -1183,8 +1207,9 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         // update sumwcvec
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
-            msinfo* msi=static_cast<msinfo*>(siv[i]);
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->sumwc=sumwcvec[i];
+            //cout << "sumwcvec = " << sumwcvec[i] << endl;
         }
     }
 #endif
