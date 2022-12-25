@@ -61,7 +61,7 @@ class param{
         void setpriors(std::vector<std::string> prdist,std::vector<double> prp1, std::vector<double> prp2);
         void setproposals(std::vector<std::string> propdist, std::vector<double> prop);
         void settc(int tc) {this->tc = tc;}  // this is numslaves for MPI, or numthreads for OPEN_MP
-        void setucur(std::vector<double> uc){this->ucur = uc;}
+        void setucur(std::vector<double> uc){this->ucur = uc;this->unew = uc;}
         void updatex(std::vector<double> &x, std::vector<size_t> ucols, size_t pxu, size_t n);
 
    

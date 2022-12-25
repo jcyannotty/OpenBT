@@ -64,7 +64,7 @@ void brt::getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,
 //peturb proposal for internal node cut points.
 void brt::pertcv(rn& gen)
 {
-   cout << "--------------->>into pertcv" << endl;
+   //cout << "--------------->>into pertcv" << endl;
    tree::tree_p pertnode;
    if(t.treesize()==1) // nothing to perturb if the tree is a single terminal node
       return;
@@ -118,7 +118,6 @@ void brt::pertcv(rn& gen)
       getLU(pertnode,*xi,&Ln,&Un);
       size_t newc = Ln + (size_t)(floor(gen.uniform()*(Un-Ln+1.0)));
       pertnode->setc(newc);
-
 #ifdef _OPENMPI
       unsigned int propcint=(unsigned int)newc;
       unsigned int propvint=(unsigned int)newv;
@@ -128,12 +127,13 @@ void brt::pertcv(rn& gen)
       MPI_Pack(&propcint,1,MPI_UNSIGNED,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
       MPI_Pack(&propvint,1,MPI_UNSIGNED,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
       MPI_Pack(&didswap,1,MPI_CXX_BOOL,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      //cout << "send new v " << newv << ", send new c " << newc << endl;
       for(size_t i=1; i<=(size_t)tc; i++) {
          MPI_Isend(buffer,SIZE_UINT3,MPI_PACKED,i,MPI_TAG_PERTCHGV,MPI_COMM_WORLD,&request[i-1]);
       }
       std::vector<double> chgvrownew;
       chgvrownew=(*mi.corv)[newv];
- 
+
       MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
       delete[] request;
 
@@ -214,7 +214,6 @@ void brt::pertcv(rn& gen)
    else {
       mi.pertproposal++;
       pertnode = intnodes[pertdx];
-
       // Get allowable range for perturbing cv at pertnode
       int L,U;
       bool hardreject=false;
@@ -307,7 +306,7 @@ void brt::pertcv(rn& gen)
 //do a rotation proposal at a randomly selected internal node.
 bool brt::rot(tree::tree_p tnew, tree& x, rn& gen)
 {
-   cout << "--------------->>into rot" << endl;
+   //cout << "--------------->>into rot" << endl;
    #ifdef _OPENMPI
    MPI_Request *request = new MPI_Request[tc];
    if(rank==0) {

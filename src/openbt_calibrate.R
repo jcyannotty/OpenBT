@@ -125,11 +125,10 @@ openbtcal = function(
   nc = length(yc_train)
   n = nf + nc
   px = ncol(xf_train)
-  p = ncol(xc_train)
+  p = px + pu
   
   # Initialize the calibration parameters in xf_train data
-  #uf_train = matrix(uhat, nrow = nf, ncol = pu, byrow = TRUE)
-  uf_train = seq(8.5,10.8,length = nf)
+  uf_train = matrix(uhat, nrow = nf, ncol = pu, byrow = TRUE)
   xf_train = cbind(xf_train, uf_train)
   
   # Realign calibration parameter columns to be at the end of the matrix if needed
@@ -369,16 +368,19 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   xf_test=as.matrix(xf_test)
   xc_test=as.matrix(xc_test)
 
-  px=ncol(x_test)
-  pu = length(u_vec)
+  px = ncol(xf_test)
+  pu = length(ucols)
+  p = px + pu
   nf = nrow(xf_test)
   nc = ifelse(is.null(nrow(xc_test)),0,nrow(xc_test))
   
   # organize columns
   xcols = setdiff(1:p,ucols)
   out_ucols = seq(px,p-1,by=1) # col index for cpp, index starts at 0 
-  xc_train = as.matrix(rbind(xc_train[,xcols],xc_train[,ucols]))
-  
+  if(!is.null(xc_test)){
+    xc_test = as.matrix(xc_test[,c(xcols,ucols)])
+    colnames(xc_test) = c(paste0('x',xcols),paste0('u',ucols-px))
+  }
   
   #yf_mean = fit$yf_mean
   #yc_mean = fit$yc_mean
@@ -386,11 +388,16 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   
   # Set roots
   xproot="xp"
-  fproot="fp"
+  fproot="hp"
+  folder = fit$folder
 
   # Set initial value for calibration parameter (will overriden in cpp so this is just a placeholder)
-  uf_train = matrix(1, nrow = nf, ncol = pu)
-  xf_train = cbind(xf_train, uf_train)
+  uf_test = matrix(1, nrow = nf, ncol = pu)
+  xf_test = cbind(xf_test, uf_test)
+  
+  # Change column names
+  colnames(xc_test) = c(paste0('x',xcols),paste0('u',ucols-px))
+  colnames(xf_test) = c(paste0('x',xcols),paste0('u',ucols-px))
   
   #--------------------------------------------------
   #write out config file
@@ -398,8 +405,7 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,
                paste(fit$nd),paste(fit$m),
                paste(fit$mh),paste(p),paste(pu),paste(tc),
-               paste(yf_mean),paste(yc_mean),paste(out_ucols)
-               ), fout)
+               paste(yf_mean),paste(yc_mean),paste(out_ucols)), fout)
   close(fout)
   
   #--------------------------------------------------
@@ -409,20 +415,19 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   # xdata and design matrix
   if(nc>0){
     # Set the x's
-    xflist=split(as.data.frame(xf_train),(seq(nf)-1) %/% (nf/nslv))
-    xclist=split(as.data.frame(xc_train),(seq(nc)-1) %/% (nc/nslv))
-    for(i in 1:nslv) write(t(rbind(xflist[[i]],xclist[[i]])),file=paste(folder,"/",xroot,i,sep=""))
+    xflist=split(as.data.frame(xf_test),(seq(nf)-1) %/% (nf/nslv))
+    xclist=split(as.data.frame(xc_test),(seq(nc)-1) %/% (nc/nslv))
+    for(i in 1:nslv) write(t(rbind(xflist[[i]],xclist[[i]])),file=paste(folder,"/",xproot,i-1,sep=""))
     
     # Set the design matrix
     hlist = vector('list',nslv)
     for(i in 1:nslv){
-      nfslv = length(yflist[[i]])
-      ncslv = length(yclist[[i]])
+      nfslv = nrow(xflist[[i]])
+      ncslv = nrow(xclist[[i]])
       hlist[[i]] = cbind(rep(1,nfslv+ncslv), c(rep(1,nfslv),rep(0,ncslv)))
       hlist[[i]] = as.data.frame(hlist[[i]])
     }
-    for(i in 1:nslv) write(t(hlist[[i]]),file=paste(folder,"/",fproot,i,sep=""))
-    
+    for(i in 1:nslv) write(t(hlist[[i]]),file=paste(folder,"/",fproot,i-1,sep=""))
   }else{
     # Set the x's
     xlist=split(as.data.frame(xf_test),(seq(n)-1) %/% (nf/nslv))
@@ -431,10 +436,10 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
     # Set the design matrix
     hlist = vector('list',nslv)
     for(i in 1:nslv){
-      nfslv = length(yflist[[i]])
+      nfslv = nrow(xlist[[i]])
       hlist[[i]] = as.data.frame(matrix(1,nrow=nfslv,ncol=2))
     }
-    for(i in 1:nslv) write(t(hlist[[i]]),file=paste(folder,"/",fproot,i,sep=""))
+    for(i in 1:nslv) write(t(hlist[[i]]),file=paste(folder,"/",fproot,i-1,sep=""))
   }
 
   # Cutpoints
@@ -472,10 +477,16 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   
   # Faster using data.table's fread than the built-in read.table.
   # However, it does strangely introduce some small rounding error on the order of 8.9e-16.
-  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".etadraws*",sep=""),full.names=TRUE)
-  res$etadraws=do.call(cbind,sapply(fnames,data.table::fread))
-  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".deltadraws*",sep=""),full.names=TRUE)
-  res$deltadraws=do.call(cbind,sapply(fnames,data.table::fread))
+  
+  # Uncomment later!!!
+  #fnames=list.files(fit$folder,pattern=paste(fit$modelname,".etadraws*",sep=""),full.names=TRUE)
+  #res$etadraws=do.call(cbind,sapply(fnames,data.table::fread))
+  #fnames=list.files(fit$folder,pattern=paste(fit$modelname,".deltadraws*",sep=""),full.names=TRUE)
+  #res$deltadraws=do.call(cbind,sapply(fnames,data.table::fread))
+  
+  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".mdraws*",sep=""),full.names=TRUE)
+  res$mdraws=do.call(cbind,sapply(fnames,data.table::fread))
+  
   fnames=list.files(fit$folder,pattern=paste(fit$modelname,".sfdraws*",sep=""),full.names=TRUE)
   res$sfdraws=do.call(cbind,sapply(fnames,data.table::fread))
   
@@ -486,19 +497,26 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   
   # Store Results
   # Eta Posterior
-  res$etamean=apply(res$etadraws,2,mean)
-  res$etasd=apply(res$etadraws,2,sd)
-  res$eta.5=apply(res$etadraws,2,quantile,0.5)
-  res$eta.lower=apply(res$etadraws,2,quantile,q.lower)
-  res$eta.upper=apply(res$etadraws,2,quantile,q.upper)
-  
-  # delta Posterior
-  res$deltamean=apply(res$deltadraws,2,mean)
-  res$deltasd=apply(res$deltadraws,2,sd)
-  res$delta.5=apply(res$deltadraws,2,quantile,0.5)
-  res$delta.lower=apply(res$deltadraws,2,quantile,q.lower)
-  res$delta.upper=apply(res$deltadraws,2,quantile,q.upper)
+  # res$etamean=apply(res$etadraws,2,mean)
+  # res$etasd=apply(res$etadraws,2,sd)
+  # res$eta.5=apply(res$etadraws,2,quantile,0.5)
+  # res$eta.lower=apply(res$etadraws,2,quantile,q.lower)
+  # res$eta.upper=apply(res$etadraws,2,quantile,q.upper)
+  # 
+  # # delta Posterior
+  # res$deltamean=apply(res$deltadraws,2,mean)
+  # res$deltasd=apply(res$deltadraws,2,sd)
+  # res$delta.5=apply(res$deltadraws,2,quantile,0.5)
+  # res$delta.lower=apply(res$deltadraws,2,quantile,q.lower)
+  # res$delta.upper=apply(res$deltadraws,2,quantile,q.upper)
 
+  # Mean draws (remove)
+  res$mmean=apply(res$mdraws,2,mean)
+  res$msd=apply(res$mdraws,2,sd)
+  res$m.5=apply(res$mdraws,2,quantile,0.5)
+  res$m.lower=apply(res$mdraws,2,quantile,q.lower)
+  res$m.upper=apply(res$mdraws,2,quantile,q.upper)
+  
   # Field data Error std Posterior
   res$sfmean=apply(res$sfdraws,2,mean)
   res$sfsd=apply(res$sfdraws,2,sd)

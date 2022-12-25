@@ -635,8 +635,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             rf[j] = y[j]-acb.f(j);    
         }
         for(size_t j=0;j<nc;j++){
-            rc[nf+j] = y[nf+j]-acb.f(nf+j);    
+            rc[j] = y[nf+j]-acb.f(nf+j);    
         }
+        
         if((i+1)%adaptevery==0 && mpirank==0) acb.adapt();
         // Update varaince trees
 #ifdef _OPENMPI
@@ -668,23 +669,20 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         
         // Get joint proposal and update xf_copy with new u
-        //if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
-        //if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
+        if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
         
         // Get predictions for field obs with new u
-        //if(mpirank>0) acb.predict_vec(&di_prop,&fif);
+        if(mpirank>0) acb.predict_vec(&di_prop,&fif);
         // Get new weight sum of residuals squared
-        //for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+        for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
         // Now do the MH Step
-        //uvec.mhstep(csumwr2,nsumwr2,gen);
+        uvec.mhstep(csumwr2,nsumwr2,gen);
         // Update the x data if the propsed move was accepted
-        /*
         if(uvec.accept){
             uvec.updatex(x,ucols,p,nf); // used in the mean model
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         }
-        */
-         
 
 #else
         // Reset csumwr2 and nsumwr2
@@ -702,15 +700,14 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
 
         // Now do the MH Step
-        //uvec.mhstep(csumwr2,nsumwr2,gen);
+        uvec.mhstep(csumwr2,nsumwr2,gen);
 
         // Update the x data if the propsed move was accepted
-        /*
         if(uvec.accept){
             uvec.updatex(x,ucols,p,nf); // used in the mean model
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         }
-        */
+        
 #endif 
     if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();
     }
@@ -732,7 +729,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             rf[j] = y[j]-acb.f(j);    
         }
         for(size_t j=0;j<nc;j++){
-            rc[nf+j] = y[nf+j]-acb.f(nf+j);    
+            rc[j] = y[nf+j]-acb.f(nf+j);    
         }
         // Update varaince trees
 #ifdef _OPENMPI
@@ -821,7 +818,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             rf[j] = y[j]-acb.f(j);    
         }
         for(size_t j=0;j<nc;j++){
-            rc[nf+j] = y[nf+j]-acb.f(nf+j);    
+            rc[j] = y[nf+j]-acb.f(nf+j);    
         }
         // Update varaince trees
 #ifdef _OPENMPI
@@ -858,15 +855,14 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
 
         // Now do the MH Step
-        //uvec.mhstep(csumwr2,nsumwr2,gen);
-
-        /*
+        uvec.mhstep(csumwr2,nsumwr2,gen);
+        
         // Update the x data if the propsed move was accepted
         if(uvec.accept){
             uvec.updatex(x,ucols,p,nf); // used in the mean model
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         } 
-        */
+        
 
 #else
         // Reset csumwr2 and nsumwr2
@@ -991,10 +987,10 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 
         omf.close();
 
-        //Write standard deviation -- sigma -- files
-        //std::ofstream ouf(folder + modelname + ".udraws");
-        //for(size_t i=0;i<udraws.size();i++) ouf << udraws.at(i) << endl;
-        //ouf.close();
+        //Write calibration parameter -- files
+        std::ofstream ouf(folder + modelname + ".udraws");
+        for(size_t i=0;i<udraws.size();i++) ouf << udraws.at(i) << endl;
+        ouf.close();
         cout << " done." << endl;
     
     }

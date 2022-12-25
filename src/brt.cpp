@@ -1286,7 +1286,7 @@ void brt::drawvec(rn& gen)
    }
    else
    {
-      //std::cout << "Rotate" << std::endl; 
+      std::cout << "Rotate" << std::endl; 
       tree::tree_p tnew;
       tnew=new tree(t); //copy of current to make life easier upon rejection
       //t.pr_vec();
@@ -1296,9 +1296,9 @@ void brt::drawvec(rn& gen)
    }
 
    // Perturbation Proposal
-   if(mi.dopert)
+   if(mi.dopert){
       pertcv(gen);
-
+   }
    // Gibbs Step
     drawthetavec(gen);
 
@@ -1445,6 +1445,7 @@ void brt::drawvec_mpislave(rn& gen)
             MPI_Unpack(buffer,SIZE_UINT3,&position,&propcint,1,MPI_UNSIGNED,MPI_COMM_WORLD);
             MPI_Unpack(buffer,SIZE_UINT3,&position,&propvint,1,MPI_UNSIGNED,MPI_COMM_WORLD);
             MPI_Unpack(buffer,SIZE_UINT3,&position,&didswap,1,MPI_CXX_BOOL,MPI_COMM_WORLD);
+            //cout << "recv new v " << propvint << ", recv new c " << propcint << endl;
             size_t propc=(size_t)propcint;
             size_t propv=(size_t)propvint;
             pertnode->setc(propc);

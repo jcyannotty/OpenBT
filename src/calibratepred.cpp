@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 
     //--------------------------------------------------
     //process args
-    std::ifstream conf(folder+"config.pred");
+    std::ifstream conf(folder+"config.calibratepred");
     std::string modelname;
     int modeltype;
     std::string xicore;
@@ -301,31 +301,36 @@ int main(int argc, char* argv[])
     std::vector<double> e_sftheta(temp);
     for(size_t i=0;i<temp;i++) imf >> std::scientific >> e_sftheta.at(i);
 
+    std::vector<int> e_scts;
+    std::vector<int> e_scid;
+    std::vector<int> e_scvar;
+    std::vector<int> e_scc;
+    std::vector<double> e_sctheta;
     if(nc>0){
         // Product variance trees for model runs
         temp=0;
         imf >> temp;
-        std::vector<int> e_scts(temp);
+        e_scts.resize(temp);
         for(size_t i=0;i<temp;i++) imf >> e_scts.at(i);
 
         temp=0;
         imf >> temp;
-        std::vector<int> e_scid(temp);
+        e_scid.resize(temp);
         for(size_t i=0;i<temp;i++) imf >> e_scid.at(i);
 
         temp=0;
         imf >> temp;
-        std::vector<int> e_scvar(temp);
+        e_scvar.resize(temp);
         for(size_t i=0;i<temp;i++) imf >> e_scvar.at(i);
 
         temp=0;
         imf >> temp;
-        std::vector<int> e_scc(temp);
+        e_scc.resize(temp);
         for(size_t i=0;i<temp;i++) imf >> e_scc.at(i);
 
         temp=0;
         imf >> temp;
-        std::vector<double> e_sctheta(temp);
+        e_sctheta.resize(temp);
         for(size_t i=0;i<temp;i++) imf >> std::scientific >> e_sctheta.at(i);
     }
     imf.close();
@@ -333,11 +338,12 @@ int main(int argc, char* argv[])
     // Calibration parameters
     std::ifstream iuf(folder + modelname + ".udraws");
     std::vector<double> e_udraws((nd+1)*pu);
-    for(size_t i=0;i<((nd+1)*pu);i++) imf >> std::scientific >> e_udraws.at(i);
+    for(size_t i=0;i<((nd+1)*pu);i++) iuf >> std::scientific >> e_udraws.at(i);
+    iuf.close();
     std::vector<double> u0, ucur;
     
     // Initialize uvec and the xf's
-    for(size_t j=0;j<pu;j++){u0.push_back(e_udraws[j]);}
+    for(size_t j=0;j<pu;j++){u0.push_back(e_udraws[j]);cout << "u0 = " << u0[0] << endl;}
     uvec.setucur(u0);
     uvec.updatex(xp,ucols,p,nf);
     uvec.updatex(xf,ucols,p,nf);
@@ -352,9 +358,9 @@ int main(int argc, char* argv[])
     double *fpf = new double[nf];
     double *fpc = new double[nc];
     dinfo dip,dipf,dipc;
-    dip.x = &xp[0]; dipf.y=fp; dip.p = p; dip.n=np; dip.tc=1;
+    dip.x = &xp[0]; dip.y=fp; dip.p = p; dip.n=np; dip.tc=1;
     dipf.x = &xf[0]; dipf.y=fpf; dipf.p = p; dipf.n=nf; dipf.tc=1;
-    dipc.x = &xf[0]; dipc.y=fpc; dipc.p = p; dipc.n=nc; dipc.tc=1;
+    dipc.x = &xc[0]; dipc.y=fpc; dipc.p = p; dipc.n=nc; dipc.tc=1;
 
     // Temporary vectors used for loading one model realization at a time.
     // Mean trees
@@ -461,16 +467,16 @@ int main(int argc, char* argv[])
         for(size_t i=0;i<nd;i++) {
             curdx=0;
             for(size_t j=0;j<mh;j++) {
-                sfnn[j]=e_sfts.at(i*mh+j);
-                sfid[j].resize(sfnn[j]);
-                sfv[j].resize(sfnn[j]);
-                sfc[j].resize(sfnn[j]);
-                sftheta[j].resize(sfnn[j]);
-                for(size_t k=0;k< (size_t)sfnn[j];k++) {
-                    sfid[j][k]=e_sfid.at(cumdx+curdx+k);
-                    sfv[j][k]=e_sfvar.at(cumdx+curdx+k);
-                    sfc[j][k]=e_sfc.at(cumdx+curdx+k);
-                    sftheta[j][k]=e_sftheta.at(cumdx+curdx+k);
+                scnn[j]=e_sfts.at(i*mh+j);
+                scid[j].resize(scnn[j]);
+                scv[j].resize(scnn[j]);
+                scc[j].resize(scnn[j]);
+                sctheta[j].resize(scnn[j]);
+                for(size_t k=0;k< (size_t)scnn[j];k++) {
+                    scid[j][k]=e_scid.at(cumdx+curdx+k);
+                    scv[j][k]=e_scvar.at(cumdx+curdx+k);
+                    scc[j][k]=e_scc.at(cumdx+curdx+k);
+                    sctheta[j][k]=e_sctheta.at(cumdx+curdx+k);
                 }
                 curdx+=(size_t)sfnn[j];
             }

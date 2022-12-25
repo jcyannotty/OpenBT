@@ -126,7 +126,7 @@ void amcbrt::local_predict_vec(diterator& diter, finfo& fipred){
         //Initialize to zero 
         temp = 0;
         thetavec_temp = vxd::Zero(k);
-        
+
         for(size_t j=0;j<m;j++) {
             bn = mb[j].t.bn(diter.getxp(),*xi);
             thetavec_temp = bn->getthetavec();

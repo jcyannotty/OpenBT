@@ -207,10 +207,13 @@ void param::setproposals(std::vector<std::string> propdist, std::vector<double> 
 void param::updatex(std::vector<double> &x, std::vector<size_t> ucols, size_t pxu, size_t n){
     size_t uidx = pxu - ucols.size();
     size_t uc;
+    //cout << "pxu = " << pxu << endl;
     for(size_t i=0;i<n;i++){
         for(size_t j=0;j<ucols.size();j++){
             uc = ucols[j];
-            x[i*uidx+j] = unew[uc];
+            //cout << "xold = " << x[i*pxu + uc] << endl;
+            x[i*pxu + uc] = unew[j];
+            //cout << "xnew = " << x[i*pxu + uc] << endl;
         }
     }
 }

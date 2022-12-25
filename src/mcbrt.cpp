@@ -116,7 +116,7 @@ void mcbrt::drawthetavec(rn& gen)
         } 
         // Draw theta2 for the subtrees
         theta2 = drawtheta2(unodestats,gen);
-        cout << "drawthetavec here 2" << endl;
+        //cout << "drawthetavec here 2" << endl;
         // Draw theta1 per node conditional on theta2
         for(size_t j=0;j<unodestats.size();j++){
             ind = unmap[uroots[i]][j]; // bottom node/suff stat index
@@ -124,7 +124,7 @@ void mcbrt::drawthetavec(rn& gen)
             thetavec << theta1, theta2; // create the eigen thetavec
             bnv[ind]->setthetavec(thetavec); // Set thetavec
         }
-        cout << "drawthetavec here 3" << endl;
+        //cout << "drawthetavec here 3" << endl;
     }
 
     delete &siv;  //and then delete the vector of pointers.
@@ -414,7 +414,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
     tree::npv uroots; // roots to subtree(s)
     std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
     sil.n=0; sir.n=0;
-    cout << "BIRTH" << endl;
+    //cout << "BIRTH" << endl;
     // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
     // but we need it here to set 
     mcinfo& mcr=static_cast<mcinfo&>(sir);
@@ -509,7 +509,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
     tree::npv uroots; // roots to subtree(s)
     std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
     sil.n=0; sir.n=0;
-    cout << "DEATH" << endl;
+    //cout << "DEATH" << endl;
     // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
     // but we need it here to set 
     mcinfo& mcr=static_cast<mcinfo&>(sir);
@@ -656,16 +656,12 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 
     // Set the root of the tree for the rotation. 
     // If nx is in a subtree, then we need to use its subtree root rather than using nx 
-    cout << "nx = " << nx->nid() << " --- " << rank << endl;
-    cout << "nx.treesize = " << nx->treesize() << " --- " << rank << endl;
     local_subsuff_setroot(nx,subtree,troot,uroots);
 
     bnv.clear();
-    //cout << "troot = " << troot->nid() << " --- " << rank << endl;
+
     troot->getpathtoroot(path);  //path from subtree root troot back to root (troot = nx or subtree if subtree is a pointer above nx)
     troot->getbots(bnv);  //all bots ONLY BELOW node troot!!
-    //cout << "troot = " << troot->nid() << " --- " << rank << endl;
-    cout << "treesize = " << troot->treesize() << "-----" << rank << endl;
 
 #ifdef _OPENMP
     typedef tree::npv::size_type bvsz;
@@ -677,14 +673,14 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
     local_ompsubsuff(*di,troot,path,bnv,siv); //faster if pass di and bnv by value.
 #elif _OPENMPI
     diterator diter(di);
-    cout << "bnv.size = " << bnv.size() << " ---- rank = " << rank << endl;
+    //cout << "bnv.size = " << bnv.size() << " ---- rank = " << rank << endl;
     local_mpisubsuff(diter,troot,path,bnv,siv);
 #else
     diterator diter(di);
     local_subsuff(diter,troot,path,bnv,siv);
 #endif
     // Now pool information across nodes depending of the calibration subtree status
-    //local_subsuff_nodecases(troot,subtree,bnv,siv);
+    local_subsuff_nodecases(troot,subtree,bnv,siv);
 }
 
 //--------------------------------------------------
@@ -692,6 +688,7 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 void mcbrt::local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tree_p &troot,tree::npv &uroots){
     // Get calibration subtree information
     t.getsubtreeroots(uroots, uvec);
+    //cout << "uroots size = " << uroots.size() << endl;
     if(uroots.size()>0){
         // Check is the node nx in a subtree
         nx->nodeinsubtree(uroots,subtree); // see if nx is in a subtree...sets subtree as a tree pointer or null pointer
@@ -705,7 +702,7 @@ void mcbrt::local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tr
     }else{
         troot = nx;
     }
-    cout << "subtree = " << subtree << "--- rank =" << rank << endl;
+    //cout << "subtree = " << subtree << "--- rank =" << rank << endl;
 }
 
 //--------------------------------------------------
@@ -812,11 +809,11 @@ void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree:
     if(!subtree && nxuroots.size()>0){
         // If nx is not in a subtree, but nodes below nx are in subtree(s)
         local_subsuff_subtree(nxuroots,nx,subtree,bnv,siv);
-        cout << "local_subsuff_nx_subtree..." << endl;        
+        //cout << "local_subsuff_nx_subtree..." << endl;        
     }else if(subtree){
         // Either nx creates the calibration subtree or it is in one already
         local_subsuff_subtree(siv);
-        cout << "local_subsuff_subtree..." << endl;
+        //cout << "local_subsuff_subtree..." << endl;
     }else{
         // This set of suff stats is not associated with a claibration subtree -- no need to pool information    
     }
@@ -849,7 +846,7 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 #ifdef _OPENMPI
     mcinfo& msil=static_cast<mcinfo&>(sil);
     mcinfo& msir=static_cast<mcinfo&>(sir);
-    int buffer_size = SIZE_UINT6*100; 
+    int buffer_size = SIZE_UINT6*10; 
     if(rank==0) { // MPI receive all the answers from the slaves
         MPI_Status status;
         mcinfo& tsil = (mcinfo&) *newsinfo();
@@ -870,11 +867,9 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
                 std::copy(tsir.subtree_sumwf.begin(),tsir.subtree_sumwf.end(),sbt_sumwf_array);
                 std::copy(tsir.subtree_sumwc.begin(),tsir.subtree_sumwc.end(),sbt_sumwc_array);
                 buffer_size = buffer_size*(ns+1);
-                cout << "buffer_size = " << buffer_size << endl; 
             }
             char buffer[buffer_size];    
             position=0;
-            cout << "buffer_size = " << buffer_size << endl;
             MPI_Recv(buffer,buffer_size,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
             MPI_Unpack(buffer,buffer_size,&position,&ln,1,MPI_UNSIGNED,MPI_COMM_WORLD);
             MPI_Unpack(buffer,buffer_size,&position,&rn,1,MPI_UNSIGNED,MPI_COMM_WORLD);
@@ -975,8 +970,6 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 //allsuff(2) -- the MPI communication part of local_mpiallsuff.  This is model-specific.
 void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
 {
-    cout << "reduce reduce reduce" << endl;
-    cout << "siv.size() = " << siv.size() << "---- rank = " << rank << endl;
 #ifdef _OPENMPI
     unsigned int nvec[siv.size()];
     double sumywvec[siv.size()];
