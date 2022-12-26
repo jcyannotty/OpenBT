@@ -1299,6 +1299,7 @@ void brt::drawvec(rn& gen)
    if(mi.dopert){
       pertcv(gen);
    }
+
    // Gibbs Step
     drawthetavec(gen);
 

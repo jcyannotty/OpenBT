@@ -866,8 +866,13 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
                 std::copy(tsir.subtree_sumzw.begin(),tsir.subtree_sumzw.end(),sbt_sumzw_array);
                 std::copy(tsir.subtree_sumwf.begin(),tsir.subtree_sumwf.end(),sbt_sumwf_array);
                 std::copy(tsir.subtree_sumwc.begin(),tsir.subtree_sumwc.end(),sbt_sumwc_array);
-                buffer_size = buffer_size*(ns+1);
+                //buffer_size = buffer_size*(ns+1);
             }
+            /*
+            if(tsir.sibling_info){
+                buffer_size = buffer_size + SIZE_UINT6*2;
+            }
+            */
             char buffer[buffer_size];    
             position=0;
             MPI_Recv(buffer,buffer_size,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
@@ -932,6 +937,11 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             std::copy(msir.subtree_sumwc.begin(),msir.subtree_sumwc.end(),sbt_sumwc_array);
             //buffer_size = buffer_size*(ns+1); 
         }
+        /*
+        if(msir.sibling_info){
+            buffer_size = buffer_size + SIZE_UINT6*2;
+        }
+        */
         char buffer[buffer_size];
         ln=(unsigned int)msil.n;
         rn=(unsigned int)msir.n;
