@@ -171,6 +171,9 @@ libmbrt_la_OBJECTS = $(am_libmbrt_la_OBJECTS)
 libmxbrt_la_LIBADD =
 am_libmxbrt_la_OBJECTS = mxbrt.lo calibratefuns.lo
 libmxbrt_la_OBJECTS = $(am_libmxbrt_la_OBJECTS)
+libparameters_la_LIBADD =
+am_libparameters_la_OBJECTS = parameters.lo
+libparameters_la_OBJECTS = $(am_libparameters_la_OBJECTS)
 libpsbrt_la_LIBADD =
 am_libpsbrt_la_OBJECTS = psbrt.lo
 libpsbrt_la_OBJECTS = $(am_libpsbrt_la_OBJECTS)
@@ -193,12 +196,13 @@ openbtcli_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
 	libtree.la libcrn.la libamxbrt.la libmxbrt.la
 am_openbtmixing_OBJECTS = mixing.$(OBJEXT)
 openbtmixing_OBJECTS = $(am_openbtmixing_OBJECTS)
-openbtmixing_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
-	libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la \
-	libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixing_DEPENDENCIES = libparameters.la libsinglebinomial.la \
+	libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la \
+	libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la \
+	libmxbrt.la
 am_openbtmixingpred_OBJECTS = mixandemulatepred.$(OBJEXT)
 openbtmixingpred_OBJECTS = $(am_openbtmixingpred_OBJECTS)
-openbtmixingpred_DEPENDENCIES = libsinglebinomial.la \
+openbtmixingpred_DEPENDENCIES = libparameters.la libsinglebinomial.la \
 	libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la \
 	libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la \
 	libmxbrt.la
@@ -291,8 +295,8 @@ am__depfiles_remade = ./$(DEPDIR)/ambrt.Plo ./$(DEPDIR)/amxbrt.Plo \
 	./$(DEPDIR)/cli.Po ./$(DEPDIR)/crn.Plo ./$(DEPDIR)/mbrt.Plo \
 	./$(DEPDIR)/mixandemulatepred.Po ./$(DEPDIR)/mixing.Po \
 	./$(DEPDIR)/mixingwts.Po ./$(DEPDIR)/mopareto.Po \
-	./$(DEPDIR)/mxbrt.Plo ./$(DEPDIR)/pred.Po \
-	./$(DEPDIR)/psbrt.Plo ./$(DEPDIR)/sbrt.Plo \
+	./$(DEPDIR)/mxbrt.Plo ./$(DEPDIR)/parameters.Plo \
+	./$(DEPDIR)/pred.Po ./$(DEPDIR)/psbrt.Plo ./$(DEPDIR)/sbrt.Plo \
 	./$(DEPDIR)/singlebinomial.Plo ./$(DEPDIR)/singlepoisson.Plo \
 	./$(DEPDIR)/sobol.Po ./$(DEPDIR)/test_ambrt.Po \
 	./$(DEPDIR)/test_amxbrt.Po ./$(DEPDIR)/test_brt.Po \
@@ -343,31 +347,31 @@ am__v_CCLD_1 =
 SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(libbrt_la_SOURCES) $(libcrn_la_SOURCES) \
 	$(libmbrt_la_SOURCES) $(libmxbrt_la_SOURCES) \
-	$(libpsbrt_la_SOURCES) $(libsbrt_la_SOURCES) \
-	$(libsinglebinomial_la_SOURCES) $(libsinglepoisson_la_SOURCES) \
-	$(libtree_la_SOURCES) $(openbtcli_SOURCES) \
-	$(openbtmixing_SOURCES) $(openbtmixingpred_SOURCES) \
-	$(openbtmixingwts_SOURCES) $(openbtmopareto_SOURCES) \
-	$(openbtpred_SOURCES) $(openbtsobol_SOURCES) \
-	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
-	$(testamxbrt_SOURCES) $(testbrt_SOURCES) $(testbrtvp_SOURCES) \
-	$(testcrn_SOURCES) $(testmbrt_SOURCES) $(testmxbrt_SOURCES) \
-	$(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
+	$(libparameters_la_SOURCES) $(libpsbrt_la_SOURCES) \
+	$(libsbrt_la_SOURCES) $(libsinglebinomial_la_SOURCES) \
+	$(libsinglepoisson_la_SOURCES) $(libtree_la_SOURCES) \
+	$(openbtcli_SOURCES) $(openbtmixing_SOURCES) \
+	$(openbtmixingpred_SOURCES) $(openbtmixingwts_SOURCES) \
+	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
+	$(openbtsobol_SOURCES) $(openbtvartivity_SOURCES) \
+	$(testambrt_SOURCES) $(testamxbrt_SOURCES) $(testbrt_SOURCES) \
+	$(testbrtvp_SOURCES) $(testcrn_SOURCES) $(testmbrt_SOURCES) \
+	$(testmxbrt_SOURCES) $(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
 	$(testsinglebinomial_SOURCES) $(testsinglepoisson_SOURCES) \
 	$(testtree_SOURCES)
 DIST_SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(libbrt_la_SOURCES) $(libcrn_la_SOURCES) \
 	$(libmbrt_la_SOURCES) $(libmxbrt_la_SOURCES) \
-	$(libpsbrt_la_SOURCES) $(libsbrt_la_SOURCES) \
-	$(libsinglebinomial_la_SOURCES) $(libsinglepoisson_la_SOURCES) \
-	$(libtree_la_SOURCES) $(openbtcli_SOURCES) \
-	$(openbtmixing_SOURCES) $(openbtmixingpred_SOURCES) \
-	$(openbtmixingwts_SOURCES) $(openbtmopareto_SOURCES) \
-	$(openbtpred_SOURCES) $(openbtsobol_SOURCES) \
-	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
-	$(testamxbrt_SOURCES) $(testbrt_SOURCES) $(testbrtvp_SOURCES) \
-	$(testcrn_SOURCES) $(testmbrt_SOURCES) $(testmxbrt_SOURCES) \
-	$(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
+	$(libparameters_la_SOURCES) $(libpsbrt_la_SOURCES) \
+	$(libsbrt_la_SOURCES) $(libsinglebinomial_la_SOURCES) \
+	$(libsinglepoisson_la_SOURCES) $(libtree_la_SOURCES) \
+	$(openbtcli_SOURCES) $(openbtmixing_SOURCES) \
+	$(openbtmixingpred_SOURCES) $(openbtmixingwts_SOURCES) \
+	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
+	$(openbtsobol_SOURCES) $(openbtvartivity_SOURCES) \
+	$(testambrt_SOURCES) $(testamxbrt_SOURCES) $(testbrt_SOURCES) \
+	$(testbrtvp_SOURCES) $(testcrn_SOURCES) $(testmbrt_SOURCES) \
+	$(testmxbrt_SOURCES) $(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
 	$(testsinglebinomial_SOURCES) $(testsinglepoisson_SOURCES) \
 	$(testtree_SOURCES)
 am__can_run_installinfo = \
@@ -557,9 +561,9 @@ openbtmopareto_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la liba
 openbtmixingwts_SOURCES = mixingwts.cpp
 openbtmixingwts_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 openbtmixing_SOURCES = mixing.cpp
-openbtmixing_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixing_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
-openbtmixingpred_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixingpred_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 testcrn_SOURCES = test_crn.cpp
 testcrn_LDADD = libcrn.la
 testtree_SOURCES = test_tree.cpp
@@ -586,7 +590,7 @@ testsinglepoisson_SOURCES = test_singlepoisson.cpp
 testsinglepoisson_LDADD = libcrn.la libtree.la libbrt.la libsinglepoisson.la
 
 # libraries
-lib_LTLIBRARIES = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libmxbrt.la libamxbrt.la
+lib_LTLIBRARIES = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libmxbrt.la libamxbrt.la libparameters.la
 #libHelloWorld_la_LDFLAGS = -version-info 0:0:0
 libcrn_la_SOURCES = crn.cpp crn.h rn.h tnorm.cpp tnorm.h
 libtree_la_SOURCES = treefuns.cpp treefuns.h tree.cpp tree.h
@@ -599,6 +603,7 @@ libpsbrt_la_SOURCES = psbrt.cpp psbrt.h
 libamxbrt_la_SOURCES = amxbrt.cpp amxbrt.h
 libsinglepoisson_la_SOURCES = singlepoisson.cpp singlepoisson.h
 libsinglebinomial_la_SOURCES = singlebinomial.cpp singlebinomial.h
+libparameters_la_SOURCES = parameters.cpp parameters.h
 all: all-am
 
 .SUFFIXES:
@@ -748,6 +753,9 @@ libmbrt.la: $(libmbrt_la_OBJECTS) $(libmbrt_la_DEPENDENCIES) $(EXTRA_libmbrt_la_
 libmxbrt.la: $(libmxbrt_la_OBJECTS) $(libmxbrt_la_DEPENDENCIES) $(EXTRA_libmxbrt_la_DEPENDENCIES) 
 	$(AM_V_CXXLD)$(CXXLINK) -rpath $(libdir) $(libmxbrt_la_OBJECTS) $(libmxbrt_la_LIBADD) $(LIBS)
 
+libparameters.la: $(libparameters_la_OBJECTS) $(libparameters_la_DEPENDENCIES) $(EXTRA_libparameters_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(CXXLINK) -rpath $(libdir) $(libparameters_la_OBJECTS) $(libparameters_la_LIBADD) $(LIBS)
+
 libpsbrt.la: $(libpsbrt_la_OBJECTS) $(libpsbrt_la_DEPENDENCIES) $(EXTRA_libpsbrt_la_DEPENDENCIES) 
 	$(AM_V_CXXLD)$(CXXLINK) -rpath $(libdir) $(libpsbrt_la_OBJECTS) $(libpsbrt_la_LIBADD) $(LIBS)
 
@@ -863,6 +871,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixingwts.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mopareto.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mxbrt.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/parameters.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pred.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/psbrt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sbrt.Plo@am__quote@ # am--include-marker
@@ -1210,6 +1219,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
+	-rm -f ./$(DEPDIR)/parameters.Plo
 	-rm -f ./$(DEPDIR)/pred.Po
 	-rm -f ./$(DEPDIR)/psbrt.Plo
 	-rm -f ./$(DEPDIR)/sbrt.Plo
@@ -1293,6 +1303,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
+	-rm -f ./$(DEPDIR)/parameters.Plo
 	-rm -f ./$(DEPDIR)/pred.Po
 	-rm -f ./$(DEPDIR)/psbrt.Plo
 	-rm -f ./$(DEPDIR)/sbrt.Plo

@@ -1904,7 +1904,6 @@ if(model == 'mix_calibrate'){
   
   # Now append ti cutpoints to xi cutpoints
   xi = append(xi, ti)
-  
 }
 
 #------------------------------------------------
@@ -2062,7 +2061,8 @@ if(is.null(chv_list)){
     }else{
       chv_data = emu_model_data[[l]]$x_train
     }
-    chv_list[[l+1]] = cor(chv_data,method="spearman")
+    chv_list[[l+1]] = cor(chv_data,method="spearman") + matrix(0.05, nrow = ncol(chv_data),ncol = ncol(chv_data))
+    chv_list[[l+1]] = chv_list[[l+1]] - diag(0.05,ncol(chv_data))
   }  
 }else{
   if(!is.list(chv_list)){
@@ -2105,7 +2105,6 @@ cproot = 'cp'
 
 # cut points root
 xiroot="xi"
-tiroot="ti"
 
 # Design column numbers for computer models
 xc_design_cols = 0
@@ -2141,7 +2140,6 @@ lambda_vec = paste(c(overalllambda_mix, overalllambda_emu))
 nu_vec = paste(c(overallnu_mix, overallnu_emu))
 minnumbot_vec = c(minnumbot_mix, minnumbot_emu)
 means_vec = c(ymean,zmean_vec)
-
 
 # Bind all of the K+1 dimensional vectors together into one matrix
 # Then flatten by row -- this makes things easier when reading in the data in c++
@@ -2199,9 +2197,9 @@ for(l in 1:nummodels){
   
   # Write the x data, considering the calibration case where q>0
   if(q>0){
-    xlist=split(as.data.frame(emu_model_data[[l]]$x_train,emu_model_data[[l]]$theta_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
+    xlist=split(as.data.frame(cbind(emu_model_data[[l]]$x_train,emu_model_data[[l]]$theta_train)),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))
   }else{
-    xlist=split(as.data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))  
+    xlist=split(data.frame(emu_model_data[[l]]$x_train),(seq(nc_vec[l])-1) %/% (nc_vec[l]/nslv))  
   }
   for(i in 1:nslv) write(t(xlist[[i]]),file=paste(folder,"/",xroots[l+1],i,sep=""))  
 }
@@ -2221,6 +2219,7 @@ for(l in 0:nummodels){
 
 # Cutpoints
 for(i in 1:(p+q)) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
+
 #for(i in 1:q) write(ti[[i]],file=paste(folder,"/",tiroot,i,sep=""))
 rm(chv_list)
 
@@ -2228,7 +2227,7 @@ rm(chv_list)
 if(model=='mix_calibrate'){
   cpriorvec = c()
   for(i in 1:q){
-    cpriorvec = c(cpriorvec,c(calibration_param_priors[[i]][1],calibration_param_priors[[i]][2]))  
+    cpriorvec = c(cpriorvec,c(calibration_param_priors[[1]][i],calibration_param_priors[[2]][i]))  
   }
   write(cpriorvec,file=paste(folder,"/",cproot,sep=""))
 }
@@ -2267,7 +2266,8 @@ system(cmd)
 # Collect results
 res=list()
 res$modeltype=modeltype; res$model=model
-res$xroot=xroots; res$yroot=yroots; res$zroots=zroots;res$sroot=sroots; res$chgvroot=chgvroots; res$xc_col_list=xc_col_list
+res$xroot=xroots; res$yroot=yroots; res$zroots=zroots;res$sroot=sroots; res$chgvroot=chgvroots; 
+res$xc_col_list=xc_col_list; res$uc_col_list=tc_col_list
 res$means = means_vec; res$nummodels = nummodels;
 res$nd=nd; res$burn=burn; res$nadapt=nadapt; res$adaptevery=adaptevery; 
 res$mix_model_args = mix_model_args; res$emu_model_args = emu_model_args;
@@ -2302,24 +2302,40 @@ openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q
   means_vec=fit$means
   p=ncol(x_test)
   n=nrow(x_test)
+  q = 0
   nummodels = fit$nummodels
   xproot = 'xp'
   
   x_test=as.matrix(x_test)
   x_col_list = fit$xc_col_list
+  u_col_list = fit$uc_col_list
   
   #--------------------------------------------------
   # Flatten any vector arguments that need to be passed to pred
   # Design column numbers for computer models -- flattens the x_col_list
   xc_design_cols = 0
-  h = 1
+  uc_design_cols = 0
+  hc = 1
+  hu = 1
   # Format -- number of cols for model 1, col numbers for model 1,...,number of cols for model K, col numbers for model K 
   for(l in 1:nummodels){
     pc = length(x_col_list[[l]])
-    xc_design_cols[h] = paste(pc)
-    xc_design_cols[(h+1):(h+pc)] = paste(fit$xc_col_list[[l]])
-    h = h + pc + 1
+    xc_design_cols[hc] = paste(pc)
+    xc_design_cols[(hc+1):(hc+pc)] = paste(x_col_list[[l]])
+    
+    # Calibration parameters
+    if(model == 'mix_calibrate'){
+      pcu = length(u_col_list[[l]])
+      uc_design_cols[hu] = paste(pcu)
+      uc_design_cols[(hu+1):(hu+pcu)] = paste(u_col_list[[l]])
+    }
+    
+    hc = hc + pc + 1
+    hu = hu + pcu + 1
   }
+  
+  # Get unique number of calibration parameters
+  if(model == 'mix_calibrate'){q = length(unique(unlist(u_col_list)))}
   
   # Flatten the m and mh vectors
   mvec = fit$mix_model_args$ntree
@@ -2335,8 +2351,8 @@ openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q
   #write out config file
   fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,
-               paste(fit$nd),paste(nummodels),paste(p),paste(tc),
-               info_vec,xc_design_cols), fout)
+               paste(fit$nd),paste(nummodels),paste(p),paste(q),paste(tc),
+               info_vec,xc_design_cols,uc_design_cols), fout)
   close(fout)
   
   #--------------------------------------------------
@@ -2374,7 +2390,7 @@ openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q
   #cmd=paste("mpirun -np ",tc," openbtpred",sep="")
   #cat(cmd)
   system(cmd)
-  system(paste("rm -f ",fit$folder,"/config.pred",sep=""))
+  #system(paste("rm -f ",fit$folder,"/config.pred",sep=""))
   
   #--------------------------------------------------
   #format and return

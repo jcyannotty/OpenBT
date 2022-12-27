@@ -29,10 +29,10 @@ openbtmixingwts_SOURCES = mixingwts.cpp
 openbtmixingwts_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
 openbtmixing_SOURCES = mixing.cpp
-openbtmixing_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixing_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
-openbtmixingpred_LDADD = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixingpred_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
 # test programs -- these are only built if 'make check' is run.
 check_PROGRAMS = testcrn testtree testbrt testbrtvp testmbrt testsbrt testmxbrt testambrt testpsbrt testamxbrt testsinglebinomial testsinglepoisson
@@ -64,7 +64,7 @@ testsinglepoisson_LDADD = libcrn.la libtree.la libbrt.la libsinglepoisson.la
 
 
 # libraries
-lib_LTLIBRARIES = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libmxbrt.la libamxbrt.la
+lib_LTLIBRARIES = libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libmxbrt.la libamxbrt.la libparameters.la
 #libHelloWorld_la_LDFLAGS = -version-info 0:0:0
 libcrn_la_SOURCES = crn.cpp crn.h rn.h tnorm.cpp tnorm.h
 libtree_la_SOURCES = treefuns.cpp treefuns.h tree.cpp tree.h
@@ -77,4 +77,5 @@ libpsbrt_la_SOURCES = psbrt.cpp psbrt.h
 libamxbrt_la_SOURCES = amxbrt.cpp amxbrt.h
 libsinglepoisson_la_SOURCES = singlepoisson.cpp singlepoisson.h
 libsinglebinomial_la_SOURCES = singlebinomial.cpp singlebinomial.h
+libparameters_la_SOURCES = parameters.cpp parameters.h
 

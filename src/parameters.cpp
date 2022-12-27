@@ -203,9 +203,8 @@ void param::setproposals(std::vector<std::string> propdist, std::vector<double> 
 
 //----------------------------------------------
 // Update x vector with unew, assumes the ucolumns are after all the regular x columns
-// ucols = the index of each u parameter (0,1,2,...,p), given p+1 total parameters
+// ucols = the index of each u parameter (px,px+1,..,px+pu), given p+1 total parameters
 void param::updatex(std::vector<double> &x, std::vector<size_t> ucols, size_t pxu, size_t n){
-    size_t uidx = pxu - ucols.size();
     size_t uc;
     //cout << "pxu = " << pxu << endl;
     for(size_t i=0;i<n;i++){
@@ -214,6 +213,27 @@ void param::updatex(std::vector<double> &x, std::vector<size_t> ucols, size_t px
             //cout << "xold = " << x[i*pxu + uc] << endl;
             x[i*pxu + uc] = unew[j];
             //cout << "xnew = " << x[i*pxu + uc] << endl;
+        }
+    }
+}
+
+
+//----------------------------------------------
+// Update x vector with unew, assumes the ucolumns are after all the regular x columns
+// ucols = the index of each u parameter (px,px+1,..,px+pu), given pu+1 total parameters
+// This differs from updatex in that we assume the design matrix might change & the number of parameters might differ
+// Hence, we don't index by uc when updating x, rather we index by j
+void param::updatexmm(std::vector<double> &x, std::vector<size_t> ucols, size_t pxu, size_t n){
+    size_t uidx = pxu - ucols.size();
+    size_t uc;
+    //cout << "pxu = " << pxu << endl;
+    //cout << "uidx = " << uidx << endl;
+    for(size_t i=0;i<n;i++){
+        for(size_t j=0;j<ucols.size();j++){
+            uc = ucols[j];
+            //cout << "xold = " << x[i*pxu + uidx + j] << endl;
+            x[i*pxu + uidx + j] = unew[uc];
+            //cout << "xnew = " << x[i*pxu + uidx + j] << endl;
         }
     }
 }

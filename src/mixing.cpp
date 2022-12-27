@@ -23,7 +23,8 @@
 #include "tnorm.h"
 #include "mxbrt.h"
 #include "amxbrt.h"
-#include "calibratefuns.cpp"
+#include "parameters.h"
+//#include "calibratefuns.cpp"
 
 using std::cout;
 using std::endl;
@@ -39,9 +40,6 @@ using std::endl;
 #define MODEL_MIXBART 9
 #define MODEL_MIXEMULATE 10
 #define MODEL_MIXCALIBRATE 11
-
-#define MPI_TAG_CAL_ACCEPT 9001
-#define MPI_TAG_CAL_REJECT 9002
 
 
 int main(int argc, char* argv[])
@@ -159,20 +157,22 @@ int main(int argc, char* argv[])
     // Get the design columns per emulator
     std::vector<std::vector<size_t>> x_cols_list(nummodels, std::vector<size_t>(1));
     std::vector<std::vector<size_t>> u_cols_list(nummodels, std::vector<size_t>(1));
+    std::map<size_t,std::vector<size_t>> xmap, umap;
     std::vector<size_t> pvec, qvec;
-    size_t p, xcol, q, ucol;
+    size_t p, xcol, q, ucol, px, pu;
     for(int i=0;i<nummodels;i++){
         conf >> p;
         pvec.push_back(p);
         x_cols_list[i].resize(p);
         for(size_t j = 0; j<p; j++){
             conf >> xcol;
-            x_cols_list[i][j] = xcol;
+            x_cols_list[i][j] = xcol - 1;
+            xmap[xcol].push_back(i);
         }
     }
+    px = xmap.size();
 
     // Get the design columns per emulator for theta
-    std::map<size_t,std::vector<size_t>> umap; 
     if(modeltype == MODEL_MIXCALIBRATE){
         for(int i=0;i<nummodels;i++){
             conf >> q;
@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
             u_cols_list[i].resize(q);
             for(size_t j = 0; j<q; j++){
                 conf >> ucol;
-                u_cols_list[i][j] = ucol; // store the column number in the ith model's vector
+                u_cols_list[i][j] = ucol - 1; // store the column number in the ith model's vector
                 umap[ucol].push_back(i); // store the ith model's index in the calibration map
             }
         }
@@ -189,6 +189,8 @@ int main(int argc, char* argv[])
         conf >> q;
         qvec.resize(nummodels,0);
     }
+    pu = umap.size(); // total number of parameters
+    //cout << "pu = " << pu << endl; 
 
     // Get the id root computer and field obs ids per emulator
     // std::string idcore;
@@ -303,7 +305,7 @@ int main(int argc, char* argv[])
         // Store into the vectors
         //nvec.push_back(n);
         nvec[i]=n;
-        //cout << "nvec[i] = " << nvec[i] << endl;       
+       
         y_list[i].resize(n);
         y_list[i] = y;
         
@@ -350,7 +352,7 @@ int main(int argc, char* argv[])
         // Update pvec - this works for any model since the default of qvec is 0
         pvec[i] = pvec[i] + qvec[i];
 
-        // Store into the vectors 
+        // Store into the vectors
         x_list[i].resize(nvec[i]*pvec[i]); //qvec[i] = 0 if not using calibration 
         x_list[i] = x;
 
@@ -379,12 +381,16 @@ int main(int argc, char* argv[])
     xcol = 0;
     // Get the appropriate x columns
     if(mpirank > 0){
-        for(size_t i=0;i<nummodels;i++){
+        for(int i=0;i<nummodels;i++){
             xcolsize = x_cols_list[i].size(); //x_cols_list is nummodel dimensional -- only for emulators
-            if(modeltype==MODEL_MIXCALIBRATE){ ucolsize = u_cols_list[i].size(); utemp.resize(ucolsize,0);} // Initialize calibration vector
+            // Initialize calibration vector
+            if(modeltype==MODEL_MIXCALIBRATE){ 
+                ucolsize = u_cols_list[i].size(); 
+                utemp.resize(ucolsize,0);
+            } 
             for(size_t j=0;j<nvec[0];j++){
                 for(size_t k=0;k<xcolsize;k++){
-                    xcol = x_cols_list[i][k] - 1;
+                    xcol = x_cols_list[i][k];
                     xf_list[i].push_back(x_list[0][j*xcolsize + xcol]); //xf_list is nummodel dimensional -- only for emulators
                     //cout << "model = " << i+1 << "--x = " << x_list[0][j*xcolsize + xcol] << endl;
                 }
@@ -404,7 +410,6 @@ int main(int argc, char* argv[])
         if(mpirank>0){ 
 #endif 
             dinfo_list[i].n=nvec[i]; dinfo_list[i].x = &x_list[i][0]; dinfo_list[i].y = &y_list[i][0];
-            //cout <<  "dinfo_list[i].n = " << dinfo_list[i].n << endl;
 #ifdef _OPENMPI
         }
 #endif
@@ -509,7 +514,7 @@ int main(int argc, char* argv[])
         lwr_vec[j][0]=-1; upr_vec[j][0]=-1;
         for(size_t i=1;i<(size_t)tc;i++) { 
             lwr_vec[j][i]=-1; upr_vec[j][i]=-1; 
-            calcbegend(pvec[j]+qvec[j],i-1,tc-1,&lwr_vec[j][i],&upr_vec[j][i]);
+            calcbegend(pvec[j],i-1,tc-1,&lwr_vec[j][i],&upr_vec[j][i]);
             if(pvec[j]>1 && lwr_vec[j][i]==0 && upr_vec[j][i]==0) { lwr_vec[j][i]=-1; upr_vec[j][i]=-1; }
         }
 #ifndef SILENT
@@ -534,14 +539,17 @@ int main(int argc, char* argv[])
             // Get the next column in the x_cols_list -- important since emulators may have different inputs
             // ind is used to located the file name
             if(i>0){ 
+                // Append x column if j < x_cols_list[i-1].size(), else append calibration columns
                 if(j<x_cols_list[i-1].size()){
-                    ind = (size_t)x_cols_list[i-1][j]; // from x list 
+                    ind = (size_t)x_cols_list[i-1][j] + 1; // from x list (possible values 1,2,...,px)
                 }else{
-                    ind = (size_t)u_cols_list[i-1][j-x_cols_list[i-1].size()]; // from calibration list
+                    ind = (size_t)u_cols_list[i-1][j-x_cols_list[i-1].size()] + 1; // from calibration list, (possible values 1,2,...,pu)
+                    ind = ind + px; // ajdustment to get the ordering right (possible values px+1,px+2,...,px+pu)
                 }
             }else{
                 ind = j+1;
             }
+            //cout << "xinfo (i,j) << (" << i << "," << j << "): " << ind << endl;
             xifss << folder << xicore << (ind);
             xifs=xifss.str();
             xif.open(xifs);
@@ -566,23 +574,27 @@ int main(int argc, char* argv[])
         }
 #endif
     }
-    
+
+    //--------------------------------------------------    
     // Read in priors for thetas if using mixing and calibration
-    std::vector<double> avec, bvec, propwidth;
+    std::vector<double> avec, bvec, propwidth, u0vec;
+    std::vector<std::string> uprior;
     std::stringstream cfss;
     std::string cfs;
     std::ifstream cf;
     double au, bu;
     if(modeltype==MODEL_MIXCALIBRATE){
-        cfss << folder << xicore << (ind);
-        cfs=xifss.str();
+        cfss << folder << cpcore;
+        cfs=cfss.str();
         cf.open(cfs);
-        for(size_t i=0;i<umap.size();i++){
+        for(size_t i=0;i<pu;i++){
             cf >> au;
             cf >> bu;
             avec.push_back(au);
             bvec.push_back(bu);
-            propwidth.push_back((bu-au)*.10); // propsal width
+            propwidth.push_back((bu-au)*.25); // propsal width
+            u0vec.push_back((bu+au)*.5); // initial value -- prior mean
+            uprior.push_back("uniform");
         }
         cf.close();
     }
@@ -637,7 +649,6 @@ int main(int argc, char* argv[])
             probchv,  //probability of doing a change of variable proposal.  perturb prob=1-this.
             &chgv_list[0]  //initialize the change of variable correlation matrix.
             );
-
     //Set prior information
     /*
     mxd prior_precision(nummodels+1,nummodels+1);
@@ -657,6 +668,7 @@ int main(int argc, char* argv[])
     
     //Sets the model priors for the functions if they are different
     axb.setci(prior_precision, prior_mean, sig_vec[0]);
+    
     //--------------------------------------------------
     //setup psbrt object
     //make di for psbrt object
@@ -758,16 +770,6 @@ int main(int argc, char* argv[])
             r_list[j] = new double[nvec[j]];
             for(size_t i=0;i<nvec[j];i++) r_list[j][i]=sigmav_list[j][i];
             dips_list[j].x=&x_list[j][0]; dips_list[j].y=r_list[j]; dips_list[j].n=nvec[j];
-            /*
-            if(j == 2){
-                diterator diter2(&dips_list[2]);
-                cout << "dinfo_list[2].n = " << dinfo_list[2].n << endl;
-                for(;diter2<diter2.until();diter2++) {
-                    //cout << "gety = " <<  diter2.gety() << endl;
-                    cout << "getx = " <<  diter2.getx() << endl;       
-                }
-            }
-            */
 
 #ifdef _OPENMPI
         }
@@ -797,6 +799,26 @@ int main(int argc, char* argv[])
                 &chgv_list[j]  //initialize the change of variable correlation matrix.
                 );
         psbm_list[l]->setci(nu,lambda);
+    }
+    
+    //--------------------------------------------------
+    // Initialize calibration parameters
+    param uvec(pu);
+    std::vector<double> udraws; // container for calibration parameters
+    if(modeltype==MODEL_MIXCALIBRATE){
+#ifdef _OPENMPI
+        uvec.setmpirank(mpirank);
+        uvec.settc(tc-1);
+#endif
+        uvec.setpriors(uprior, avec, bvec);
+        uvec.setproposals(uprior, propwidth);
+        uvec.setucur(u0vec);
+        for(int j=0; j<nummodels;j++){
+            // Initialize the xf_list calibration parameter values
+            uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+        }
+        //cout << "ucurr0 = " << uvec.ucur[0] << endl;
+        //cout << "ucurr1 = " << uvec.ucur[1] << endl;
     }
 
     //-------------------------------------------------- 
@@ -922,7 +944,6 @@ int main(int argc, char* argv[])
             }   
         }
     }
-
     // Adapt Stage in the MCMC
     diterator diter0(&dips_list[0]);
     for(size_t i=0;i<nadapt;i++) { 
@@ -933,71 +954,71 @@ int main(int argc, char* argv[])
         for(int j=0;j<nummodels;j++){
             // Update emulator
             if(mpirank==0){ambm_list[j]->draw(gen);} else {ambm_list[j]->draw_mpislave(gen);}
-            
             if(mpirank>0){
                 //Update finfo column 
                 ambm_list[j]->predict(&dimix_list[j]);
                 for(size_t l=0;l<dimix_list[j].n;l++){
                     //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
                     fi(l,j) = fmix_list[j][l] + means_list[j+1];
-                    //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                    //cout << "fi(l,j) = " << fi(l,j) << endl; 
                 }
-            }           
+            }  
         }
 
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-
+        
         // Calibration steps
         if(modeltype==MODEL_MIXCALIBRATE){
-            // get r2 from axb
-            csumwr2 = 0;
-            getsumwr2(csumwr2,y_list[0],*axb.getf(),sig_vec[0], nvec[0],mpirank,tc);
+             // Reset csumwr2 and nsumwr2
+            csumwr2 = 0.0; 
+            nsumwr2 = 0.0;
             
-            // draw new u's
-            unew = getnewu(ucur, propwidth, gen);
-
-            // Check if unew is outside of the prior range
+            // Get current weighted sum of residuals squared (only need field obs)
+            for(size_t j=0;j<nvec[0];j++){csumwr2+=(axb.r(j)/sig_vec[0][j])*(axb.r(j)/sig_vec[0][j]);}
+            
+            // Get joint proposal and update xf_copy with new u
+            if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+            
             hardreject = false;
-            for(size_t j=0;j<usize;j++){
-                if(unew[j] < avec[j] || unew[j] > bvec[j]) hardreject = true;
+            for(size_t j=0;j<pu;j++){
+                if(uvec.unew[j] < avec[j] || uvec.unew[j] > bvec[j]) hardreject = true;
             }
-
-            if(!hardreject){
-                // update x
-                if(mpirank>0){
-                    for(size_t j=0;j<nummodels;j++){
-                        updatex(xf_list[j],u_cols_list[j],unew,nvec[0],pvec[j+1]);
+            
+            // get new predictions
+            if(mpirank>0 && !hardreject){
+                for(int j=0;j<nummodels;j++){
+                    uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    //Update finfo column 
+                    ambm_list[j]->predict(&dimixprop_list[j]);
+                    for(size_t l=0;l<dimixprop_list[j].n;l++){
+                        //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                        fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
+                        //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
                     }
                 }
+                
+                // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
+                axb.predict_mix(&dips_list[0],&fiprop);
+                // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
+                for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
+                cout << "csum = " << csumwr2 << endl;
+                cout << "nsum = " << nsumwr2 << endl;
+                // Now do the MH Step
+                uvec.mhstep(csumwr2,nsumwr2,gen);
 
-                // get new predictions
-                if(mpirank>0){
-                    for(size_t j=0;j<nummodels;j++){
-                        //Update finfo column 
-                        ambm_list[j]->predict(&dimixprop_list[j]);
-                        for(size_t l=0;l<dimixprop_list[j].n;l++){
-                            //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
-                            fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
-                            //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
-                        }
+                // Update the x data if the propsed move was accepted
+                if(uvec.accept){
+                    cout << "accept" << endl;
+                    for(int j=0;j<nummodels;j++){
+                        uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
                     }
-                }
-
-                // get new residuals -- using dips so we don't have to create another instance of dinfo! 
-                // r_list is defefined anyway in the prodcut model
-                // This might be living on the edge though
-                if(mpirank>0){
-                    axb.predict_mix(&dips_list[0],&fiprop);
-                }
-                nsumwr2 = 0;
-                getsumwr2(nsumwr2,y_list[0],fp,sig_vec[0],nvec[0],mpirank,tc);
-
-                // MH step
-                logmhstep(nsumwr2, csumwr2, unew, ucur,uaccept,ureject,gen,mpirank,tc);
+                }else{
+                    cout << "reject = " << uvec.rejectvec[0] << endl;
+                }   
             }
         }
-     
+
 #else
         // Emulation Steps
         for(int j=0;j<nummodels;j++){    
@@ -1016,7 +1037,7 @@ int main(int argc, char* argv[])
         axb.drawvec(gen);
         
 #endif
-    
+    if(modeltype==MODEL_MIXCALIBRATE){if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();}
     // Get fitted values and update the residuals for the variance model
 #ifdef _OPENMPI
         // Set dinfo objecs for the variance
@@ -1082,12 +1103,12 @@ int main(int argc, char* argv[])
                 disig_list[0] = fpxb;
                 if((i+1)%adaptevery==0 && mpirank==0) pxb.adapt();
             }
-            
         }
     }
 
-
+    //-----------------------------------------------------
     // Burn-in stage
+    //-----------------------------------------------------
     for(size_t i=0;i<nburn;i++) { 
         // Print adapt step number
         if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
@@ -1110,6 +1131,53 @@ int main(int argc, char* argv[])
 
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
+
+        // Calibration steps
+        if(modeltype==MODEL_MIXCALIBRATE){
+             // Reset csumwr2 and nsumwr2
+            csumwr2 = 0.0; 
+            nsumwr2 = 0.0;
+            
+            // Get current weighted sum of residuals squared (only need field obs)
+            for(size_t j=0;j<nvec[0];j++){csumwr2+=(axb.r(j)/sig_vec[0][j])*(axb.r(j)/sig_vec[0][j]);}
+            
+            // Get joint proposal and update xf_copy with new u
+            if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+            
+            hardreject = false;
+            for(size_t j=0;j<pu;j++){
+                if(uvec.unew[j] < avec[j] || uvec.unew[j] > bvec[j]) hardreject = true;
+            }
+
+            // get new predictions
+            if(mpirank>0 && !hardreject){
+                for(int j=0;j<nummodels;j++){
+                    uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    //Update finfo column 
+                    ambm_list[j]->predict(&dimixprop_list[j]);
+                    for(size_t l=0;l<dimixprop_list[j].n;l++){
+                        //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                        fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
+                        //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                    }
+                }
+                
+                // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
+                axb.predict_mix(&dips_list[0],&fiprop);
+
+                // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
+                for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
+
+                // Now do the MH Step
+                uvec.mhstep(csumwr2,nsumwr2,gen);
+                // Update the x data if the propsed move was accepted
+                if(uvec.accept){
+                    for(int j=0;j<nummodels;j++){
+                        uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    }                
+                }   
+            }
+        }
 
 #else
         // Emulation Steps
@@ -1192,8 +1260,14 @@ int main(int argc, char* argv[])
         }
     }
 
-
-        // Draw stage
+    //-----------------------------------------------------
+    // Draw stage
+    //-----------------------------------------------------
+    // Save the most recent calibration parameter vector
+    if(modeltype==MODEL_MIXCALIBRATE){
+        udraws.insert(udraws.end(),uvec.ucur.begin(),uvec.ucur.end());
+    }
+    
     for(size_t i=0;i<nd;i++) { 
         // Print adapt step number
         if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
@@ -1216,6 +1290,53 @@ int main(int argc, char* argv[])
 
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
+
+        // Calibration steps
+        if(modeltype==MODEL_MIXCALIBRATE){
+             // Reset csumwr2 and nsumwr2
+            csumwr2 = 0.0; 
+            nsumwr2 = 0.0;
+            
+            // Get current weighted sum of residuals squared (only need field obs)
+            for(size_t j=0;j<nvec[0];j++){csumwr2+=(axb.r(j)/sig_vec[0][j])*(axb.r(j)/sig_vec[0][j]);}
+            
+            // Get joint proposal and update xf_copy with new u
+            if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+            //cout << "unew = " << uvec.unew[0] << endl;
+            hardreject = false;
+            for(size_t j=0;j<pu;j++){
+                if(uvec.unew[j] < avec[j] || uvec.unew[j] > bvec[j]) hardreject = true;
+            }
+
+            // get new predictions
+            if(mpirank>0 && !hardreject){
+                for(int j=0;j<nummodels;j++){
+                    uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    //Update finfo column 
+                    ambm_list[j]->predict(&dimixprop_list[j]);
+                    for(size_t l=0;l<dimixprop_list[j].n;l++){
+                        //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
+                        fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
+                        //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                    }
+                }
+                
+                // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
+                axb.predict_mix(&dips_list[0],&fiprop);
+
+                // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
+                for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
+
+                // Now do the MH Step
+                uvec.mhstep(csumwr2,nsumwr2,gen);
+                // Update the x data if the propsed move was accepted
+                if(uvec.accept){
+                    for(int j=0;j<nummodels;j++){
+                        uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    }
+                }   
+            }
+        }
 
 #else
         // Emulation Steps
@@ -1306,6 +1427,9 @@ int main(int argc, char* argv[])
                 ambm_list[j-1]->savetree(i,m_list[j],onn_list[j],oid_list[j],ovar_list[j],oc_list[j],otheta_list[j]);
                 psbm_list[j-1]->savetree(i,mh_list[j],snn_list[j],sid_list[j],svar_list[j],sc_list[j],stheta_list[j]); 
             }
+            if(modeltype==MODEL_MIXCALIBRATE){
+                udraws.insert(udraws.end(),uvec.ucur.begin(),uvec.ucur.end());
+            }
         }
     }
     // Writing data to output files
@@ -1380,7 +1504,7 @@ int main(int argc, char* argv[])
             if(j == 0){
                 ofile = folder + modelname + ".fitmix";
                 omf.open(ofile);
-                cout << "Saving mixing trees..." << endl;
+                cout << "\nSaving mixing trees..." << endl;
             }else if(j == 1){
                 ofile = folder + modelname + ".fitemulate";
                 omf.open(ofile); //opened at first emulator -- kept open until very end
@@ -1418,6 +1542,14 @@ int main(int argc, char* argv[])
         }
         // Close the emulation text file
         omf.close();
+        
+        if(modeltype == MODEL_MIXCALIBRATE){
+            //Write calibration parameter -- files
+            cout << "Saving calibration parameters..." << endl;
+            std::ofstream ouf(folder + modelname + ".udraws");
+            for(size_t i=0;i<udraws.size();i++) ouf << udraws.at(i) << endl;
+            ouf.close();
+        }
         cout << " done." << endl;
     }
     //-------------------------------------------------- 

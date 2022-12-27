@@ -63,6 +63,7 @@ class param{
         void settc(int tc) {this->tc = tc;}  // this is numslaves for MPI, or numthreads for OPEN_MP
         void setucur(std::vector<double> uc){this->ucur = uc;this->unew = uc;}
         void updatex(std::vector<double> &x, std::vector<size_t> ucols, size_t pxu, size_t n);
+        void updatexmm(std::vector<double> &x, std::vector<size_t> ucols, size_t pxu, size_t n); // update x with multi models
 
    
 };

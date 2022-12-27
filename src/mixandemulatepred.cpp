@@ -22,19 +22,13 @@
 #include "tnorm.h"
 #include "mxbrt.h"
 #include "amxbrt.h"
+#include "parameters.h"
 
 using std::cout;
 using std::endl;
 
-#define MODEL_BT 1
-#define MODEL_BINOMIAL 2
-#define MODEL_POISSON 3
-#define MODEL_BART 4
-#define MODEL_HBART 5
-#define MODEL_PROBIT 6
-#define MODEL_MODIFIEDPROBIT 7
-#define MODEL_MIXBART 9 //Skipped 8 because MERCK is 8 in cli.cpp
 #define MODEL_MIXEMULATE 10
+#define MODEL_MIXCALIBRATE 11
 
 // Draw predictive realizations at the prediciton points, xp.
 int main(int argc, char* argv[])
@@ -72,12 +66,13 @@ int main(int argc, char* argv[])
    //control parameters
    size_t nd;
    size_t nummodels;
-   size_t p;
+   size_t p, q;
    int tc;
    
    conf >> nd;
    conf >> nummodels;
    conf >> p;
+   conf >> q;
    conf >> tc;
 
    // Read in arguments for each model
@@ -100,8 +95,9 @@ int main(int argc, char* argv[])
 
    // Get the design columns per emulator
    std::vector<std::vector<size_t>> x_cols_list(nummodels, std::vector<size_t>(1));
-   std::vector<size_t> xcols, pvec;
-   size_t ptemp, xcol;
+   std::vector<std::vector<size_t>> u_cols_list(nummodels, std::vector<size_t>(1));
+   std::vector<size_t> xcols, pvec, ucols, qvec;
+   size_t ptemp, xcol, qtemp, ucol;
    pvec.push_back(p); 
    for(size_t i=0;i<nummodels;i++){
       conf >> ptemp;
@@ -109,11 +105,29 @@ int main(int argc, char* argv[])
       x_cols_list[i].resize(ptemp);
       for(size_t j = 0; j<ptemp; j++){
          conf >> xcol;
-         x_cols_list[i][j] = xcol;
+         x_cols_list[i][j] = xcol-1;
       }
 
    }
    
+   // Calibration parameters
+   if(modeltype == MODEL_MIXCALIBRATE){
+      qvec.push_back(0); 
+      for(size_t i=0;i<nummodels;i++){
+         conf >> qtemp;
+         qvec.push_back(qtemp);
+         pvec[i+1] = pvec[i+1] + qtemp; // update pvec for emulators
+         u_cols_list[i].resize(qtemp);
+         for(size_t j = 0; j<qtemp; j++){
+            conf >> ucol;
+            u_cols_list[i][j] = ucol-1;
+         }
+      }
+   }else{
+      // Default input of zero
+      conf >> qtemp;
+   }
+
    conf.close();
    
    //MPI initialization
@@ -162,8 +176,10 @@ int main(int argc, char* argv[])
    xfss << folder << xpcore << mpirank;
    xfs=xfss.str();
    std::ifstream xf(xfs);
-   while(xf >> xtemp)
+   while(xf >> xtemp){
       xp.push_back(xtemp);
+      //cout << "xtemp = " << xtemp << endl;
+   }
    np = xp.size()/pvec[0];
 #ifndef SILENT
    cout << "node " << mpirank << " loaded " << np << " inputs of dimension " << pvec[0] << " from " << xfs << endl;
@@ -173,15 +189,26 @@ int main(int argc, char* argv[])
    //--------------------------------------------------
    //Construct prediction design matrices for each emulator -- essential when the emulators only use a subset of inputs from xp
    std::vector<std::vector<double>> xc_list(nummodels);
-   size_t xcolsize = 0;
+   std::vector<double> utemp;
+   size_t xcolsize = 0, ucolsize = 0;
    xcol = 0;
    // Get the appropriate x columns
    for(size_t i=0;i<nummodels;i++){
       xcolsize = x_cols_list[i].size(); //x_cols_list is nummodel dimensional -- only for emulators
       for(size_t j=0;j<np;j++){
+            // Initialize calibration vector
+            if(modeltype==MODEL_MIXCALIBRATE){ 
+                ucolsize = u_cols_list[i].size(); 
+                utemp.resize(ucolsize,0);
+            }
+
             for(size_t k=0;k<xcolsize;k++){
                xcol = x_cols_list[i][k] - 1;
                xc_list[i].push_back(xp[j*xcolsize + xcol]); //xc_list is nummodel dimensional -- only for emulators
+            }
+            
+            if(modeltype==MODEL_MIXCALIBRATE){
+                  xc_list[i].insert(xc_list[i].end(),utemp.begin(),utemp.end());
             }
       } 
    }
@@ -201,7 +228,13 @@ int main(int argc, char* argv[])
       for(size_t i=0;i<pvec[j];i++) {
          // Get the next column in the x_cols_list -- important since emulators may have different inputs
          if(j>0){
-               indx = (size_t)x_cols_list[j-1][i]; 
+               //indx = (size_t)x_cols_list[j-1][i];
+               if(j<x_cols_list[i-1].size()){
+                  indx = (size_t)x_cols_list[i-1][j] + 1; // from x list (possible values 1,2,...,px)
+               }else{
+                  indx = (size_t)u_cols_list[i-1][j-x_cols_list[i-1].size()] + 1; // from calibration list, (possible values 1,2,...,pu)
+                  indx = indx + p; // ajdustment to get the ordering right (possible values p+1,p+2,...,p+q)
+               } 
          }else{
                indx = i+1;
          }
@@ -256,6 +289,29 @@ int main(int argc, char* argv[])
       psbm_list[i] = new psbrt(mh_list[i+1]);
       psbm_list[i]->setxi(&xi_list[i+1]);
    }
+
+   // Initialize calibration parameters
+   std::ifstream iuf(folder + modelname + ".udraws");
+   std::vector<double> e_udraws((nd+1)*q);
+   for(size_t i=0;i<((nd+1)*q);i++) iuf >> std::scientific >> e_udraws.at(i);
+   iuf.close();
+   
+   std::vector<double> u0, ucur;
+   param uvec(q);
+   std::vector<double> udraws; // container for calibration parameters
+   
+   if(modeltype==MODEL_MIXCALIBRATE){
+      for(size_t j=0;j<q;j++){u0.push_back(e_udraws[j]);cout << "u0 = " << u0[0] << endl;}
+      uvec.setucur(u0);
+      
+      for(int j=0; j<nummodels;j++){
+         // Initialize the xf_list calibration parameter values
+         uvec.updatexmm(xc_list[j],u_cols_list[j],pvec[j+1],np);
+      }
+      cout << "ucurr0 = " << uvec.ucur[0] << endl;
+      cout << "ucurr1 = " << uvec.ucur[1] << endl;
+   }
+
    //--------------------------------------------
    // load files
    //--------------------------------------------
@@ -349,7 +405,8 @@ int main(int argc, char* argv[])
    std::vector<dinfo> dip_list(nummodels+1);
    for(size_t j=0;j<=nummodels;j++){
       fp_list[j] = new double[np];
-      dip_list[j].y=fp_list[j]; dip_list[j].p = p; dip_list[j].n=np; dip_list[j].tc=1;
+      dip_list[j].y=fp_list[j]; dip_list[j].p = pvec[j]; dip_list[j].n=np; dip_list[j].tc=1;
+      cout << "pvec[j] = " << pvec[j] << endl; 
       if(j == 0){
          dip_list[j].x = &xp[0]; //mixing inputs
       }else{
@@ -472,6 +529,19 @@ int main(int argc, char* argv[])
       for(size_t j=0;j<np;j++){
          tedraw_list[0][i][j] = fp_list[0][j];
       }
+
+
+      // Load the next set of u's for the emulators
+      if(modeltype==MODEL_MIXCALIBRATE){
+         ucur.clear();
+         for(size_t j=0;j<q;j++){ ucur.push_back(e_udraws[q*(i+1)+j]);}
+         uvec.setucur(ucur);
+         for(int j=0; j<nummodels;j++){
+            // Initialize the xf_list calibration parameter values
+            uvec.updatexmm(xc_list[j],u_cols_list[j],pvec[j+1],np);
+         }
+      }
+
    }
    
    // Variance trees second
