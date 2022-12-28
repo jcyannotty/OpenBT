@@ -1572,7 +1572,7 @@ mixingwts.openbt = function(
   MODEL_MERCK_TRUNCATED=8
   MODEL_MIXBART=9
   
-  model_types = c("mixbart", "mix_emulate", "mix_modular")
+  model_types = c("mixbart", "mix_emulate", "mix_modular","mix_calibrate")
   #--------------------------------------------------
   # params
   if(is.null(fit)) stop("No fitted model specified!\n")
@@ -1855,6 +1855,7 @@ if(!is.null(xicuts)){
 #--------------------------------------------------
 # theta cutpoints for mixing and calibration
 q = 0
+tc_col_list = list()
 if(model == 'mix_calibrate'){
   # get joint theta input matrix 
   tcol_list = unique(unlist(lapply(emu_model_data, function(x) colnames(x$theta_train))))
@@ -1862,7 +1863,6 @@ if(model == 'mix_calibrate'){
   
   # Create a master list of thetas
   t_matrix = matrix(NA,ncol = q,nrow = 0) # blank matrix
-  tc_col_list = list()
   for(l in 1:nummodels){
     # get matrix and Fill columns that are not present with NA
     t_new = matrix(0, nrow = nc_vec[l], ncol = q, dimnames = list(NULL, tcol_list))
@@ -2293,6 +2293,7 @@ openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q
   MODEL_MIX_EMULATE=1 #Full problem
   MODEL_MIX_MODULAR=2 #Modularization analogue to Full problem
   MODEL_MIX_ORTHOGONAL=3 # Full problem with orthogonal discrepancy
+  MODEL_MIX_CALIBRATE=4
   
   #--------------------------------------------------
   # Define objects
@@ -2322,20 +2323,19 @@ openbt.predict_mix_emulate = function(fit=NULL, x_test=NULL,tc=2,q.lower=0.025,q
     pc = length(x_col_list[[l]])
     xc_design_cols[hc] = paste(pc)
     xc_design_cols[(hc+1):(hc+pc)] = paste(x_col_list[[l]])
+    hc = hc + pc + 1
     
     # Calibration parameters
-    if(model == 'mix_calibrate'){
+    if(fit$model == 'mix_calibrate'){
       pcu = length(u_col_list[[l]])
       uc_design_cols[hu] = paste(pcu)
       uc_design_cols[(hu+1):(hu+pcu)] = paste(u_col_list[[l]])
+      hu = hu + pcu + 1
     }
-    
-    hc = hc + pc + 1
-    hu = hu + pcu + 1
   }
   
   # Get unique number of calibration parameters
-  if(model == 'mix_calibrate'){q = length(unique(unlist(u_col_list)))}
+  if(fit$model == 'mix_calibrate'){q = length(unique(unlist(u_col_list)))}
   
   # Flatten the m and mh vectors
   mvec = fit$mix_model_args$ntree

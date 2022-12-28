@@ -896,7 +896,7 @@ int main(int argc, char* argv[])
             // Initialize class objects
             if(mpirank > 0){
                 fmixprop_list[i] = new double[nvec[0]];
-                dimixprop_list[i].y=fmix_list[i]; dimixprop_list[i].p = pvec[i+1];  
+                dimixprop_list[i].y=fmixprop_list[i]; dimixprop_list[i].p = pvec[i+1];  
                 dimixprop_list[i].n=nvec[0];dimixprop_list[i].tc=1;dimixprop_list[i].x = &xf_list[i][0];
                 fiprop = mxd::Ones(nvec[0], nummodels);
             }else{
@@ -939,8 +939,8 @@ int main(int argc, char* argv[])
         for(int j=0;j<nummodels;j++){
             ambm_list[j]->predict(&dimix_list[j]);
             for(size_t k=0;k<dimix_list[j].n;k++){
-                //fi(k,j+1) = fmix_list[j][k] + means_list[j+1]; //fmix_list is K dimensional and the others are K+1 dimensional (hence j vs. j+1)
                 fi(k,j) = fmix_list[j][k] + means_list[j+1];
+                //cout << "fi(k,j) = " << fi(k,j) << endl; 
             }   
         }
     }
@@ -982,7 +982,10 @@ int main(int argc, char* argv[])
             
             hardreject = false;
             for(size_t j=0;j<pu;j++){
-                if(uvec.unew[j] < avec[j] || uvec.unew[j] > bvec[j]) hardreject = true;
+                if(uvec.unew[j] < avec[j] || uvec.unew[j] > bvec[j]){
+                    hardreject = true;
+                    //cout << "HARD REJECT" << endl;
+                }
             }
             
             // get new predictions
@@ -993,30 +996,31 @@ int main(int argc, char* argv[])
                     ambm_list[j]->predict(&dimixprop_list[j]);
                     for(size_t l=0;l<dimixprop_list[j].n;l++){
                         //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
-                        fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
-                        //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                        fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];  
+                        //cout << "fiprop(l,j) = " << fiprop(l,j) << endl;                       
                     }
                 }
-                
+            }
+            if(!hardreject){
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
                 axb.predict_mix(&dips_list[0],&fiprop);
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
                 for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
-                cout << "csum = " << csumwr2 << endl;
-                cout << "nsum = " << nsumwr2 << endl;
+                //cout << "csum = " << csumwr2 << endl;
+                //cout << "nsum = " << nsumwr2 << endl;
                 // Now do the MH Step
                 uvec.mhstep(csumwr2,nsumwr2,gen);
 
                 // Update the x data if the propsed move was accepted
                 if(uvec.accept){
-                    cout << "accept" << endl;
                     for(int j=0;j<nummodels;j++){
                         uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
                     }
-                }else{
-                    cout << "reject = " << uvec.rejectvec[0] << endl;
                 }   
+            }else{
+                for(size_t j=0;j<pu;j++) uvec.rejectvec[j]++;
             }
+            if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();
         }
 
 #else
@@ -1037,7 +1041,6 @@ int main(int argc, char* argv[])
         axb.drawvec(gen);
         
 #endif
-    if(modeltype==MODEL_MIXCALIBRATE){if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();}
     // Get fitted values and update the residuals for the variance model
 #ifdef _OPENMPI
         // Set dinfo objecs for the variance
@@ -1122,13 +1125,12 @@ int main(int argc, char* argv[])
                 //Update finfo column 
                 ambm_list[j]->predict(&dimix_list[j]);
                 for(size_t l=0;l<dimix_list[j].n;l++){
-                    //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
                     fi(l,j) = fmix_list[j][l] + means_list[j+1];
-                    //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                    //if(j==0) cout << "fi(l,j) = " << fi(l,j) << endl; 
                 }
             }           
         } 
-
+        
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
 
@@ -1152,16 +1154,17 @@ int main(int argc, char* argv[])
             // get new predictions
             if(mpirank>0 && !hardreject){
                 for(int j=0;j<nummodels;j++){
-                    uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
                     //Update finfo column 
                     ambm_list[j]->predict(&dimixprop_list[j]);
                     for(size_t l=0;l<dimixprop_list[j].n;l++){
                         //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
                         fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];
-                        //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
+                        //cout << "fi(l,j) = " << fi(l,j) << endl; 
                     }
                 }
-                
+            }
+            if(!hardreject){
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
                 axb.predict_mix(&dips_list[0],&fiprop);
 
@@ -1173,7 +1176,7 @@ int main(int argc, char* argv[])
                 // Update the x data if the propsed move was accepted
                 if(uvec.accept){
                     for(int j=0;j<nummodels;j++){
-                        uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                        uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
                     }                
                 }   
             }
@@ -1267,7 +1270,7 @@ int main(int argc, char* argv[])
     if(modeltype==MODEL_MIXCALIBRATE){
         udraws.insert(udraws.end(),uvec.ucur.begin(),uvec.ucur.end());
     }
-    
+
     for(size_t i=0;i<nd;i++) { 
         // Print adapt step number
         if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
@@ -1287,7 +1290,7 @@ int main(int argc, char* argv[])
                 }
             }           
         } 
-
+        
         // Model Mixing step
         if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
 
@@ -1311,7 +1314,7 @@ int main(int argc, char* argv[])
             // get new predictions
             if(mpirank>0 && !hardreject){
                 for(int j=0;j<nummodels;j++){
-                    uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                    uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
                     //Update finfo column 
                     ambm_list[j]->predict(&dimixprop_list[j]);
                     for(size_t l=0;l<dimixprop_list[j].n;l++){
@@ -1320,7 +1323,8 @@ int main(int argc, char* argv[])
                         //cout << "fi(l,j+1) = " << fi(l,j+1) << endl; 
                     }
                 }
-                
+            }
+            if(!hardreject){    
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
                 axb.predict_mix(&dips_list[0],&fiprop);
 
@@ -1332,7 +1336,7 @@ int main(int argc, char* argv[])
                 // Update the x data if the propsed move was accepted
                 if(uvec.accept){
                     for(int j=0;j<nummodels;j++){
-                        uvec.updatex(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
+                        uvec.updatexmm(xf_list[j],u_cols_list[j],pvec[j+1],nvec[0]);
                     }
                 }   
             }
@@ -1441,6 +1445,7 @@ int main(int argc, char* argv[])
 #endif
     //Flatten posterior trees to a few (very long) vectors so we can just pass pointers
     //to these vectors back to R (which is much much faster than copying all the data back).
+    if(mpirank==1){axb.get_fi();}
     if(mpirank==0) {
         cout << "Returning posterior, please wait...";
         // Instantiate containers

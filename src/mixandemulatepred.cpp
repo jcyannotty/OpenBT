@@ -178,7 +178,6 @@ int main(int argc, char* argv[])
    std::ifstream xf(xfs);
    while(xf >> xtemp){
       xp.push_back(xtemp);
-      //cout << "xtemp = " << xtemp << endl;
    }
    np = xp.size()/pvec[0];
 #ifndef SILENT
@@ -195,20 +194,19 @@ int main(int argc, char* argv[])
    // Get the appropriate x columns
    for(size_t i=0;i<nummodels;i++){
       xcolsize = x_cols_list[i].size(); //x_cols_list is nummodel dimensional -- only for emulators
+      // Initialize calibration vector
+      if(modeltype==MODEL_MIXCALIBRATE){ 
+            ucolsize = u_cols_list[i].size(); 
+            utemp.resize(ucolsize,0);
+      }
       for(size_t j=0;j<np;j++){
-            // Initialize calibration vector
-            if(modeltype==MODEL_MIXCALIBRATE){ 
-                ucolsize = u_cols_list[i].size(); 
-                utemp.resize(ucolsize,0);
-            }
-
             for(size_t k=0;k<xcolsize;k++){
-               xcol = x_cols_list[i][k] - 1;
+               xcol = x_cols_list[i][k];
                xc_list[i].push_back(xp[j*xcolsize + xcol]); //xc_list is nummodel dimensional -- only for emulators
             }
             
             if(modeltype==MODEL_MIXCALIBRATE){
-                  xc_list[i].insert(xc_list[i].end(),utemp.begin(),utemp.end());
+               xc_list[i].insert(xc_list[i].end(),utemp.begin(),utemp.end());
             }
       } 
    }
@@ -229,15 +227,16 @@ int main(int argc, char* argv[])
          // Get the next column in the x_cols_list -- important since emulators may have different inputs
          if(j>0){
                //indx = (size_t)x_cols_list[j-1][i];
-               if(j<x_cols_list[i-1].size()){
-                  indx = (size_t)x_cols_list[i-1][j] + 1; // from x list (possible values 1,2,...,px)
+               if(i<x_cols_list[j-1].size()){
+                  indx = (size_t)x_cols_list[j-1][i] + 1; // from x list (possible values 1,2,...,px)
                }else{
-                  indx = (size_t)u_cols_list[i-1][j-x_cols_list[i-1].size()] + 1; // from calibration list, (possible values 1,2,...,pu)
+                  indx = (size_t)u_cols_list[j-1][i-x_cols_list[j-1].size()] + 1; // from calibration list, (possible values 1,2,...,pu)
                   indx = indx + p; // ajdustment to get the ordering right (possible values p+1,p+2,...,p+q)
                } 
          }else{
                indx = i+1;
          }
+         //cout << "xinfo (i,j) << (" << i << "," << j << "): " << indx << endl;
          xifss << folder << xicore << (indx); 
          xifs=xifss.str();
          xif.open(xifs);
@@ -406,7 +405,6 @@ int main(int argc, char* argv[])
    for(size_t j=0;j<=nummodels;j++){
       fp_list[j] = new double[np];
       dip_list[j].y=fp_list[j]; dip_list[j].p = pvec[j]; dip_list[j].n=np; dip_list[j].tc=1;
-      cout << "pvec[j] = " << pvec[j] << endl; 
       if(j == 0){
          dip_list[j].x = &xp[0]; //mixing inputs
       }else{
@@ -520,7 +518,6 @@ int main(int argc, char* argv[])
                fi(j,k-1) = tedraw_list[k][i][j];
             }
          }
-         
       }
       // Now get the mixing predictions for the ith iteration of the mcmc
       // This is done after all the emualtors are loaded for the ith mcmc run and finfo is updated
@@ -529,7 +526,6 @@ int main(int argc, char* argv[])
       for(size_t j=0;j<np;j++){
          tedraw_list[0][i][j] = fp_list[0][j];
       }
-
 
       // Load the next set of u's for the emulators
       if(modeltype==MODEL_MIXCALIBRATE){
@@ -541,7 +537,6 @@ int main(int argc, char* argv[])
             uvec.updatexmm(xc_list[j],u_cols_list[j],pvec[j+1],np);
          }
       }
-
    }
    
    // Variance trees second

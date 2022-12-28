@@ -107,7 +107,7 @@ double param::lm(double cursumwr2, double newsumwr2){
             if(unew[i]<priorp1vec[i] || unew[i]>priorp2vec[i]){
                 lprior=-std::numeric_limits<double>::infinity();
             }
-        }else if(propdistvec[i]=="uniform"){
+        }else if(propdistvec[i]=="normal"){
             lprior += 0.5*(ucur[i]-priorp1vec[i])*(ucur[i]-priorp1vec[i])/(priorp2vec[i]*priorp2vec[i]);
             lprior += -0.5*(unew[i]-priorp1vec[i])*(unew[i]-priorp1vec[i])/(priorp2vec[i]*priorp2vec[i]);
         }
@@ -146,9 +146,12 @@ void param::mhstep(double csumwr2, double nsumwr2, rn &gen){
         // Do mhstep
         double lmout = lm(csumwr2,nsumwr2);
         double alpha = gen.uniform();
+        //cout << "log alpha = " << log(alpha) << endl;
+        //cout << "lmout = " << lmout << endl;
         if(log(alpha)<lmout){
             // accept
             ucur = unew;
+            accept=true;
             for(size_t j=0;j<p;j++) acceptvec[j]++;
             const int tag=MPI_TAG_CP_ACCEPT;
             for(size_t k=1; k<=(size_t)tc; k++){
@@ -157,6 +160,8 @@ void param::mhstep(double csumwr2, double nsumwr2, rn &gen){
         }else{ 
             // reject
             const int tag=MPI_TAG_CP_REJECT;
+            //cout << "reject here" << endl;
+            accept=false;
             for(size_t k=1; k<=(size_t)tc; k++) {
                 MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
             }
@@ -233,7 +238,7 @@ void param::updatexmm(std::vector<double> &x, std::vector<size_t> ucols, size_t 
             uc = ucols[j];
             //cout << "xold = " << x[i*pxu + uidx + j] << endl;
             x[i*pxu + uidx + j] = unew[uc];
-            //cout << "xnew = " << x[i*pxu + uidx + j] << endl;
+            //cout << "xnew = " << x[i*pxu + uidx + j] << endl; 
         }
     }
 }
