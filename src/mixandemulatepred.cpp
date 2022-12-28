@@ -307,8 +307,6 @@ int main(int argc, char* argv[])
          // Initialize the xf_list calibration parameter values
          uvec.updatexmm(xc_list[j],u_cols_list[j],pvec[j+1],np);
       }
-      cout << "ucurr0 = " << uvec.ucur[0] << endl;
-      cout << "ucurr1 = " << uvec.ucur[1] << endl;
    }
 
    //--------------------------------------------
