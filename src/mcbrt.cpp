@@ -35,6 +35,7 @@ void mcbrt::add_observation_to_suff(diterator& diter, sinfo& si)
         mci.sumwc+=w;
         //cout << "sumwc = " << mci.sumwc << endl;
     }
+    //if(mci.subtree_info) cout << "subtree? " << mci.subtree_info << "---" << rank << endl;
 }
 
 //--------------------------------------------------
@@ -149,7 +150,8 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
     muvec << ci.mu1, ci.mu2;
     
     // Set sufficient stats
-    HWinvH = mci.sumwf*I;
+    //HWinvH = mci.sumwf*I;
+    HWinvH = mci.sumwf*mxd::Ones(2,2);
     HWinvH(0,0) = HWinvH(0,0) + mci.sumwc;
     HWinvR << (mci.sumyw + mci.sumzw), mci.sumyw;
 
@@ -176,6 +178,16 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
     //--Get vector of standard normal normal rv's
     for(size_t i=0; i<2;i++){
         stdnorm(i) = gen.normal(); 
+    }
+
+    if((rank == 0 && postmean[0]<-30) | (rank == 0 && postmean[0]>300)){
+        cout << "post mean[0] = " << postmean[0] << endl;
+        cout << "A = \n" << A << endl;
+    }
+
+    if(rank == 0 && postmean[1]<-30){
+        cout << "post mean[1] = " << postmean[1] << endl;
+        cout << "A = \n" << A << endl;
     }
 
     //Print out matrix algebra step-by-step
@@ -207,16 +219,24 @@ double mcbrt::drawtheta2(std::vector<sinfo*> sivec, rn &gen)
         mv = mci.getmoments(ci.mu1, ci.tau1);
         // Compile modularized stats
         if(mv[1]>0){w = 1/mv[1];}else{w = 0.0;}
+        //cout << "var = " << mv[1] << endl;
         sumw += w;
         summeanw += mv[0]*w;
     }
-
+    //if(rank==0) cout << "summeanw = " << summeanw << endl;
     // Now get the posterior mean and variance
     postvar = 1/(sumw + 1/tau2_sqr);
     postmean = postvar*(summeanw + ci.mu2/tau2_sqr);
-
+    //if(rank==0) cout << "postmean = " << postmean << endl;
+    //if(rank==0) cout << "postvar = " << postvar << endl;
     // Draw a random variable
     theta2 = postmean + gen.normal()*sqrt(postvar);
+    if(theta2<-30 && rank==0){
+        cout << "sumw = " << sumw << endl;
+        cout << "postvar = " << postvar << endl;
+        cout << "postmean = " << postmean << endl;
+        cout << "siv vec size = " << sivec.size() << endl;
+    } 
     return theta2;
 }
 
@@ -647,7 +667,6 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
 
 //--------------------------------------------------
 // subsuff
-
 void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
     tree::npv path;
@@ -860,19 +879,21 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             ns = tsir.subtree_sumyw.size();
             double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
             double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
-            if(tsir.subtree_info){
+            
+            if(msir.subtree_info){
                 // Cast vectors to array
                 std::copy(tsir.subtree_sumyw.begin(),tsir.subtree_sumyw.end(),sbt_sumyw_array);
                 std::copy(tsir.subtree_sumzw.begin(),tsir.subtree_sumzw.end(),sbt_sumzw_array);
                 std::copy(tsir.subtree_sumwf.begin(),tsir.subtree_sumwf.end(),sbt_sumwf_array);
                 std::copy(tsir.subtree_sumwc.begin(),tsir.subtree_sumwc.end(),sbt_sumwc_array);
+                tsir.subtree_info = true;
                 //buffer_size = buffer_size*(ns+1);
             }
-            /*
-            if(tsir.sibling_info){
-                buffer_size = buffer_size + SIZE_UINT6*2;
-            }
-            */
+            
+            // Ensure tsir and tsil are correctly marked as subtree nodes if applicable
+            if(msir.subtree_node){tsir.subtree_node=true;}
+            if(msil.subtree_node){tsil.subtree_node=true;}
+
             char buffer[buffer_size];    
             position=0;
             MPI_Recv(buffer,buffer_size,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
@@ -889,7 +910,7 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             MPI_Unpack(buffer,buffer_size,&position,&tsil.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,buffer_size,&position,&tsir.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
             // Now unpack the subtree information and cast back to std::vector 
-            if(tsir.subtree_info){
+            if(msir.subtree_info){
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumyw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumzw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwf_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
@@ -906,11 +927,12 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             }
             // Unpack sibling info for the right node (if should have sibling info, otherwise there is a problem)
             // God willing, you'll find avoid having to pass this sibling info
-            if(tsir.sibling_info){
+            if(msir.sibling_info){
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
+                tsir.sibling_info = true;
             }
             tsil.n=(size_t)ln;
             tsir.n=(size_t)rn;

@@ -348,11 +348,20 @@ int main(int argc, char* argv[])
     uvec.updatex(xp,ucols,p,nf);
     uvec.updatex(xf,ucols,p,nf);
 
+    //Eigen objects for computer model and discrepancy
+    mxd fiter(2,np); //Eigen matrix to store the eta and delta at each iteration -- will be reset to zero prior to running get thetavec method  
+    mxd fdraw(nd,np); //Eigen matrix to hold posterior draws for eta and delta -- used when writing to the file for ease of notation
+    std::vector<mxd, Eigen::aligned_allocator<mxd>> flist(2); //An std vector of dim 2 -- each element is an nd X np eigen matrix
+
+    // Initialize both matrices
+    for(size_t i=0; i<2; i++){
+        flist[i] = mxd::Zero(nd,np);
+    }
+
     //objects where we'll store the realizations
     std::vector<std::vector<double> > tedraw(nd,std::vector<double>(np));
     std::vector<std::vector<double> > tedrawhf(nd,std::vector<double>(np));
     std::vector<std::vector<double> > tedrawhc(nd,std::vector<double>(np));
-    std::vector<std::vector<double> > tedrawhu(nd,std::vector<double>(np));
 
     double *fp = new double[np];    
     double *fpf = new double[nf];
@@ -415,8 +424,16 @@ int main(int argc, char* argv[])
         cumdx+=curdx;
 
         acb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
-        acb.predict_vec(&dip, &fi_test);
-        for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + yfmean;
+        //acb.predict_vec(&dip, &fi_test);
+        //for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + yfmean;
+
+        // Predict eta and delta separately
+        acb.predict_thetavec(&dip,&fiter);
+
+        //Store these weights into the Vector of Eigen Matrices
+        for(size_t j = 0;j<2; j++){
+            flist[j].row(i) = fiter.row(j); //populate the ith row of each flist[j] matrix (ith post draw) for item j (eta or delta)
+        }
 
         // Load the next u
         ucur.clear();
@@ -495,14 +512,25 @@ int main(int argc, char* argv[])
    }
 #endif
     // Save the draws.
-    if(mpirank==0) cout << "Saving posterior predictive draws...";
-    std::ofstream omf(folder + modelname + ".mdraws" + std::to_string(mpirank));
+    if(mpirank==0) cout << "Saving posterior predictive draws of eta...";
+    std::ofstream omf(folder + modelname + ".etadraws" + std::to_string(mpirank));
+    fdraw = flist[0];
     for(size_t i=0;i<nd;i++) {
         for(size_t j=0;j<np;j++)
-            omf << std::scientific << tedraw[i][j] << " ";
+            omf << std::scientific << fdraw(i,j) << " ";
         omf << endl;
     }
     omf.close();
+
+    if(mpirank==0) cout << "Saving posterior predictive draws of delta...";
+    std::ofstream odf(folder + modelname + ".deltadraws" + std::to_string(mpirank));
+    fdraw = flist[1];
+    for(size_t i=0;i<nd;i++) {
+        for(size_t j=0;j<np;j++)
+            odf << std::scientific << fdraw(i,j) << " ";
+        odf << endl;
+    }
+    odf.close();
 
     std::ofstream smf(folder + modelname + ".sfdraws" + std::to_string(mpirank));
     for(size_t i=0;i<nd;i++) {

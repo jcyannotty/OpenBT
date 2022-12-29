@@ -89,7 +89,6 @@ void amcbrt::setdata_vec(dinfo *di) {
     // each mb[j]'s data is the appropriate row in notjmus
     for(size_t j=0;j<m;j++){
         mb[j].setdata_vec(divec[j]); //setdata_vec is a method of mb[j] which is a member of mxbrt class. This is different than setdata_vec in mxbrt
-        cout << "divec n = " << divec[j]->n << endl;
     }
     resid.resize(di->n);
     yhat.resize(di->n);

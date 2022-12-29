@@ -295,8 +295,8 @@ protected:
 //#  endif
 //# ifdef _OPENMPI
 
-   void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir);
-   void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir);
+   virtual void local_mpigetsuff(tree::tree_p nx, size_t v, size_t c, dinfo di, sinfo& sil, sinfo& sir); // made virtual for mcbrt
+   virtual void local_mpigetsuff(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir); // made virtual for mcbrt
    void local_mpiallsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& siv);
    virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv); 
    virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);

@@ -150,8 +150,9 @@ openbtcal = function(
   # Theta priors -- need to adjust calibration
   rgyf = range(yf_train)
   rgyc = range(yc_train)
+  disc = 2*abs(mean(yf_train) - mean(yc_train)) 
   tau1 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k1)
-  tau2 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k2)
+  tau2 =  disc/(2*sqrt(m)*k2)
   
   # Variance prior
   overalllambdaf = overallsdf^2
@@ -469,23 +470,20 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   }
   
   system(cmd)
-  system(paste("rm -f ",fit$folder,"/config.calibratepred",sep=""))
+  #system(paste("rm -f ",fit$folder,"/config.calibratepred",sep=""))
   
   #--------------------------------------------------
   #format and return
   res=list()
   
-  # Faster using data.table's fread than the built-in read.table.
-  # However, it does strangely introduce some small rounding error on the order of 8.9e-16.
+  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".etadraws*",sep=""),full.names=TRUE)
+  res$etadraws=do.call(cbind,sapply(fnames,data.table::fread))
   
-  # Uncomment later!!!
-  #fnames=list.files(fit$folder,pattern=paste(fit$modelname,".etadraws*",sep=""),full.names=TRUE)
-  #res$etadraws=do.call(cbind,sapply(fnames,data.table::fread))
-  #fnames=list.files(fit$folder,pattern=paste(fit$modelname,".deltadraws*",sep=""),full.names=TRUE)
-  #res$deltadraws=do.call(cbind,sapply(fnames,data.table::fread))
-  
-  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".mdraws*",sep=""),full.names=TRUE)
-  res$mdraws=do.call(cbind,sapply(fnames,data.table::fread))
+  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".deltadraws*",sep=""),full.names=TRUE)
+  res$deltadraws=do.call(cbind,sapply(fnames,data.table::fread))
+
+  #fnames=list.files(fit$folder,pattern=paste(fit$modelname,".mdraws*",sep=""),full.names=TRUE)
+  #res$mdraws=do.call(cbind,sapply(fnames,data.table::fread))
   
   fnames=list.files(fit$folder,pattern=paste(fit$modelname,".sfdraws*",sep=""),full.names=TRUE)
   res$sfdraws=do.call(cbind,sapply(fnames,data.table::fread))
@@ -497,25 +495,25 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   
   # Store Results
   # Eta Posterior
-  # res$etamean=apply(res$etadraws,2,mean)
-  # res$etasd=apply(res$etadraws,2,sd)
-  # res$eta.5=apply(res$etadraws,2,quantile,0.5)
-  # res$eta.lower=apply(res$etadraws,2,quantile,q.lower)
-  # res$eta.upper=apply(res$etadraws,2,quantile,q.upper)
-  # 
-  # # delta Posterior
-  # res$deltamean=apply(res$deltadraws,2,mean)
-  # res$deltasd=apply(res$deltadraws,2,sd)
-  # res$delta.5=apply(res$deltadraws,2,quantile,0.5)
-  # res$delta.lower=apply(res$deltadraws,2,quantile,q.lower)
-  # res$delta.upper=apply(res$deltadraws,2,quantile,q.upper)
+  res$etamean=apply(res$etadraws,2,mean)
+  res$etasd=apply(res$etadraws,2,sd)
+  res$eta.5=apply(res$etadraws,2,quantile,0.5)
+  res$eta.lower=apply(res$etadraws,2,quantile,q.lower)
+  res$eta.upper=apply(res$etadraws,2,quantile,q.upper)
+   
+  # delta Posterior
+  res$deltamean=apply(res$deltadraws,2,mean)
+  res$deltasd=apply(res$deltadraws,2,sd)
+  res$delta.5=apply(res$deltadraws,2,quantile,0.5)
+  res$delta.lower=apply(res$deltadraws,2,quantile,q.lower)
+  res$delta.upper=apply(res$deltadraws,2,quantile,q.upper)
 
   # Mean draws (remove)
-  res$mmean=apply(res$mdraws,2,mean)
-  res$msd=apply(res$mdraws,2,sd)
-  res$m.5=apply(res$mdraws,2,quantile,0.5)
-  res$m.lower=apply(res$mdraws,2,quantile,q.lower)
-  res$m.upper=apply(res$mdraws,2,quantile,q.upper)
+  # res$mmean=apply(res$mdraws,2,mean)
+  # res$msd=apply(res$mdraws,2,sd)
+  # res$m.5=apply(res$mdraws,2,quantile,0.5)
+  # res$m.lower=apply(res$mdraws,2,quantile,q.lower)
+  # res$m.upper=apply(res$mdraws,2,quantile,q.upper)
   
   # Field data Error std Posterior
   res$sfmean=apply(res$sfdraws,2,mean)
