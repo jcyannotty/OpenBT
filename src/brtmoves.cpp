@@ -64,7 +64,7 @@ void brt::getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,
 //peturb proposal for internal node cut points.
 void brt::pertcv(rn& gen)
 {
-   //cout << "--------------->>into pertcv" << endl;
+   cout << "--------------->>into pertcv" << endl;
    tree::tree_p pertnode;
    if(t.treesize()==1) // nothing to perturb if the tree is a single terminal node
       return;
@@ -86,6 +86,7 @@ void brt::pertcv(rn& gen)
       bool didswap=false;
       size_t oldv=pertnode->getv();
       size_t newv;
+      //cout << "pert cv treesize " << t.treesize() << "-------" << rank << endl;
 #ifdef _OPENMPI 
       MPI_Request *request = new MPI_Request[tc];
       for(size_t i=1; i<=(size_t)tc; i++) {
@@ -156,6 +157,7 @@ void brt::pertcv(rn& gen)
       std::vector<sinfo*>& sivold = newsinfovec();
       std::vector<sinfo*>& sivnew = newsinfovec();
       tree::npv bnv;
+      //cout << "pertnode cv = " << pertnode->nid() << "--------" << rank << endl;
       getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
 
       typedef tree::npv::size_type bvsz;
@@ -226,6 +228,7 @@ void brt::pertcv(rn& gen)
       bi=std::min(bi,U);
       size_t propc = ai + (size_t)(floor(gen.uniform()*(bi-ai+1.0)));
       pertnode->setc(propc);
+      //cout << "pert treesize " << t.treesize() << "-------" << rank << endl;
 #ifdef _OPENMPI
          unsigned int propcint=(unsigned int)propc;
          MPI_Request *request = new MPI_Request[tc];
@@ -249,6 +252,7 @@ void brt::pertcv(rn& gen)
       MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
       delete[] request;
 #endif
+      //cout << "pertnode = " << pertnode->nid() << "--------" << rank << endl;
       getpertsuff(pertnode,bnv,oldc,sivold,sivnew);
 
       typedef tree::npv::size_type bvsz;

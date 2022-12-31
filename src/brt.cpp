@@ -1280,18 +1280,14 @@ void brt::drawvec(rn& gen)
 {
    // Structural/topological proposal(s)
    if(gen.uniform()<mi.pbd){
-//   if(mi.pbd>0.0)
-      //std::cout << "bd" << std::endl;
       bd_vec(gen);
    }
    else
    {
-      std::cout << "Rotate" << std::endl; 
+      //std::cout << "Rotate" << "------" <<  std::endl; 
       tree::tree_p tnew;
       tnew=new tree(t); //copy of current to make life easier upon rejection
-      //t.pr_vec();
       rot(tnew,t,gen);
-      //t.pr_vec();
       delete tnew;
    }
 
@@ -1427,6 +1423,8 @@ void brt::drawvec_mpislave(rn& gen)
             size_t propc=(size_t)propcint;
             pertnode->setc(propc);
             tree::npv bnv;
+            //cout << "pert treesize " << t.treesize() << "-------" << rank << endl;
+            //cout << "pertnode = " << pertnode->nid() << "--------" << rank << endl;
             getpertsuff(pertnode,bnv,oldc,sivold,sivnew);
             MPI_Status status2;
             MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
@@ -1447,6 +1445,7 @@ void brt::drawvec_mpislave(rn& gen)
             MPI_Unpack(buffer,SIZE_UINT3,&position,&propvint,1,MPI_UNSIGNED,MPI_COMM_WORLD);
             MPI_Unpack(buffer,SIZE_UINT3,&position,&didswap,1,MPI_CXX_BOOL,MPI_COMM_WORLD);
             //cout << "recv new v " << propvint << ", recv new c " << propcint << endl;
+            //cout << "pert cv treesize " << t.treesize() << "-------" << rank << endl;
             size_t propc=(size_t)propcint;
             size_t propv=(size_t)propvint;
             pertnode->setc(propc);
@@ -1455,6 +1454,7 @@ void brt::drawvec_mpislave(rn& gen)
                pertnode->swaplr();
             mpi_update_norm_cormat(rank,tc,pertnode,*xi,(*mi.corv)[propv],chv_lwr,chv_upr);
             tree::npv bnv;
+            //cout << "pertnode cv = " << pertnode->nid() << "--------" << rank << endl;
             getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
             MPI_Status status2;
             MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);

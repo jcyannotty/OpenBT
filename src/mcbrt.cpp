@@ -280,13 +280,16 @@ double mcbrt::lm(sinfo& si)
     
     // Get subtre lm if node contains subtree info        
     if(mci.subtree_info){
-        lmstree = lmsubtree(mci);    
+        lmstree = lmsubtree(mci);
+        //cout << "subtree lm " << lmn << "-----" << rank << endl;
     }
     // Add individual node contribution -- checking subtree condition
     if(mci.subtree_node){
         lmn = lmsubtreenode(mci);
+        //cout << "subtree node lmn1 " << lmn << "-----" << rank << endl;
     }else{
         lmn = lmnode(mci); // lm for nodes outside of subtree, used when no subtree is involved
+        //cout << "subtree node lmn2 " << lmn << "-----" << rank << endl;
     }
     return lmstree + lmn;
 }
@@ -305,7 +308,7 @@ double mcbrt::lmnode(mcinfo &mci){
     double lmout = 0.0;
 
     // Does this node have field observations 
-    if(mci.nf>0){
+    if(mci.sumwf>0){
         // Get determinant of the inverse posterior variance (have this in closed form bc 2x2)
         siginv_det = (mci.sumwf + mci.sumwc + 1/tau1_sqr)*(mci.sumwf + 1/tau2_sqr) - mci.sumwf*mci.sumwf;
         
@@ -675,13 +678,17 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 
     // Set the root of the tree for the rotation. 
     // If nx is in a subtree, then we need to use its subtree root rather than using nx 
+    //cout << "nx = " << nx->nid() << "-----" << rank << endl;
+    troot = nx;
     local_subsuff_setroot(nx,subtree,troot,uroots);
 
     bnv.clear();
 
     troot->getpathtoroot(path);  //path from subtree root troot back to root (troot = nx or subtree if subtree is a pointer above nx)
     troot->getbots(bnv);  //all bots ONLY BELOW node troot!!
-
+    //cout << "troot = " << troot->nid() << "-----" << rank << endl;
+    //cout << "tree size = " << troot->treesize() << "-----" << rank << endl;
+    //cout << "bnv size = " << bnv.size() << "-----" << rank << endl;
 #ifdef _OPENMP
     typedef tree::npv::size_type bvsz;
     cout << "HERE????" << endl;
@@ -779,11 +786,11 @@ void mcbrt::local_subsuff_subtree(std::vector<sinfo*>& siv)
 
 //--------------------------------------------------
 //local_getsuff_subtree (2) -- used when a subtree or subtrees begin below the rotation node
-void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv)
+void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
     typedef tree::npv::size_type bvsz;
-    //bvsz nb;
     std::vector<mcinfo*> mcv(bnv.size()); // mcinfo vector used for subtrees
+    tree::tree_p subtree;
 
     // Define bottom node vector map, unode map for calibration subtreen, and clear siv
     std::map<tree::tree_cp,std::vector<size_t>> unmap;
@@ -827,11 +834,13 @@ void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree:
     // Now check conditions for how to pool the information across nodes in a common subtree
     if(!subtree && nxuroots.size()>0){
         // If nx is not in a subtree, but nodes below nx are in subtree(s)
-        local_subsuff_subtree(nxuroots,nx,subtree,bnv,siv);
-        //cout << "local_subsuff_nx_subtree..." << endl;        
+        local_subsuff_subtree(nxuroots,nx,bnv,siv);
+        cout << "local_subsuff_nx_subtree..." << endl;
+        cout << "bnv size = " << bnv.size() << "----" << rank << endl;
+        cout << "siv size = " << siv.size() << "----" << rank << endl;        
     }else if(subtree){
         // Either nx creates the calibration subtree or it is in one already
-        local_subsuff_subtree(siv);
+        //local_subsuff_subtree(siv);
         //cout << "local_subsuff_subtree..." << endl;
     }else{
         // This set of suff stats is not associated with a claibration subtree -- no need to pool information    
@@ -1002,6 +1011,8 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 //allsuff(2) -- the MPI communication part of local_mpiallsuff.  This is model-specific.
 void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
 {
+    //cout << "reduce all suff" << endl;
+    cout << "mpi siv.size = " << siv.size() << "----" << rank << endl;
 #ifdef _OPENMPI
     unsigned int nvec[siv.size()];
     double sumywvec[siv.size()];

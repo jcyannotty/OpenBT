@@ -343,7 +343,7 @@ public:
     void local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv);
     void local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tree_p &troot ,tree::npv &uroots);
     void local_subsuff_subtree(std::vector<sinfo*>& siv);
-    void local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::tree_p subtree, tree::npv& bnv, std::vector<sinfo*>& siv);
+    void local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv);
     //void local_mpisubsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree::npv& bnv, std::vector<sinfo*>& siv);
     
     // Methods which are nested within the above methods. Used to deal with various cases and keep code concise
