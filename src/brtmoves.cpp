@@ -64,7 +64,7 @@ void brt::getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,
 //peturb proposal for internal node cut points.
 void brt::pertcv(rn& gen)
 {
-   cout << "--------------->>into pertcv" << endl;
+   //cout << "--------------->>into pertcv" << endl;
    tree::tree_p pertnode;
    if(t.treesize()==1) // nothing to perturb if the tree is a single terminal node
       return;

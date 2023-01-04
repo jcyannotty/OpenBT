@@ -180,16 +180,6 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
         stdnorm(i) = gen.normal(); 
     }
 
-    if((rank == 0 && postmean[0]<-30) | (rank == 0 && postmean[0]>300)){
-        cout << "post mean[0] = " << postmean[0] << endl;
-        cout << "A = \n" << A << endl;
-    }
-
-    if(rank == 0 && postmean[1]<-30){
-        cout << "post mean[1] = " << postmean[1] << endl;
-        cout << "A = \n" << A << endl;
-    }
-
     //Print out matrix algebra step-by-step
     /*
     std::cout << "\nAll matrix Calculations:" << std::endl;
@@ -230,13 +220,7 @@ double mcbrt::drawtheta2(std::vector<sinfo*> sivec, rn &gen)
     //if(rank==0) cout << "postmean = " << postmean << endl;
     //if(rank==0) cout << "postvar = " << postvar << endl;
     // Draw a random variable
-    theta2 = postmean + gen.normal()*sqrt(postvar);
-    if(theta2<-30 && rank==0){
-        cout << "sumw = " << sumw << endl;
-        cout << "postvar = " << postvar << endl;
-        cout << "postmean = " << postmean << endl;
-        cout << "siv vec size = " << sivec.size() << endl;
-    } 
+    theta2 = postmean + gen.normal()*sqrt(postvar); 
     return theta2;
 }
 
@@ -411,14 +395,14 @@ double mcbrt::lmsubtreenode(mcinfo &mci){
 
     // Initialize terms for total lm from each piece
     double lmc = 0.0, lmf =0.0;
-    // Contribution from field data 
-    if(mci.nf>0){
+    // Contribution from field data (mci.nf>0) 
+    if(mci.sumwf>0){
         rhat = mci.sumyw/mci.sumwf;
         vhat = 1/mci.sumwf;
         lmf = 0.5*(log(2*M_PI*vhat) + rhat*rhat/vhat);
     }
-    // Model runs (this condition should always be true bc of onsite assumption)
-    if(mci.n>mci.nf){
+    // Model runs (mci.n > mci.nf)
+    if(mci.sumwc>0){
         lmc = 0.5*tau1_sqr*(mci.sumwc + ci.mu1/tau1_sqr)*(mci.sumwc + ci.mu1/tau1_sqr)/(tau1_sqr*mci.sumwc + 1); //mean term
         lmc += -0.5*ci.mu1*ci.mu1/tau1_sqr; //prior mean term
         lmc += -0.5*log(tau1_sqr*mci.sumwc + 1); //variance term
@@ -805,7 +789,6 @@ void mcbrt::local_subsuff_subtree(tree::npv nxuroots, tree::tree_p nx, tree::npv
             unmap[subtree].push_back(i); // append the id to the utree id map -- keeps track of which nodes belong to which subtrees 
         }
     }
-
     // Compile suff stats across the calibration subtree(s)
     std::vector<mcinfo*> mcvtemp;
     for(size_t i=0;i<unmap.size();i++){
@@ -834,10 +817,12 @@ void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree:
     // Now check conditions for how to pool the information across nodes in a common subtree
     if(!subtree && nxuroots.size()>0){
         // If nx is not in a subtree, but nodes below nx are in subtree(s)
+        //cout << "bnv size before = " << bnv.size() << "----" << rank << endl;
+        //cout << "siv size before = " << siv.size() << "----" << rank << endl;
         local_subsuff_subtree(nxuroots,nx,bnv,siv);
-        cout << "local_subsuff_nx_subtree..." << endl;
-        cout << "bnv size = " << bnv.size() << "----" << rank << endl;
-        cout << "siv size = " << siv.size() << "----" << rank << endl;        
+        //cout << "local_subsuff_nx_subtree..." << endl;
+        //cout << "bnv size = " << bnv.size() << "----" << rank << endl;
+        //cout << "siv size = " << siv.size() << "----" << rank << endl;        
     }else if(subtree){
         // Either nx creates the calibration subtree or it is in one already
         //local_subsuff_subtree(siv);
@@ -1011,8 +996,6 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 //allsuff(2) -- the MPI communication part of local_mpiallsuff.  This is model-specific.
 void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
 {
-    //cout << "reduce all suff" << endl;
-    cout << "mpi siv.size = " << siv.size() << "----" << rank << endl;
 #ifdef _OPENMPI
     unsigned int nvec[siv.size()];
     double sumywvec[siv.size()];
