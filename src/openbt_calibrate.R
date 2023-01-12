@@ -414,12 +414,13 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   nslv = tc
 
   # xdata and design matrix
+  nlist = vector("list",nslv)
   if(nc>0){
     # Set the x's
     xflist=split(as.data.frame(xf_test),(seq(nf)-1) %/% (nf/nslv))
     xclist=split(as.data.frame(xc_test),(seq(nc)-1) %/% (nc/nslv))
     for(i in 1:nslv) write(t(rbind(xflist[[i]],xclist[[i]])),file=paste(folder,"/",xproot,i-1,sep=""))
-    
+      
     # Set the design matrix
     hlist = vector('list',nslv)
     for(i in 1:nslv){
@@ -427,6 +428,7 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
       ncslv = nrow(xclist[[i]])
       hlist[[i]] = cbind(rep(1,nfslv+ncslv), c(rep(1,nfslv),rep(0,ncslv)))
       hlist[[i]] = as.data.frame(hlist[[i]])
+      nlist[[i]] = c(nfslv, ncslv)
     }
     for(i in 1:nslv) write(t(hlist[[i]]),file=paste(folder,"/",fproot,i-1,sep=""))
   }else{
@@ -491,6 +493,21 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   if(nc>0){
     fnames=list.files(fit$folder,pattern=paste(fit$modelname,".scdraws*",sep=""),full.names=TRUE)
     res$scdraws=do.call(cbind,sapply(fnames,data.table::fread))
+    
+    # reorder results to stack xf_test then xc_test
+    nf_order = c()
+    nc_order = c()
+    ntot = 0
+    for(l in 1:nslv){
+      nf_order = c(nf_order, 1:nlist[[l]][1] + ntot)
+      nc_order = c(nc_order, 1:nlist[[l]][2] + nlist[[l]][1] + ntot)
+      ntot = ntot + sum(nlist[[l]])
+    } 
+    res$etadraws = res$etadraws[,c(nf_order,nc_order)] 
+    res$deltadraws = res$deltadraws[,c(nf_order,nc_order)] 
+
+    rownames(res$etadraws) = NULL
+    rownames(res$deltadraws) = NULL        
   }
   
   # Store Results
@@ -508,6 +525,14 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   res$delta.lower=apply(res$deltadraws,2,quantile,q.lower)
   res$delta.upper=apply(res$deltadraws,2,quantile,q.upper)
 
+  # f = eta + delta posterior -- only for field obs
+  res$fdraws = res$etadraws[,1:nf] + res$deltadraws[,1:nf]
+  res$fmean=apply(res$fdraws,2,mean)
+  res$fsd=apply(res$fdraws,2,sd)
+  res$f.5=apply(res$fdraws,2,quantile,0.5)
+  res$f.lower=apply(res$fdraws,2,quantile,q.lower)
+  res$f.upper=apply(res$fdraws,2,quantile,q.upper)
+  
   # Mean draws (remove)
   # res$mmean=apply(res$mdraws,2,mean)
   # res$msd=apply(res$mdraws,2,sd)
@@ -523,11 +548,19 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
   res$sf.upper=apply(res$sfdraws,2,quantile,q.upper)
   
   # Model runs Error std Posterior
-  res$scmean=apply(res$scdraws,2,mean)
-  res$scsd=apply(res$scdraws,2,sd)
-  res$sc.5=apply(res$scdraws,2,quantile,0.5)
-  res$sc.lower=apply(res$scdraws,2,quantile,q.lower)
-  res$sc.upper=apply(res$scdraws,2,quantile,q.upper)
+  if(nc>0){
+    res$scmean=apply(res$scdraws,2,mean)
+    res$scsd=apply(res$scdraws,2,sd)
+    res$sc.5=apply(res$scdraws,2,quantile,0.5)
+    res$sc.lower=apply(res$scdraws,2,quantile,q.lower)
+    res$sc.upper=apply(res$scdraws,2,quantile,q.upper)
+  }else{
+    res$scmean=NULL
+    res$scsd=NULL
+    res$sc.5=NULL
+    res$sc.lower=NULL
+    res$sc.upper=NULL
+  }
   
   # Other quantities  
   res$q.lower=q.lower

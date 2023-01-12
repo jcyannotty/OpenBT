@@ -237,8 +237,8 @@ double mcbrt::drawtheta1(sinfo &si, rn &gen, double theta2)
     vtilde = 1/(mci.sumwc + 1/t1_sqr);
     mtilde = vtilde*(mci.sumzw + ci.mu1/t1_sqr);
 
-    // Does this node have field data?
-    if(mci.nf>0){
+    // Does this node have field data? (mci.nf>0)
+    if(mci.sumwf>0){
         postvar = 1/(mci.sumwf + 1/vtilde);
         postmean = postvar*(mci.sumyw - theta2*mci.sumwf + mtilde/vtilde);
         theta1 = postmean + gen.normal()*sqrt(postvar);
@@ -304,15 +304,15 @@ double mcbrt::lmnode(mcinfo &mci){
         Sig = Sig/siginv_det;
 
         // Get the mean vector
-        meanvec(0) = mci.sumyw + mci.sumzw;
-        meanvec(1) = mci.sumyw;
+        meanvec(0) = mci.sumyw + mci.sumzw + ci.mu1/tau1_sqr;
+        meanvec(1) = mci.sumyw + ci.mu2/tau2_sqr;
 
         // Get the quadratic term
         q = meanvec.transpose()*Sig*meanvec;
 
         // This node has model runs and field obs
         lmout = -0.5*(log(tau1_sqr) + log(tau2_sqr) + log(siginv_det)); // variance terms
-        lmout += -0.5*(ci.mu1/tau1_sqr + ci.mu2/tau2_sqr - q); // mean terms (ignoring the part that cancels in a ratio)
+        lmout += -0.5*(ci.mu1*ci.mu1/tau1_sqr + ci.mu2*ci.mu2/tau2_sqr - q); // mean terms (ignoring the part that cancels in a ratio)
     }else{
         // This node just has model runs (ignoring terms which cancel in the ratio)
         v = tau1_sqr*mci.sumwc + 1;
@@ -379,9 +379,9 @@ double mcbrt::lmsubtree(mcinfo &mci){
     }
 
     // Now compute the lm contribution from all nodes in subtree
-    lmstree = -0.5*(B*log(2*M_PI) + sum_logw + log(tau2_sqr*sum_w +1)); // Variance terms     
-    lmstree += -0.5*(ci.mu2/tau2_sqr + sum_meansqrw); // mean terms
-    lmstree += 0.5*tau2_sqr*(sum_meanw + ci.mu2/tau2_sqr)*(sum_meanw + ci.mu2/tau2_sqr)*(tau2_sqr*sum_w + 1);
+    lmstree = -0.5*(B*log(2*M_PI) - sum_logw + log(tau2_sqr*sum_w +1)); // Variance terms  **changed second term to - instead of +    
+    lmstree += -0.5*(ci.mu2*ci.mu2/tau2_sqr + sum_meansqrw); // mean terms
+    lmstree += 0.5*tau2_sqr*(sum_meanw + ci.mu2/tau2_sqr)*(sum_meanw + ci.mu2/tau2_sqr)/(tau2_sqr*sum_w + 1);
     
     return lmstree;
 }
@@ -403,7 +403,7 @@ double mcbrt::lmsubtreenode(mcinfo &mci){
     }
     // Model runs (mci.n > mci.nf)
     if(mci.sumwc>0){
-        lmc = 0.5*tau1_sqr*(mci.sumwc + ci.mu1/tau1_sqr)*(mci.sumwc + ci.mu1/tau1_sqr)/(tau1_sqr*mci.sumwc + 1); //mean term
+        lmc = 0.5*tau1_sqr*(mci.sumzw + ci.mu1/tau1_sqr)*(mci.sumzw + ci.mu1/tau1_sqr)/(tau1_sqr*mci.sumwc + 1); //mean term
         lmc += -0.5*ci.mu1*ci.mu1/tau1_sqr; //prior mean term
         lmc += -0.5*log(tau1_sqr*mci.sumwc + 1); //variance term
     }

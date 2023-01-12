@@ -471,6 +471,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             rf[j]=sigmav[i];
             xftemp.clear();
             xftemp = {x.begin()+p*i,x.begin()+p*(i+1)};
+            //cout << "xftemp[0] = " << xftemp[0] << ".... xftemp[p-1] = " << xftemp[p-1] << "---" << endl;
             xf.insert(xf.end(),xftemp.begin(),xftemp.end());
             yf.push_back(y[i]);
             j = j + 1;
@@ -521,6 +522,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             rc[j]=sigmav[i];
             xctemp.clear();
             xctemp = {x.begin()+p*i,x.begin()+p*(i+1)};
+            //cout << "xctemp[0] = " << xctemp[0] << ".... xctemp[p-1] = " << xctemp[p-1] << "---" << endl;
             xc.insert(xc.end(),xctemp.begin(),xctemp.end());
             yc.push_back(y[i]);
             j = j + 1;
@@ -635,7 +637,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             rf[j] = y[j]-acb.f(j);    
         }
         for(size_t j=0;j<nc;j++){
-            rc[j] = y[nf+j]-acb.f(nf+j);    
+            rc[j] = y[nf+j]-acb.f(nf+j);
         }
         
         if((i+1)%adaptevery==0 && mpirank==0) acb.adapt();
