@@ -11,8 +11,11 @@ posterior.openbtmixing = function(fit,q.lower=0.025,q.upper=0.975){
   fnames=list.files(fit$folder,pattern=paste(fit$modelname,".udraws*",sep=""),full.names=TRUE)
   
   res$udraws=do.call(cbind,sapply(fnames,data.table::fread))  
+
+  # remove first row, which was the last draw of u from the burn-in (used in prediction file)  
+  res$udraws = matrix(res$udraws[-(1:pu),], ncol = pu, byrow = TRUE) 
   
-  res$udraws = matrix(res$udraws, ncol = pu, byrow = TRUE)
+  # Get summary stats
   res$umean = apply(res$udraws,2,mean)
   res$usd = apply(res$udraws,2,sd)
   res$u.5 = apply(res$udraws,2,median)

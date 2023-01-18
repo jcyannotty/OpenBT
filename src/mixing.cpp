@@ -599,6 +599,25 @@ int main(int argc, char* argv[])
         cf.close();
     }
 
+/*
+    //--------------------------------------------------    
+    // For testing -- read in true wts (testing only)
+    std::vector<double> truewts;
+    std::stringstream wfss;
+    std::string wfs;
+    std::ifstream wf;
+    double wtemp;
+    mxd wts_matrix(nvec[0], nummodels);
+    wfss << "/home/johnyannotty/Documents/Model Mixing BART/Spring 2023/Mix_Polynomials/wt" << mpirank;
+    wfs=wfss.str();
+    wf.open(wfs);
+    while(wf >> wtemp){
+        truewts.push_back(wtemp);
+    }
+    
+    makefinfo(nummodels,nvec[0],&truewts[0],wts_matrix);
+    vxd yhat0(nvec[0]), yhat1(nvec[0]);
+*/
 
     //--------------------------------------------------
     //Set up model objects and MCMC
@@ -970,7 +989,7 @@ int main(int argc, char* argv[])
         
         // Calibration steps
         if(modeltype==MODEL_MIXCALIBRATE){
-             // Reset csumwr2 and nsumwr2
+            // Reset csumwr2 and nsumwr2
             csumwr2 = 0.0; 
             nsumwr2 = 0.0;
             
@@ -995,7 +1014,6 @@ int main(int argc, char* argv[])
                     //Update finfo column 
                     ambm_list[j]->predict(&dimixprop_list[j]);
                     for(size_t l=0;l<dimixprop_list[j].n;l++){
-                        //fi(l,j+1) = fmix_list[j][l] + means_list[j+1]; // f_mix is only K dimensional -- hence using j as its index
                         fiprop(l,j) = fmixprop_list[j][l] + means_list[j+1];  
                         //cout << "fiprop(l,j) = " << fiprop(l,j) << endl;                       
                     }
@@ -1004,10 +1022,10 @@ int main(int argc, char* argv[])
             if(!hardreject){
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
                 axb.predict_mix(&dips_list[0],&fiprop);
+
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
                 for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
-                //cout << "csum = " << csumwr2 << endl;
-                //cout << "nsum = " << nsumwr2 << endl;
+                
                 // Now do the MH Step
                 uvec.mhstep(csumwr2,nsumwr2,gen);
 
@@ -1136,7 +1154,7 @@ int main(int argc, char* argv[])
 
         // Calibration steps
         if(modeltype==MODEL_MIXCALIBRATE){
-             // Reset csumwr2 and nsumwr2
+            // Reset csumwr2 and nsumwr2
             csumwr2 = 0.0; 
             nsumwr2 = 0.0;
             
@@ -1165,7 +1183,7 @@ int main(int argc, char* argv[])
                 }
             }
             if(!hardreject){
-                // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
+                // Get mixed predictions, using the same dinfo for the field obs variance model for convenience                
                 axb.predict_mix(&dips_list[0],&fiprop);
 
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
@@ -1327,7 +1345,7 @@ int main(int argc, char* argv[])
             if(!hardreject){    
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
                 axb.predict_mix(&dips_list[0],&fiprop);
-
+            
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
                 for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
 
@@ -1445,7 +1463,6 @@ int main(int argc, char* argv[])
 #endif
     //Flatten posterior trees to a few (very long) vectors so we can just pass pointers
     //to these vectors back to R (which is much much faster than copying all the data back).
-    if(mpirank==1){axb.get_fi();}
     if(mpirank==0) {
         cout << "Returning posterior, please wait...";
         // Instantiate containers

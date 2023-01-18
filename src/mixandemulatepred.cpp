@@ -300,7 +300,6 @@ int main(int argc, char* argv[])
    std::vector<double> udraws; // container for calibration parameters
    
    if(modeltype==MODEL_MIXCALIBRATE){
-      for(size_t j=0;j<q;j++){u0.push_back(e_udraws[j]);cout << "u0 = " << u0[0] << endl;}
       uvec.setucur(u0);
       
       for(int j=0; j<nummodels;j++){
