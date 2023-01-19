@@ -575,11 +575,16 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
 # Get Posterior of calibration parameters
 posterior.openbtcal = function(fit,q.lower=0.025,q.upper=0.975){
   if(is.null(fit)) stop("No fitted model specified!\n")
+  pu = fit$pu
   res = list()
   fnames=list.files(fit$folder,pattern=paste(fit$modelname,".udraws*",sep=""),full.names=TRUE)
   
   res$udraws=do.call(cbind,sapply(fnames,data.table::fread))  
   
+  # Remove the first row
+  res$udraws=matrix(res$udraws[-c(1:pu),], ncol = pu)
+  
+  # Summary stats
   res$umean = apply(res$udraws,2,mean)
   res$usd = apply(res$udraws,2,sd)
   res$u.5 = apply(res$udraws,2,median)
