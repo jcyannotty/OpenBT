@@ -44,6 +44,7 @@ tc=2,
 sigmav=rep(1,length(y.train)),
 f.sd.train = NULL, # rename
 wts.prior.info = NULL, # keep/rename
+selectp = FALSE,
 fmean=mean(y.train),
 overallsd = NULL,
 overallnu= NULL,
@@ -246,10 +247,17 @@ if(modeltype==MODEL_MIXBART){
   beta0=0
 }
 
-if(modeltype==MODEL_MIXBART & nsprior){
+if(modeltype==MODEL_MIXBART & (nsprior)){
   #tau = 1/(sqrt(m)*k)
   #tau = 1/(2*sqrt(m)*k)
   tau = 1/(2*(m)*k)
+  beta0 = 1/m
+}  
+
+if(modeltype==MODEL_MIXBART & (selectp)){
+  #tau = 1/(sqrt(m)*k)
+  #tau = 1/(2*sqrt(m)*k)
+  tau = 1/(2*sqrt(m)*k)
   beta0 = 1/m
 }  
 
@@ -352,7 +360,8 @@ fout=file(paste(folder,"/config",sep=""),"w")
 writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
-            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(nsprior),paste(wproot),paste(wtsprior), 
+            paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(nsprior),
+            paste(selectp),paste(wproot),paste(wtsprior), 
             paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
             paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
@@ -444,7 +453,7 @@ res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
 res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
 res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
 res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fsdroot=fsdroot; 
-res$nsprior = nsprior; res$pbd=pbd; res$pb=pb
+res$nsprior = nsprior;res$selectp = selectp;res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
 res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
 res$printevery=printevery; res$xiroot=xiroot; res$minx=minx; res$maxx=maxx;

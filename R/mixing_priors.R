@@ -158,15 +158,39 @@ plot_predict = function(x,y,predmean, predstd, tnode_list=NULL, ci = 0.95, y_lim
 
 
 #-----------------------------------------------------
-# Terminal node draw functions
+# Posterior Distributions
 #-----------------------------------------------------
+# Log unnormalized posterior of beta
+post_beta_logun = function(yvec, f_matrix, sigma, tau, m){
+  # Define terms
+  s2 = sigma^2
+  t2 = tau^2
+  f = f_matrix
+  K = ncol(f)
+  prior_inv = diag(1/t2,K)
+  yvec = matrix(yvec,ncol=1)
+  
+  # Get cov matrix
+  Ainv = t(f)%*%f/sigma^2 + prior_inv
+  A = chol2inv(chol(Ainv))
+  
+  beta_set = diag(1/m,K)
+  fys = t(f)%*%yvec/s2
+  out = 0
+  for(i in 1:K){
+    b = beta_set[,i]
+    out[i] = -0.5/t2*(t(b)%*%b - t(b)%*%A%*%b/t2 - 2*t(b)%*%A%*%fys)
+    #out[i] = 0.5*t(beta_set[,i]/t2 + fys)%*%A%*%(beta_set[,i]/t2 + fys)
+  }
+  return(out)
+}
 
 
 #-----------------------------------------------------
 # Log Marginal likelihood and marginal priors -- computes densities at input y (or mu)
 #-----------------------------------------------------
-# Marginal Selection prior -- GMM after integrating over beta
-lm_selet_mu = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
+# Marginal Selection prior -- GMM after integrating over beta and mu
+lm_selet = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
   # Set beta_prior
   if(is.null(beta_prior)){beta_prior = rep(1/num_models, num_models)}
   if(length(beta_prior!=num_models)){stop("Incorrect dimension for beta_prior. Must be of length num_models!")}

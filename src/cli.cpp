@@ -160,15 +160,21 @@ int main(int argc, char* argv[])
    std::string nsprior_str;
    bool nsprior = false;
    conf >> nsprior_str;
-   if(nsprior_str == "TRUE" or nsprior_str == "True"){ nsprior = true; }
+   if(nsprior_str == "TRUE" || nsprior_str == "True"){ nsprior = true; }
    
+   //selection prior
+   std::string selectp_str;
+   bool selectp = false;
+   conf >> selectp_str;
+   if(selectp_str == "TRUE" || selectp_str == "True"){ selectp = true; }
+
    //Model Mixing wts Prior Mean and sd root and true/false denoting if the priors are the same for each wt model
    std::string wprcore; // name of the textfile containing the prior for the weights
    std::string wprior_str; // str -- T/F did the user provide a prior mean vec and covariance for the weights via text file
    bool wprior = false; // bool version of wprior_str
    conf >> wprcore;
    conf >> wprior_str; 
-   if(wprior_str == "TRUE" or wprior_str == "True"){ wprior = true; }
+   if(wprior_str == "TRUE" || wprior_str == "True"){ wprior = true; }
 
    //control
    double pbd;
@@ -988,6 +994,10 @@ return 0;
          );
    
    axb.setci(tau,beta0,sig);
+   if(selectp){
+      axb.sethpi(k); //init hyper parameter size
+      axb.setbi(k); //init beta information -- model specific
+   }
    /*
    //Set prior information
    if(mpirank==0){
@@ -1063,6 +1073,7 @@ return 0;
    std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
+   std::vector<std::vector<double> > obeta(nd*m, std::vector<double>(1));
    //std::vector<double> osig(nd,1);
 
    std::vector<int> snn(nd*mh,1);
@@ -1168,8 +1179,13 @@ return 0;
 */
    //save tree to vec format
    if(mpirank==0) {
-      axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
-      psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
+      if(selectp){
+         axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta,obeta); 
+         psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
+      }else{
+         axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
+         psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
+      }   
    }
 
    //save variance to vector form -- remove later
@@ -1197,6 +1213,7 @@ return 0;
       std::vector<int>* e_ovar=new std::vector<int>;
       std::vector<int>* e_oc=new std::vector<int>;
       std::vector<double>* e_otheta=new std::vector<double>;
+      std::vector<double>* e_obeta=new std::vector<double>;
       std::vector<int>* e_sts=new std::vector<int>(nd*mh);
       std::vector<int>* e_sid=new std::vector<int>;
       std::vector<int>* e_svar=new std::vector<int>;
@@ -1209,6 +1226,7 @@ return 0;
             e_ovar->insert(e_ovar->end(),ovar[i*m+j].begin(),ovar[i*m+j].end());
             e_oc->insert(e_oc->end(),oc[i*m+j].begin(),oc[i*m+j].end());
             e_otheta->insert(e_otheta->end(),otheta[i*m+j].begin(),otheta[i*m+j].end());
+            if(selectp){e_obeta->insert(e_obeta->end(),obeta[i*m+j].begin(),obeta[i*m+j].end());}
          }
       for(size_t i=0;i<nd;i++)
          for(size_t j=0;j<mh;j++) {
@@ -1246,6 +1264,37 @@ return 0;
       for(size_t i=0;i<e_stheta->size();i++) omf << std::scientific << e_stheta->at(i) << endl;
       
       omf.close();
+
+      std::ofstream pomf(folder + modelname + "_beta.fit");
+      if(selectp){
+         pomf << nd << endl;
+         pomf << m << endl;
+         pomf << mh << endl;
+         pomf << e_ots->size() << endl;
+         for(size_t i=0;i<e_ots->size();i++) pomf << e_ots->at(i) << endl;
+         pomf << e_oid->size() << endl;
+         for(size_t i=0;i<e_oid->size();i++) pomf << e_oid->at(i) << endl;
+         pomf << e_ovar->size() << endl;
+         for(size_t i=0;i<e_ovar->size();i++) pomf << e_ovar->at(i) << endl;
+         pomf << e_oc->size() << endl;
+         for(size_t i=0;i<e_oc->size();i++) pomf << e_oc->at(i) << endl;
+         pomf << e_obeta->size() << endl;
+         for(size_t i=0;i<e_obeta->size();i++) pomf << std::scientific << e_obeta->at(i) << endl;
+
+         // Repeat the variance model -- this is terribly inefficient
+         pomf << e_sts->size() << endl;
+         for(size_t i=0;i<e_sts->size();i++) pomf << e_sts->at(i) << endl;
+         pomf << e_sid->size() << endl;
+         for(size_t i=0;i<e_sid->size();i++) pomf << e_sid->at(i) << endl;
+         pomf << e_svar->size() << endl;
+         for(size_t i=0;i<e_svar->size();i++) pomf << e_svar->at(i) << endl;
+         pomf << e_sc->size() << endl;
+         for(size_t i=0;i<e_sc->size();i++) pomf << e_sc->at(i) << endl;
+         pomf << e_stheta->size() << endl;
+         for(size_t i=0;i<e_stheta->size();i++) pomf << std::scientific << e_stheta->at(i) << endl;
+         pomf.close();
+
+      }
 
       //Write standard deviation -- sigma -- files
       /*

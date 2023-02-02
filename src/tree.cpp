@@ -658,6 +658,52 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, int k)
 }
 
 //---------------------------------------------------------------------
+//treetovec for random Hyper parameters: 
+void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, double* ophivec, int tk, int pk){
+   tree::cnpv nds;
+   vxd thetavec_temp(tk);
+   std::vector<double> phivec_temp(pk);
+
+   this->getnodes(nds);
+   for(size_t i=0;i<nds.size();i++) {
+      oid[i]=(int)nds[i]->nid();
+      ov[i]=(int)nds[i]->getv();
+      oc[i]=(int)nds[i]->getc();
+      thetavec_temp = nds[i]->getthetavec();
+      phivec_temp = nds[i]->getphi();
+
+      //Temporary fix for annoyance caused in rotation step -- check to see if any of the internal theta's are a zero vector of dimension 2
+      //Right now, k = 2 by default, so when assigning a new theta to a rotated internal node, it gets a zero vec of dim 2. If we have more than 2 models then this is an issue
+      if(thetavec_temp.size() != tk){
+         if(thetavec_temp == vxd::Zero(2)){
+            thetavec_temp = vxd::Zero(tk);
+         }else{
+            std::cout << "You have an error with rotate that is not fixed" << std::endl;
+         }
+      }
+
+      for(int j = 0; j<tk; j++){
+         othetavec[i*tk+j]=thetavec_temp(j); 
+      }
+
+      // Now load phi
+      if(phivec_temp.size() != (size_t) pk){
+         //std::cout << "phivec.size() = " << phivec_temp.size() << std::endl;
+         if(phivec_temp.size() == 1){
+            phivec_temp.resize(pk,0);
+         }else{
+            std::cout << "You have an error with rotate that is not fixed" << std::endl;
+         }
+      }
+
+      for(int j = 0; j<pk; j++){
+         ophivec[i*pk+j]=phivec_temp[j]; 
+      }
+
+   }
+}
+
+//---------------------------------------------------------------------
 //Vector-to-tree for vector parameters -- ithetavec is a n*k vector if the others are pointers to n vectors 
 // -- override scalar parameter function by including the value of k 
 void tree::vectotree(size_t inn, int* iid, int* iv, int* ic, double* ithetavec, int k){

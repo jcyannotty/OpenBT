@@ -70,10 +70,10 @@ public:
    //prior
    //contructors,destructors--------------------
    //---include initialization of thetavec
-   tree(): theta(0.0),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0){}
-   tree(const tree& n): theta(0.0),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0) {cp(this,&n);}
-   tree(double itheta): theta(itheta),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0) {}
-   tree(vxd itheta): theta(0.0),k(itheta.rows()),thetavec(itheta),v(0),c(0),p(0),l(0),r(0) {} //constructor for multivariate parameter
+   tree(): theta(0.0),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0), phi(1,0){}
+   tree(const tree& n): theta(0.0),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0),phi(1,0) {cp(this,&n);}
+   tree(double itheta): theta(itheta),k(2),thetavec(vxd::Zero(2)),v(0),c(0),p(0),l(0),r(0),phi(1,0) {}
+   tree(vxd itheta): theta(0.0),k(itheta.rows()),thetavec(itheta),v(0),c(0),p(0),l(0),r(0),phi(1,0) {} //constructor for multivariate parameter
 
    void tonull(); //like a "clear", null tree has just one node
    ~tree() {tonull();}
@@ -87,10 +87,12 @@ public:
    void vectotree(size_t inn, int* id, int* v, int* c, double* theta);
    //set
    void settheta(double theta) {this->theta=theta;}
+   void setphivec(std::vector<double> phi0) {this->phi.resize(phi0.size());this->phi = phi0;} // random hyperparameters
    void setv(size_t v) {this->v = v;}
    void setc(size_t c) {this->c = c;}
    //get
    double gettheta() const {return theta;}
+   std::vector<double> getphi() const {return phi;}
    size_t getv() const {return v;}
    size_t getc() const {return c;}
    tree_p getp() {return p;}  
@@ -135,7 +137,7 @@ public:
    double theta; //univariate double parameter
    size_t k; //Dimension of thetavec == number of models to be fixed
    vxd thetavec; //multivariate double parameter -- using Eigen VectorXd
-   
+
    size_t v;
    size_t c;
    //tree structure
@@ -143,9 +145,14 @@ public:
    tree_p l; //left child
    tree_p r; //right child
 
+   // Hyperparameter vector
+   std::vector<double> phi; //a vector for hyper parameters, this is left to be as general as possible for now
+
+   //-----------------------------------------------------------------
    //Tree functions when using vector parameters-------------------
    // Vectorized nput/output methods to support saving/loading to R.
    void treetovec(int* id, int* v, int* c, double* thetavec, int k); //needs an input value of k
+   void treetovec(int* id, int* v, int* c, double* thetavec, double* phivec, int tk, int pk); //used for hyperparameters 
    void vectotree(size_t inn, int* id, int* iv, int* ic, double* ithetavec, int ik); //needs an input value of k
    //set and get
    void setthetavec(vxd thetavec) {this->thetavec=thetavec;}

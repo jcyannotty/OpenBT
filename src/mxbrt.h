@@ -91,12 +91,13 @@ class mxsinfo : public sinfo{
 
 class mxbrt : public brt{
 public:
-    //--------------------
+    //-------------------------------------------------
     //classes
     // tprior and mcmcinfo are same as in brt
         class cinfo{
         public:
-            cinfo():beta0(0.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0), invtau2_matrix(mxd::Identity(2,2)), beta_vec(vxd::Zero(2)), diffpriors(false) {} //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
+            //beta0 = scalar in the prior mean vector, tau = prior stdev for tnode parameters, sigma = stdev of error 
+            cinfo():beta0(0.0), tau(1.0), sigma(0), nu(1.0), lambda(1.0), invtau2_matrix(mxd::Identity(2,2)), beta_vec(vxd::Zero(2)), diffpriors(false), randbeta(false) {} 
             double beta0, tau;
             double* sigma; //use pointer since this will be changed as mcmc iterates
             double nu, lambda;
@@ -105,15 +106,18 @@ public:
             mxd invtau2_matrix; //Used if we have different prior means for the weights of each function
             vxd beta_vec; //Used if we have different prior varainces for the weights of each functionbool diffpriors; //Are the prior parameters different for each function -- use TRUE when loading vector and matrix parameters (below).
             bool diffpriors; //Are the prior parameters different for each function -- use TRUE when loading vector and matrix parameters (below).
+            bool randbeta; // is beta0 random
         };
-    //--------------------
+    //-------------------------------------------------
     //constructors/destructors
     mxbrt():brt() {}
     //mxbrt(size_t ik):brt(ik) {}
-    //--------------------
+    
+    //-------------------------------------------------
     //methods
     void drawvec(rn& gen);
     void drawvec_mpislave(rn& gen);
+    // Setters for conditioning information -- cleanup
     void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.beta0 = beta0; ci.sigma=sigma; } //Set for using the same prior for each weight
     void setci(mxd invtau2_matrix, vxd beta_vec, double* sigma) {ci.invtau2_matrix.resize(invtau2_matrix.rows(),invtau2_matrix.rows()); ci.beta_vec.resize(beta_vec.rows());
         ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma; ci.diffpriors = true;} //Set when using prior's that differ by function
@@ -127,7 +131,18 @@ public:
     virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
     void pr_vec();
 
-    //Method for sampling homoscedastic variance for paramter sigma^2 -- not sure if this works
+    // Additional methods needed for each mixing tree, these methods are designed for random beta 
+    void setbi(size_t ik){ci.randbeta=true; ci.beta_vec = ci.beta0*vxd::Ones(k); betaset = mxd::Identity(k,k);} // beta info
+    virtual double lmmix(sinfo& si); //lm for random beta, marginalizes over mu and beta
+    virtual double lmbeta(sinfo& si); //lm for fixed beta
+    virtual std::vector<double> drawnodephivec(sinfo& si, rn& gen);
+    vxd getbeta(){return ci.beta_vec;};
+    void setbeta(vxd newbeta){ci.beta_vec = newbeta;}
+    //void predictbeta(dinfo* dipred, mxd* wts); // Get the beta weights 
+    //void predict_interp(dinfo* dipred, finfo* fipred); // Interpolation prediction
+
+    // Method for sampling homoscedastic variance for paramter sigma^2
+    // No longer needed, just use psbrt model
     void setvi(double nu, double lambda) {ci.nu = nu; ci.lambda = lambda; } //Use to change the defualt parameters  
     void drawsigma(rn& gen); //Gibbs Sampler
     void getsumr2(double &sumr2, int &n); //get resiudal sum of squares 
@@ -139,8 +154,12 @@ public:
     //Methods for working with individual model discrepacny
     //virtual void drawdelta(rn& gen);  
 
-    //--------------------
-    //data
+    //-------------------------------------------------
+    // objects
+    //vxd beta;
+    mxd covmatrix; // cache a covariance matrix -- used when updating hyperparameter then term node parameter (this saves from doing the same inversion twice)
+    mxd betaset;
+    
     //--------------------------------------------------
     //stuff that maybe should be protected
     protected:

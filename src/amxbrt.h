@@ -37,6 +37,8 @@ public:
    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.sigma=sigma; ci.beta0=beta0; for(size_t j=0;j<m;j++) mb[j].setci(tau,beta0,sigma); }
    void setci(mxd invtau2_matrix, vxd beta_vec, double* sigma) {ci.invtau2_matrix.resize(invtau2_matrix.rows(),invtau2_matrix.rows()); ci.beta_vec.resize(beta_vec.rows());
       ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma,ci.diffpriors = true; for(size_t j=0;j<m;j++) mb[j].setci(invtau2_matrix,beta_vec,sigma);} //Set when using prior's that differ by function
+   void sethpi(size_t sz){this->randhp = true; this->kp=sz; this->t.phi.resize(sz,0);for(size_t j=0;j<m;j++) mb[j].sethpi(sz);}
+   void setbi(size_t ik){ci.randbeta=true; ci.beta_vec = ci.beta0*vxd::Ones(ik); this->betaset = mxd::Identity(ik,ik);for(size_t j=0;j<m;j++) mb[j].setbi(ik);}
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
    void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> nsprior = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
@@ -88,6 +90,8 @@ protected:
     virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
     virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                    std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi);
     virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
 

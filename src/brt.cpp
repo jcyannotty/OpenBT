@@ -1332,6 +1332,11 @@ void brt::drawthetavec(rn& gen)
   mpi_resetrn(gen);
 #endif
    for(size_t i=0;i<bnv.size();i++) {
+      // Update random hyperparameters if randhp is true
+      if(randhp){
+         bnv[i]->setphivec(drawnodephivec(*(siv[i]),gen));   
+      }
+      // Update thetavec
       bnv[i]->setthetavec(drawnodethetavec(*(siv[i]),gen));
       delete siv[i]; //set it, then forget it!
    }
@@ -1348,6 +1353,14 @@ Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
       sin_vec(i) = si.n; //Input si.n into each vector component
    }
    return sin_vec;
+}
+
+//--------------------------------------------------
+// Draw node phi vector where phi is a set of random hyper parameters 
+std::vector<double> brt::drawnodephivec(sinfo& si, rn& gen){
+   // Placeholder, edit in model specific classes
+   std::vector<double> temp(1,0);
+   return temp;
 }
 
 //--------------------------------------------------
@@ -1741,7 +1754,7 @@ void brt::local_predict_mix(diterator& diter, finfo& fipred){
    }
 }
 
-//Mix using the discrepancy
+//Mix using the discrepancy --- REMOVE
 void brt::predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen) {
    size_t np = (*fpdmean).rows();
    finfo fdpred(np,k);
@@ -1885,6 +1898,7 @@ void brt::savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<
    #endif
 }
 
+//--------------------------------------------------
 //void brt::local_ompsavetree(int* id, int* v, int* c, double* theta)
 void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
@@ -1900,6 +1914,8 @@ void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std
       local_savetree_vec(iter,beg,end,nn,id,v,c,theta);
 #endif
 }
+
+//--------------------------------------------------
 void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
      std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
 {
@@ -1913,6 +1929,8 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
    //t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0]);
    t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0], k);
 }
+
+//--------------------------------------------------
 void brt::loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
 {
@@ -1925,7 +1943,7 @@ void brt::loadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<
      local_loadtree_vec(iter,beg,end,nn,id,v,c,theta);
    #endif
 }
-
+//--------------------------------------------------
 //void brt::local_omploadtree(size_t nn, int* id, int* v, int* c, double* theta)
 void brt::local_omploadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
@@ -1941,6 +1959,8 @@ void brt::local_omploadtree_vec(size_t iter, size_t m, std::vector<int>& nn, std
       local_loadtree_vec(iter,beg,end,nn,id,v,c,theta);
 #endif
 }
+
+//--------------------------------------------------
 void brt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta)
 {
@@ -1948,6 +1968,57 @@ void brt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn
    t.vectotree(nn[iter],&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],k);
 }
 
+
+//--------------------------------------------------
+// Save tree with hyperparameters
+//--------------------------------------------------
+// Save function
+void brt::savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi)
+{
+   #ifdef _OPENMP
+#    pragma omp parallel num_threads(tc)
+     local_ompsavetree_vec(iter,m,nn,id,v,c,theta,phi);
+   #else
+     int beg=0;
+     int end=(int)m;
+     local_savetree_vec(iter,beg,end,nn,id,v,c,theta,phi);
+   #endif
+}
+
+//--------------------------------------------------
+//void brt::local_ompsavetree(int* id, int* v, int* c, double* theta)
+void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi)
+{
+#ifdef _OPENMP
+   int my_rank = omp_get_thread_num();
+   int thread_count = omp_get_num_threads();
+   int n = (int)m; //1 tree in brt version of save/load tree(s)
+   int beg=0;
+   int end=0;
+   calcbegend(n,my_rank,thread_count,&beg,&end);
+   if(end>my_rank)
+      local_savetree_vec(iter,beg,end,nn,id,v,c,theta,phi);
+#endif
+}
+
+//--------------------------------------------------
+void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
+     std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta,
+     std::vector<std::vector<double> >& phi)
+{
+   //beg,end are not used in the single-tree models.
+   nn[iter]=t.treesize();
+   id[iter].resize(nn[iter]);
+   v[iter].resize(nn[iter]);
+   c[iter].resize(nn[iter]);
+   theta[iter].resize(k*nn[iter]);
+   phi[iter].resize(kp*nn[iter]);
+
+   //t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0]);
+   t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],&phi[iter][0],k,kp);
+}
 
 /*
 //--------------------------------------------------

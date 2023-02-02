@@ -196,6 +196,24 @@ void amxbrt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>&
 }
 
 //--------------------------------------------------
+// Local saving with random hyperparameters
+void amxbrt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
+    std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta,
+    std::vector<std::vector<double> >& phi){
+    size_t indx=iter*m;
+    for(size_t i=(indx+(size_t)beg);i<(indx+(size_t)end);i++) {
+        nn[i]=mb[i-indx].t.treesize();
+        id[i].resize(nn[i]);
+        v[i].resize(nn[i]);
+        c[i].resize(nn[i]);
+        theta[i].resize(k*nn[i]);
+        phi[i].resize(kp*nn[i]);
+        mb[i-indx].t.treetovec(&id[i][0],&v[i][0],&c[i][0],&theta[i][0],&phi[i][0],k,kp);
+    }
+}
+
+
+//--------------------------------------------------
 //Local load tree
 void amxbrt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta){

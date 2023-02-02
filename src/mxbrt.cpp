@@ -39,6 +39,57 @@ void mxbrt::drawvec_mpislave(rn& gen){
 }
 
 //--------------------------------------------------
+std::vector<double> mxbrt::drawnodephivec(sinfo& si, rn& gen){
+    // Get exponential term for each beta vector value in sample space 
+    mxsinfo& mxsi=static_cast<mxsinfo&>(si);
+    int sz = betaset.cols();
+    vxd gamma(sz);
+    vxd outbeta(k), betavec(k);
+    mxd Sig(k,k), Sig_inv(k,k), Prior_Sig_Inv(k,k), I(k,k);
+    double a,b,c,d,t2,u,g,mx;
+    std::vector<double> outbeta_stdvec;
+
+    // Prior precision
+    t2 = ci.tau*ci.tau;
+    I = Eigen::MatrixXd::Identity(k,k); //Set identity matrix    
+    Prior_Sig_Inv = I/t2;
+
+    // Get covariance matrix and invert
+    Sig_inv = mxsi.sumffw + Prior_Sig_Inv; //Get inverse covariance matrix
+    Sig = Sig_inv.llt().solve(I); //Invert Sig_inv with Cholesky Decomposition
+    covmatrix = Sig; // Save to covariance matrix, used next in drawnodethetavec step!
+
+    // Get posterior pmf of beta
+    for(int j=0;j<sz;j++){
+        betavec = ci.beta0*betaset.col(j);
+        b = (betavec.transpose()*betavec);
+        
+        c = betavec.transpose()*Sig*mxsi.sumfyw;
+        d = betavec.transpose()*Sig*betavec;
+
+        a = (1/t2)*(b - 2*c - d/t2);
+
+        // Get gumbel random variables
+        u = gen.uniform();
+        g = -log(-log(u)); // gumbel rv
+        gamma(j) = -0.5*a + g; // Used for sampling the categorical data
+
+        //if(rank==0){cout << "j= " << j << "... -0.5*a = " << -0.5*a << "---n=" << mxsi.n << endl;}
+    }
+    
+    // Select the max value
+    gamma.maxCoeff(&mx);
+    //if(rank==0){cout << "mx= " << mx << endl;}
+    // Set the out beta
+    outbeta = ci.beta0*betaset.col(mx);
+    outbeta_stdvec.insert(outbeta_stdvec.end(),outbeta.data(),outbeta.data()+k);
+      
+    // Set beta in the conditioning info (ci.beta_vec) --> used in drawnodethetavec, so we need to keep track of it
+    setbeta(outbeta);
+    return(outbeta_stdvec);
+}
+
+//--------------------------------------------------
 //draw theta for a single bottom node for the brt model
 vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     //initialize variables
@@ -46,7 +97,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     mxd I(k,k), Sig_inv(k,k), Sig(k,k), Ev(k,k), E(k,k), Sp(k,k), Prior_Sig_Inv(k,k);
     vxd muhat(k), evals(k), stdnorm(k), betavec(k);
     double t2 = ci.tau*ci.tau;
-    
+
     I = Eigen::MatrixXd::Identity(k,k); //Set identity matrix
     betavec = ci.beta0*Eigen::VectorXd::Ones(k); //Set the prior mean vector
 
@@ -70,11 +121,21 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
         }
     }
 
-    //Compute the covariance
-    Sig_inv = mxsi.sumffw + Prior_Sig_Inv; //Get inverse covariance matrix
-    Sig = Sig_inv.llt().solve(I); //Invert Sig_inv with Cholesky Decomposition
+    // Update beta if random
+    if(randhp){
+        // Set up Prior precision and read in the posterior covaraiance (calculated in drawnodephivec)
+        betavec = ci.beta_vec;
+        Prior_Sig_Inv = (1/t2)*I;
+        Sig = covmatrix; // saved from drawnodephivec step, no need to recalculate
+    }else{
+        // No random hyper parameters, need to compute covariance
+        Sig_inv = mxsi.sumffw + Prior_Sig_Inv; //Get inverse covariance matrix
+        Sig = Sig_inv.llt().solve(I); //Invert Sig_inv with Cholesky Decomposition
+    }
+    
     //Compute the mean vector
     muhat = Sig*(mxsi.sumfyw + Prior_Sig_Inv*betavec); //Get posterior mean -- may be able to simplify this calculation (k*ci.beta0/(ci.tau*ci.tau)) 
+    
     //Spectral Decomposition of Covaraince Matrix Sig -- maybe move to a helper function
     //--Get eigenvalues and eigenvectors
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> eigensolver(Sig); //Get eigenvectors and eigenvalues
@@ -113,8 +174,21 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
 }
 
 //--------------------------------------------------
-//lm: log of integrated likelihood, depends on prior and suff stats
+// lm: log of integrated likelihood, depends on prior and suff stats
+// Connects to lmbeta or lmmix depending on the assumptions for beta (random vs. fixed)
 double mxbrt::lm(sinfo& si){
+    double outlm;
+    if(randhp){
+        outlm = lmmix(si);
+    }else{
+        outlm = lmbeta(si);
+    }
+    return outlm;
+}
+
+//--------------------------------------------------
+// lm conditional on beta --- CLEAN UP
+double mxbrt::lmbeta(sinfo& si){
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
     mxd Sig_inv(k,k), Sig(k,k), I(k,k);
     vxd betavec(k), beta_t2(k); 
@@ -195,6 +269,64 @@ double mxbrt::lm(sinfo& si){
 }
 
 //--------------------------------------------------
+// lmmix: mixture model for lm after summing over discrete beta options
+// --- This should work with the lmbeta function much nicer -- clean up
+double mxbrt::lmmix(sinfo& si){
+    mxsinfo& mxsi=static_cast<mxsinfo&>(si);
+    mxd Sig_inv(k,k), Sig(k,k), I(k,k), Prior_Sig_Inv(k,k);
+    vxd betavec(k), beta_t2(k); 
+    double t2 = ci.tau*ci.tau;
+    double suml=0; //sum of log determinent 
+    double sumq=0; //sum of quadratic term
+    double sumpl=0; //sum of prior precision log determinant
+    double logc=0; //log number of components
+    double bt2b, qmax;
+    int sz = betaset.cols();
+    std::vector<double> qvec; // quadratic term vector
+    I = mxd::Identity(k,k); //Set identity matrix
+
+    // Get matrix inversion steps
+    Prior_Sig_Inv = (1/t2)*I;
+    
+    //Get posterior covariance matrix (Sig_inv)
+    Sig = mxsi.sumffw + Prior_Sig_Inv; //get Sig matrix
+    Sig_inv = Sig.llt().solve(I); //Get Sigma_inv
+    
+    //Compute Log determinent
+    mxd L(Sig.llt().matrixL()); //Cholesky decomp and store the L matrix
+    suml = 2*(L.diagonal().array().log().sum()); //The log determinent is the same as 2*sum(log(Lii)) --- Lii = diag element of L
+
+    //Get sum of prior precision log determinant
+    sumpl = -Prior_Sig_Inv.diagonal().array().log().sum(); //The negative appears here because we factor out -0.5 in the final sum
+
+    //Get log number of components, scaled by 2 bc we factor out 1/2
+    logc = 2*log(sz);
+
+    for(int j=0;j<sz;j++){
+        // Set betavec
+        betavec = ci.beta0*betaset.col(j);
+
+        // Exponential terms (removed common qquared residual term for numerical stability--it cancels anyway)
+        beta_t2 = Prior_Sig_Inv*betavec;
+        bt2b = betavec.transpose()*beta_t2; // Had to do this term separately, otherwise compiler showed an error
+        qvec.push_back(bt2b - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2));
+        
+        //sumq += bt2b - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2);        
+    }
+    // Get max value for quadratic
+    qmax = *std::max_element(qvec.begin(),qvec.end());
+    
+    // Now get sum q
+    for(int j=0;j<sz;j++){
+        sumq += exp(qvec[j]-qmax);
+    }
+    // Take log of sumq
+    sumq = log(sumq);
+
+    return -0.5*(sumpl+suml+logc+qmax+sumq);    
+}
+
+//--------------------------------------------------
 //Add in an observation, this has to be changed for every model.
 //Note that this may well depend on information in brt with our leading example
 //being double *sigma in cinfo for the case of e~N(0,sigma_i^2).
@@ -239,6 +371,15 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     //mxsi.print_mx();
 
 }
+
+//--------------------------------------------------
+// Predict beta -- get prior mean weights
+//void mxbrt::predictbeta(dinfo* dipred, mxd* wts){}
+
+
+//--------------------------------------------------
+// Predict interpolation -- prediction using the prior mean weights
+//void mxbrt::predict_interp(dinfo* dipred, finfo* fipred){}
 
 //--------------------------------------------------
 // MPI virtualized part for sending/receiving left,right suffs
