@@ -109,6 +109,7 @@ int main(int argc, char* argv[])
     size_t pu, tempucol;
     std::vector<size_t> ucols;
     std::vector<std::string> uprior;
+    std::vector<std::string> uprop;
     std::vector<double> uparam1, uparam2;
     std::string upr0;
     double up1, up2;
@@ -122,6 +123,8 @@ int main(int argc, char* argv[])
 
     // Priors and proposals
     std::vector<double> propwidth(pu,0.25), u0(pu,0);
+    std::string proptype;
+    conf >> proptype;
     for(size_t i=0;i<pu;i++){
         conf >> upr0;
         conf >> up1;
@@ -131,14 +134,30 @@ int main(int argc, char* argv[])
         uparam2.push_back(up2);
 
         if(upr0 == "normal"){
-            propwidth[i] = 0.25*4.0*up2; // 25% of +/- 2sd width
             u0[i] = up1; // init at prior mean
+            if(proptype=="default") propwidth[i] = 0.25*4.0*up2; // 25% of +/- 2sd width
         }else if(upr0 == "uniform"){
-            propwidth[i] = 0.25*(up2-up1); // 25% of range 
             u0[i] = (up2+up1)/2; // init at prior mean
+            if(proptype=="default") {propwidth[i] = 0.25*(up2-up1);} // 25% of range 
         }
     }
 
+    // Set proposal distributions
+    if(proptype=="default"){
+        uprop = uprior;
+    }else if(proptype=="mala"){
+        uprop.resize(pu,"mala");
+        propwidth.resize(pu,2.4*2.4/pu);
+    }
+
+    // Gradient stepsize -- used for finite differences in gradient approx
+    std::vector<double> gradstep;
+    double gradsz;
+    for(size_t i=0;i<pu;i++){
+        conf >> gradsz;
+        gradstep.push_back(pu);
+    }
+    
     // Control parameters
     //thread count
     int tc;
@@ -560,7 +579,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     uvec.settc(tc-1);
     uvec.setmpirank(mpirank);
     uvec.setpriors(uprior,uparam1,uparam2);
-    uvec.setproposals(uprior,propwidth);
+    uvec.setproposals(uprop,propwidth);
     uvec.setucur(u0);
 
     //--------------------------------------------------
@@ -595,8 +614,11 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     // Parameters
     std::vector<double> udraws;
     double csumwr2, nsumwr2; // current and new wtd residuals squared
-    std::vector<double> xf_copy = xf; // used 
-
+    double cprop, nprop; // proposal probabilities cprop = c->n, nprop = n->c
+    std::vector<double> xf_copy = xf; // used for predictions in proposal
+    std::vector<double> xf_grad = xf; // used for gradient calculations in proposal
+    std::vector<double> grad;
+    
     // dinfo for the calibration predictions during proposal
     dinfo di_prop;
     double *fprop = new double[nf];
@@ -660,24 +682,47 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         }
         if((i+1)%adaptevery==0 && mpirank==0) psbmf.adapt();
         if((i+1)%adaptevery==0 && mpirank==0) psbmc.adapt();
-        
+
         // Update calibration parameters
 #ifdef _OPENMPI
         // Reset csumwr2 and nsumwr2
-        csumwr2 = 0.0; 
-        nsumwr2 = 0.0;
-        
+        csumwr2 = 0.0; nsumwr2 = 0.0;
+        cprop = 0.0; nprop = 0.0;
+
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         
-        // Get joint proposal and update xf_copy with new u
-        if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        // Get joint proposal and update xf_copy with new u -- clean up into one draw function (??)
+        if(proptype=="default"){
+            if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        }else if(proptype=="mala"){
+            // Get gradient, proposed move, and proposal prob
+            xf_grad = xf; // update xf_grad
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.ucur);
+            //cout << "grad = " << grad[0] << endl;
+            if(mpirank==0) uvec.drawnew_mala(grad,gen); else uvec.drawnew_mpi(gen); //mpi function is the exact same
+            if(mpirank==0) cprop = uvec.logprp_mala(uvec.ucur, uvec.unew, grad);
+            //cout << "cprop = " << cprop << endl;
+        }
+        // Update x after the proposal       
         if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
-        
+
         // Get predictions for field obs with new u
         if(mpirank>0) acb.predict_vec(&di_prop,&fif);
+        
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+
+        if(proptype == "mala"){
+            // get gradient for proposal
+            xf_grad = xf_copy;
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.unew);
+            if(mpirank>0) {nprop = uvec.logprp_mala(uvec.unew, uvec.ucur, grad);}
+
+            // Update csumwr2 and nsumwr2 to include proposal effect
+            csumwr2 += cprop;
+            nsumwr2 += nprop;
+        }
         // Now do the MH Step
         uvec.mhstep(csumwr2,nsumwr2,gen);
         // Update the x data if the propsed move was accepted
@@ -690,17 +735,36 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Reset csumwr2 and nsumwr2
         csumwr2 = 0.0; 
         nsumwr2 = 0.0;
+        cprop = 0.0; nprop = 0.0;
 
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         // Get joint proposal and update xf_copy with new u
-        uvec.drawnew(gen);
+        if(proptype=="default"){
+            uvec.drawnew(gen);
+        }else if(proptype=="mala"){
+            // Get gradient, proposed move, and proposal prob
+            xf_grad = xf; // update xf_grad
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.ucur);
+            uvec.drawnew_mala(grad,gen); 
+            cprop = uvec.logprp_mala(uvec.ucur, uvec.unew, grad);
+        }
         uvec.updatex(xf_copy,ucols,p,nf);
         // Get predictions for field obs with new u
         acb.predict_vec(&di_prop,&fif);
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+        // MALA proposal probabilities
+        if(proptype == "mala"){
+            // get gradient for proposal
+            xf_grad = xf_copy;
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.unew);
+            nprop = uvec.logprp_mala(uvec.unew, uvec.ucur, grad);
 
+            // Update csumwr2 and nsumwr2 to include proposal effect
+            csumwr2 += cprop;
+            nsumwr2 += nprop;
+        }
         // Now do the MH Step
         uvec.mhstep(csumwr2,nsumwr2,gen);
 
@@ -752,13 +816,21 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Update calibration parameters
 #ifdef _OPENMPI
         // Reset csumwr2 and nsumwr2
-        csumwr2 = 0.0; 
-        nsumwr2 = 0.0;
+        csumwr2 = 0.0; nsumwr2 = 0.0;
+        cprop = 0.0; nprop = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
 
         // Get joint proposal and update xf_copy with new u
-        if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        if(proptype=="default"){
+            if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        }else if(proptype=="mala"){
+            // Get gradient, proposed move, and proposal prob
+            xf_grad = xf; // update xf_grad
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.ucur);
+            if(mpirank==0) uvec.drawnew_mala(grad,gen); else uvec.drawnew_mpi(gen); //mpi function is the exact same
+            if(mpirank==0) cprop = uvec.logprp_mala(uvec.ucur, uvec.unew, grad);
+        }
         if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
 
         // Get predictions for field obs with new u
@@ -766,7 +838,16 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+        if(proptype == "mala"){
+            // get gradient for proposal
+            xf_grad = xf_copy;
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.unew);
+            if(mpirank>0) {nprop = uvec.logprp_mala(uvec.unew, uvec.ucur, grad);}
 
+            // Update csumwr2 and nsumwr2 to include proposal effect
+            csumwr2 += cprop;
+            nsumwr2 += nprop;
+        }
         // Now do the MH Step
         uvec.mhstep(csumwr2,nsumwr2,gen);
 
@@ -780,17 +861,36 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Reset csumwr2 and nsumwr2
         csumwr2 = 0.0; 
         nsumwr2 = 0.0;
+        cprop = 0.0; nprop = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         // Get joint proposal and update xf_copy with new u
-        uvec.drawnew(gen);
+        if(proptype=="default"){
+            uvec.drawnew(gen);
+        }else if(proptype=="mala"){
+            // Get gradient, proposed move, and proposal prob
+            xf_grad = xf; // update xf_grad
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.ucur);
+            uvec.drawnew_mala(grad,gen); 
+            cprop = uvec.logprp_mala(uvec.ucur, uvec.unew, grad);
+        }
         uvec.updatex(xf_copy,ucols,p,nf);
         
         // Get predictions for field obs with new u
         acb.predict_vec(&di_prop,&fif);
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+        // MALA proposal probabilities
+        if(proptype == "mala"){
+            // get gradient for proposal
+            xf_grad = xf_copy;
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.unew);
+            nprop = uvec.logprp_mala(uvec.unew, uvec.ucur, grad);
 
+            // Update csumwr2 and nsumwr2 to include proposal effect
+            csumwr2 += cprop;
+            nsumwr2 += nprop;
+        }
         // Now do the MH Step
         uvec.mhstep(csumwr2,nsumwr2,gen);
 
@@ -843,11 +943,20 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Reset csumwr2 and nsumwr2
         csumwr2 = 0.0; 
         nsumwr2 = 0.0;
+        cprop = 0.0; nprop = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
 
         // Get joint proposal and update xf_copy with new u
-        if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        if(proptype=="default"){
+            if(mpirank==0) uvec.drawnew(gen); else uvec.drawnew_mpi(gen);
+        }else if(proptype=="mala"){
+            // Get gradient, proposed move, and proposal prob
+            xf_grad = xf; // update xf_grad
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.ucur);
+            if(mpirank==0) uvec.drawnew_mala(grad,gen); else uvec.drawnew_mpi(gen); //mpi function is the exact same
+            if(mpirank==0) cprop = uvec.logprp_mala(uvec.ucur, uvec.unew, grad);
+        }
         if(mpirank>0) uvec.updatex(xf_copy,ucols,p,nf);
 
         // Get predictions for field obs with new u
@@ -855,7 +964,17 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+        // MALA proposals
+        if(proptype == "mala"){
+            // get gradient for proposal
+            xf_grad = xf_copy;
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.unew);
+            if(mpirank>0) {nprop = uvec.logprp_mala(uvec.unew, uvec.ucur, grad);}
 
+            // Update csumwr2 and nsumwr2 to include proposal effect
+            csumwr2 += cprop;
+            nsumwr2 += nprop;
+        }
         // Now do the MH Step
         uvec.mhstep(csumwr2,nsumwr2,gen);
         
@@ -870,17 +989,36 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Reset csumwr2 and nsumwr2
         csumwr2 = 0.0; 
         nsumwr2 = 0.0;
+        cprop = 0.0; nprop = 0.0;
         // Get current weighted sum of residuals squared (only need field obs)
         for(size_t j=0;j<nf;j++){csumwr2+=(acb.r(j)/sig[j])*(acb.r(j)/sig[j]);}
         // Get joint proposal and update xf_copy with new u
-        uvec.drawnew(gen);
+        if(proptype=="default"){
+            uvec.drawnew(gen);
+        }else if(proptype=="mala"){
+            // Get gradient, proposed move, and proposal prob
+            xf_grad = xf; // update xf_grad
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.ucur);
+            uvec.drawnew_mala(grad,gen); 
+            cprop = uvec.logprp_mala(uvec.ucur, uvec.unew, grad);
+        }
         uvec.updatex(xf_copy,ucols,p,nf);
         
         // Get predictions for field obs with new u
         acb.predict_vec(&di_prop,&fif);
         // Get new weight sum of residuals squared
         for(size_t j=0;j<nf;j++){nsumwr2+=((yf[j]-fprop[j])/sig[j])*((yf[j]-fprop[j])/sig[j]);}
+        // MALA proposal probabilities
+        if(proptype == "mala"){
+            // get gradient for proposal
+            xf_grad = xf_copy;
+            grad = acb.klgradient(nf,gradstep,xf_grad,ucols,uvec.unew);
+            nprop = uvec.logprp_mala(uvec.unew, uvec.ucur, grad);
 
+            // Update csumwr2 and nsumwr2 to include proposal effect
+            csumwr2 += cprop;
+            nsumwr2 += nprop;
+        }
         // Now do the MH Step
         uvec.mhstep(csumwr2,nsumwr2,gen);
 

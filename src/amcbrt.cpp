@@ -99,11 +99,14 @@ void amcbrt::setdata_vec(dinfo *di) {
 //--------------------------------------------------
 //set vector of predicted values for psbrt model
 void amcbrt::local_setf_vec(diterator& diter){
-   for(;diter<diter.until();diter++){
+    etahat.resize(di->n,0);
+    for(;diter<diter.until();diter++){
       yhat[*diter]=0.0;
-      for(size_t j=0;j<m;j++)
+      for(size_t j=0;j<m;j++){
         yhat[*diter]+=mb[j].f(*diter); //sum of trees - add the fitted value from each tree
-   }
+        etahat[*diter]+=mb[j].eta(*diter);
+      }  
+    }
 }
 
 //--------------------------------------------------

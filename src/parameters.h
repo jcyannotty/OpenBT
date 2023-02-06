@@ -29,7 +29,7 @@
 
 class param{
     public:
-        param():p(1),tc(1),rank(0),ucur(1,0),unew(1,0),acceptvec(1,0),rejectvec(1,0) {}
+        param():p(1),tc(1),rank(0),adaptcount(1),ucur(1,0),unew(1,0),acceptvec(1,0),rejectvec(1,0) {}
         param(size_t ip):p(ip),tc(1),rank(0),ucur(ip,0),unew(ip,0),acceptvec(ip,0),rejectvec(ip,0) {}
         ~param(){} // destructor
 
@@ -38,6 +38,7 @@ class param{
         int tc;
         size_t rank;
         bool accept;
+        size_t adaptcount;
         std::vector<double> ucur; // Current parameter vector u
         std::vector<double> unew; // New parameter vector u
         std::vector<size_t> acceptvec; // Accept counter
@@ -46,16 +47,18 @@ class param{
         std::vector<double> propvec; // mh proposal vector (distance or sd depending on the distribution)
         std::vector<std::string> priordistvec; // Prior distributions
         std::vector<double> priorp1vec; // Prior parameter 1
-        std::vector<double> priorp2vec; // Prior parameter 2 
-
+        std::vector<double> priorp2vec; // Prior parameter 2
+ 
         // Methods
         void adapt();
         void drawnew(size_t ind,rn &gen); // Proposal for one parameter
         void drawnew(rn &gen); // Joint proposal
+        void drawnew_mala(std::vector<double> grad,rn &gen); // proposal using mala-like idea
         void drawnew_mpi(size_t ind,rn &gen); // Proposal for one parameter mpi version
         void drawnew_mpi(rn &gen); // Joint proposal mpi version
-        void getsumwr2_mpi(); // Get weight sum of square residuals
+        //void drawnew_mala_mpi(std::vector<double> grad,rn &gen); // proposal using mala-like idea
         double lm(double wssr_cur, double wssr_new);
+        double logprp_mala(std::vector<double> u1,std::vector<double> u2, std::vector<double> grad); // log proposal probability for mala move
         void mhstep(double cursumwr2, double newsumwr2, rn &gen);
         void setmpirank(int rank) {this->rank = rank;}  //only needed for MPI
         void setpriors(std::vector<std::string> prdist,std::vector<double> prp1, std::vector<double> prp2);

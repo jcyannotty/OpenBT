@@ -324,6 +324,7 @@ public:
     void drawvec_mpislave(rn& gen);
     void setci(double mu1,double mu2, double tau1, double tau2, double* sigma) {ci.mu1=mu1; ci.tau1=tau1; ci.mu2=mu2; ci.tau2=tau2; ci.sigma=sigma; }
     void drawthetavec(rn& gen);
+    double eta(size_t i) { return etahat[i]; }
     virtual double drawtheta2(std::vector<sinfo*> sivec, rn& gen);
     virtual double drawtheta1(sinfo& si, rn& gen, double theta2);
     virtual vxd drawnodethetavec(sinfo& si, rn& gen);
@@ -335,6 +336,7 @@ public:
     virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mcinfo()); return *si; }
     virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
     virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
+    virtual void local_setf_vec(diterator& diter); // adds two additional lines to set eta
     void pr_vec();
 
     // Methods which are not overridden in other inherited classes (mbrt, mxbrt) - but override is required here
@@ -351,10 +353,15 @@ public:
     double lmsubtree(mcinfo& mci); // Used to pool information together across nodes within a subtree
     double lmsubtreenode(mcinfo &mci); // Individual node in subtree -- applied to a node that is in a subtree but does not have the subtree info stored 
 
+    // Gradient functions for calibration parameter updates -- maybe virtual (??)
+    std::vector<double> klgradient(size_t nf, std::vector<double> gradh, std::vector<double> &xgrad, std::vector<size_t> ucols, std::vector<double> uvals); 
+
     protected:
     //--------------------
     //model information
     cinfo ci; //conditioning info (e.g. other parameters and prior and end node models)
+    std::vector<double> etahat;
+    
     //--------------------
     //data
     //--------------------

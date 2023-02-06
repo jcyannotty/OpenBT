@@ -250,6 +250,21 @@ double mcbrt::drawtheta1(sinfo &si, rn &gen, double theta2)
 }
 
 //--------------------------------------------------
+// Set f for mcbrt, also sets eta
+void mcbrt::local_setf_vec(diterator& diter)
+{
+    tree::tree_p bn;
+    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
+    etahat.resize((*di).n,0); //reset eta
+    for(;diter<diter.until();diter++) {
+        bn = t.bn(diter.getxp(),*xi);
+        thetavec_temp = bn->getthetavec(); 
+        yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
+        etahat[*diter] = thetavec_temp(0); // eta is the first element      
+    }
+}
+
+//--------------------------------------------------
 // Compute log marginal likelihood for calibration model
 // Outside of subtrees, this is straitforward and relative to the selected node
 // With subtrees - the lm has three potential parts:
@@ -1249,4 +1264,59 @@ void mcbrt::pr_vec()
    else
      std::cout << "         sigma=[" << ci.sigma[0] << ",...," << ci.sigma[di->n-1] << "]" << std::endl;
    brt::pr_vec();
+}
+
+//--------------------------------------------------
+// Gradient of log KL-based density 
+std::vector<double> mcbrt::klgradient(size_t nf, std::vector<double> gradh,std::vector<double> &xgrad, std::vector<size_t> ucols, std::vector<double> uvals){
+    std::vector<double> grad(ucols.size(),0);
+    size_t pu = ucols.size();
+    size_t p = di->p;
+    size_t uc;
+    std::vector<double> etadesign {1.0, 0.0};
+    std::vector<double> eta0(nf,0);
+    mxd etamx(nf,2);
+
+    // Create digrad
+    dinfo digrad;
+    double *fcgrad = new double[nf];
+    digrad.n=0;digrad.p=p,digrad.x = NULL;digrad.y=NULL;digrad.tc=tc;
+    if(rank>0){digrad.n=nf; digrad.x = &xgrad[0]; digrad.y = &fcgrad[0];}
+
+    // initialize etamx (check nf>0 condition to handle rank 0 on mpi)
+    if(nf>0){
+        etamx.rowwise() = Eigen::Map<Eigen::RowVectorXd>(etadesign.data(), 2);
+    }
+
+    // Get initial predictions at the input xgrad
+    if(rank>0){
+        predict_vec(&digrad,&etamx);
+    }    
+    for(size_t i=0;i<nf;i++){eta0[i] = fcgrad[i];}
+    
+    // Get the finite differences
+    for(size_t j=0;j<pu;j++){
+        // Update x with the stepsize
+        uc = ucols[j];
+        if(j==0){
+            for(size_t i=0;i<nf;i++){xgrad[i*p + uc] = uvals[j] + gradh[j];}    
+        }else{
+            for(size_t i=0;i<nf;i++){
+                xgrad[i*p + ucols[j-1]] = uvals[j-1]; // reset previous value
+                xgrad[i*p + uc] = uvals[j] + gradh[j]; // apply the increase 
+            }
+        }
+            
+        if(rank>0){
+            predict_vec(&digrad,&etamx);
+        }
+
+        for(size_t i=0;i<nf;i++){
+            //grad[j] += (f(i)-eta(i))*(fcgrad[i]-eta(i))/h;
+            grad[j] += (f(i)-eta0[i])*(fcgrad[i]-eta0[i])/(gradh[j]*nf); // average grad
+        }   
+    }
+
+    // return the gradient
+    return grad;
 }

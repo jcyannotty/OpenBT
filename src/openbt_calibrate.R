@@ -53,6 +53,8 @@ openbtcal = function(
   nadapt=1000, adaptevery=100,
   power=2.0, base=.95, tc=2,
   prior_list = NULL,
+  proposal_type = "default",
+  grad_stepsize = NULL,
   sigmav=rep(1,length(y_train)),
   overallsdf = NULL, overallnuf= NULL,
   overallsdc = NULL, overallnuc= NULL,
@@ -109,6 +111,17 @@ openbtcal = function(
     }else if(prior_list[[i]]$prior == 'uniform'){
       uhat = (prior_list[[i]]$param1 + prior_list[[i]]$param2)/2
     }
+  }
+  
+  #--------------------------------------------------
+  # Proposal Types
+  #--------------------------------------------------
+  # Check type
+  valid_proposals = c("default", "mala")
+  if(is.null(proposal_type)){
+    proposal_type = "default"
+  }else{
+    if(!(proposal_type %in% valid_proposals)){stop(cat("Invalid proposal type! Valid options include:",valid_proposals,sep="\n")) }  
   }
   
   #--------------------------------------------------
@@ -207,6 +220,13 @@ openbtcal = function(
   #--------------------------------------------------
   # cutpoints
   #--------------------------------------------------
+  # Set gradient stepsize 
+  gradh = 0
+  if(is.null(grad_stepsize)){
+    grad_stepsize = numcut/100  
+  }
+  
+  # Set cutpoints
   if(!is.null(xicuts)){
     # use xicuts
     xi=xicuts
@@ -220,6 +240,7 @@ openbtcal = function(
     for(i in 1:p){
       xinc=(maxx[i]-minx[i])/(numcut+1)
       xi[[i]]=(1:numcut)*xinc+minx[i]
+      if(i>px){gradh[i-px] = xinc*grad_stepsize}
     }
   }
   
@@ -258,7 +279,7 @@ openbtcal = function(
                paste(mu1),paste(tau1),paste(mu2),paste(tau2),
                paste(overalllambdaf),paste(overalllambdac),paste(overallnuf),paste(overallnuc),
                paste(base),paste(power),paste(baseh),paste(powerh),paste(pu),paste(out_ucols),
-               paste(prior_info),paste(tc),
+               proposal_type,paste(prior_info),paste(gradh),paste(tc),
                paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
                paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
                paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
@@ -336,6 +357,7 @@ openbtcal = function(
   res$overalllambdaf=overalllambdaf; res$overallnuf=overallnuf;
   res$overalllambdaf=overalllambdac; res$overallnuf=overallnuc;
   res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
+  res$proposal_type = proposal_type; res$gradstep = grad_stepsize;
   res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;
   res$pbd=pbd; res$pb=pb; res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
   res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth

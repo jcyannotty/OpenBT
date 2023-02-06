@@ -15,16 +15,32 @@ using std::endl;
 // Adapt step for proposals
 void param::adapt(){
     double accrate;
-    for(size_t j=0;j<p;j++) {
-        if(rank==0) std::cout << "Acceptance rate=" << ((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
-        accrate=((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
-        if(accrate>0.29 || accrate<0.19) propvec[j]*=accrate/0.24;
-        if(rank==0) std::cout << " (adapted propwidth to " << propvec[j] << ")" << std::endl;
+    double gamma1, gamma2;
+    
+    if(propdistvec[0] == "mala"){
+        for(size_t j=0;j<p;j++) {
+            if(rank==0) std::cout << "Acceptance rate=" << ((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
+            accrate=((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
+            gamma1 = 1/(pow(adaptcount,0.8));
+            gamma2 = gamma1;
+            propvec[j] = exp(log(propvec[j]) + gamma2*(accrate-0.574));
+            if(rank==0) std::cout << " (adapted propwidth to " << propvec[j] << ")" << std::endl;
+        }
+    }else{
+        for(size_t j=0;j<p;j++) {
+            if(rank==0) std::cout << "Acceptance rate=" << ((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
+            accrate=((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
+            if(accrate>0.29 || accrate<0.19) propvec[j]*=accrate/0.24;
+            if(rank==0) std::cout << " (adapted propwidth to " << propvec[j] << ")" << std::endl;
+        }
     }
+    
+    adaptcount+=1;
     std::fill(acceptvec.begin(),acceptvec.end(),0);
     std::fill(rejectvec.begin(),rejectvec.end(),0);
 }
-         
+
+
 //----------------------------------------------
 // Draw new parameter -- marginal update
 void param::drawnew(size_t ind, rn &gen){
@@ -34,7 +50,7 @@ void param::drawnew(size_t ind, rn &gen){
 }
 
 //----------------------------------------------
-// Draw new prametet -- joint update
+// Draw new parameter -- joint update
 void param::drawnew(rn &gen){
     unew.clear();
     unew.resize(p);
@@ -69,7 +85,13 @@ void param::drawnew(rn &gen){
     }
 #endif
 }    
- 
+
+
+//----------------------------------------------
+// drawnew_mpi for individual parameter updates
+void param::drawnew_mpi(size_t ind, rn &gen){
+    cout << "Not yet implemented..." << endl;
+}
 
 //----------------------------------------------
 // drawnew_mpi
@@ -92,6 +114,40 @@ void param::drawnew_mpi(rn &gen){
 
 
 //----------------------------------------------
+// Draw new parameter -- joint update using MALA-like method
+void param::drawnew_mala(std::vector<double> grad, rn &gen){
+    unew.clear();
+    unew.resize(p);
+    for(size_t i=0;i<p;i++){
+        // Get proposed u value
+        unew[i] = ucur[i] + propvec[i]*grad[i] + 2*propvec[i]*gen.normal();         
+    }
+    // Pass the unew vector (as an array) if using mpi  
+#ifdef _OPENMPI
+    if(rank==0){ //should always be true when using mpi
+        char buffer[SIZE_UINT3*p];
+        int position=0;
+        MPI_Request *request=new MPI_Request[tc];
+        const int tag=MPI_TAG_CP_PASSUNEW;
+        double unarray[p];
+
+        // Cast vector to array
+        copy(unew.begin(),unew.end(),unarray);
+
+        // Pack and send info to the slaves
+        MPI_Pack(&unarray,p,MPI_DOUBLE,buffer,SIZE_UINT3*p,&position,MPI_COMM_WORLD);
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(buffer,SIZE_UINT3*p,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+
+        delete[] request;
+    }
+#endif
+}    
+ 
+
+//----------------------------------------------
 // lm for calibration
 double param::lm(double cursumwr2, double newsumwr2){
     double lprior = 0.0, ltemp = 0.0;
@@ -102,12 +158,12 @@ double param::lm(double cursumwr2, double newsumwr2){
 
     // Get the logprior ratio
     for(size_t i=0;i<p;i++){
-        if(propdistvec[i]=="uniform"){
+        if(priordistvec[i]=="uniform"){
             lprior += 0.0;
             if(unew[i]<priorp1vec[i] || unew[i]>priorp2vec[i]){
                 lprior=-std::numeric_limits<double>::infinity();
             }
-        }else if(propdistvec[i]=="normal"){
+        }else if(priordistvec[i]=="normal"){
             lprior += 0.5*(ucur[i]-priorp1vec[i])*(ucur[i]-priorp1vec[i])/(priorp2vec[i]*priorp2vec[i]);
             lprior += -0.5*(unew[i]-priorp1vec[i])*(unew[i]-priorp1vec[i])/(priorp2vec[i]*priorp2vec[i]);
         }
@@ -115,6 +171,22 @@ double param::lm(double cursumwr2, double newsumwr2){
     // Get the output lm
     return lprior + lalpha;
 }
+
+//----------------------------------------------
+// log proposal probability for mala move: u1 --> u2
+// u1 -- conditional on u1
+// u2 -- the move i.e. u1 --> u2
+double param::logprp_mala(std::vector<double> u1,std::vector<double> u2, std::vector<double> grad){
+    // Compute the normal kernel (removing 1/2 here because 1/2 is taken out in mhstep as of now)
+    double psum = 0;
+    double ptemp = 0;
+    for(size_t i=0;i<p;i++){
+        ptemp = u2[i]-u1[i] - propvec[i]*grad[i];
+        psum += psum + ptemp*ptemp;
+    }
+    return psum;
+}
+
 
 //----------------------------------------------
 // MH step
