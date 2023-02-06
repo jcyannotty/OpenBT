@@ -147,7 +147,10 @@ int main(int argc, char* argv[])
         uprop = uprior;
     }else if(proptype=="mala"){
         uprop.resize(pu,"mala");
+        cout << "start prop width = " << propwidth[0] << endl;
+        propwidth.clear();
         propwidth.resize(pu,2.4*2.4/pu);
+        cout << "new prop width = " << propwidth[0] << endl;
     }
 
     // Gradient stepsize -- used for finite differences in gradient approx
@@ -155,7 +158,7 @@ int main(int argc, char* argv[])
     double gradsz;
     for(size_t i=0;i<pu;i++){
         conf >> gradsz;
-        gradstep.push_back(pu);
+        gradstep.push_back(gradsz);
     }
     
     // Control parameters

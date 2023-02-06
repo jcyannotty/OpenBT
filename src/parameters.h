@@ -30,7 +30,7 @@
 class param{
     public:
         param():p(1),tc(1),rank(0),adaptcount(1),ucur(1,0),unew(1,0),acceptvec(1,0),rejectvec(1,0) {}
-        param(size_t ip):p(ip),tc(1),rank(0),ucur(ip,0),unew(ip,0),acceptvec(ip,0),rejectvec(ip,0) {}
+        param(size_t ip):p(ip),tc(1),rank(0),adaptcount(1),ucur(ip,0),unew(ip,0),acceptvec(ip,0),rejectvec(ip,0) {}
         ~param(){} // destructor
 
         // Objects

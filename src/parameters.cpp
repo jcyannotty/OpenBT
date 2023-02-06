@@ -18,11 +18,14 @@ void param::adapt(){
     double gamma1, gamma2;
     
     if(propdistvec[0] == "mala"){
+        if(rank==0) cout << "adapt mala" << endl;
         for(size_t j=0;j<p;j++) {
             if(rank==0) std::cout << "Acceptance rate=" << ((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
             accrate=((double)acceptvec[j])/((double)(acceptvec[j]+rejectvec[j]));
-            gamma1 = 1/(pow(adaptcount,0.8));
+            gamma1 = 1/(pow(adaptcount,0.3));
             gamma2 = gamma1;
+            cout << "----gamma2 = " << gamma2 << "----";
+            if(rank==0) std::cout << " (propwidth =  " << propvec[j] << ")";
             propvec[j] = exp(log(propvec[j]) + gamma2*(accrate-0.574));
             if(rank==0) std::cout << " (adapted propwidth to " << propvec[j] << ")" << std::endl;
         }
