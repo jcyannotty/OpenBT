@@ -1313,7 +1313,7 @@ std::vector<double> mcbrt::klgradient(size_t nf, std::vector<double> gradh,std::
 
         for(size_t i=0;i<nf;i++){
             //grad[j] += (f(i)-eta(i))*(fcgrad[i]-eta(i))/h;
-            grad[j] += (f(i)-eta0[i])*(fcgrad[i]-eta0[i])/(gradh[j]*nf); // average grad
+            grad[j] += (f(i)-eta0[i])*(fcgrad[i]-eta0[i])/(gradh[j]); // average grad
         }   
     }
 
