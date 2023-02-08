@@ -994,9 +994,12 @@ return 0;
          );
    
    axb.setci(tau,beta0,sig);
+   mxd loss;
    if(selectp){
       axb.sethpi(k); //init hyper parameter size
       axb.setbi(k); //init beta information -- model specific
+      loss = Eigen::MatrixXd::Ones(n,k); // init loss
+      axb.setloss(loss);
    }
    /*
    //Set prior information
@@ -1105,6 +1108,7 @@ return 0;
       dips = di;
       dips -= faxb;
       if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+      if(selectp){axb.l2norm(fi);}
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
 #else
@@ -1133,15 +1137,14 @@ return 0;
       // Update the which are fed into resiudals the variance model
       dips = di;
       dips -= faxb;
-      if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+      if(selectp){axb.l2norm(fi);}
       // Draw sigma
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
 #else
       psbm.draw(gen);
 #endif
-      disig = fpsbm;
-      if((i+1)%adaptevery==0 && mpirank==0) psbm.adapt(); 
+      disig = fpsbm; 
 /*
 #ifdef _OPENMPI
       axb.drawsigma(gen);
@@ -1161,6 +1164,10 @@ return 0;
 #else
       axb.drawvec(gen);
 #endif
+      dips = di;
+      dips -= faxb;
+      if(selectp){axb.l2norm(fi);}
+      //if(i==100){cout << "loss = \n" << axb.loss << endl;}
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
 #else

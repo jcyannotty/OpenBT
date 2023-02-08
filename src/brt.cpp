@@ -1754,7 +1754,7 @@ void brt::local_predict_mix(diterator& diter, finfo& fipred){
    }
 }
 
-//Mix using the discrepancy --- REMOVE
+//Mix using the discrepancy --- REMOVE -------
 void brt::predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen) {
    size_t np = (*fpdmean).rows();
    finfo fdpred(np,k);

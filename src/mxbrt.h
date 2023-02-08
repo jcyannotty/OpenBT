@@ -133,13 +133,17 @@ public:
 
     // Additional methods needed for each mixing tree, these methods are designed for random beta 
     void setbi(size_t ik){ci.randbeta=true; ci.beta_vec = ci.beta0*vxd::Ones(k); betaset = mxd::Identity(k,k);} // beta info
+    void setloss(mxd iloss){this->loss.resize(iloss.rows(),iloss.cols()); this->loss = iloss; } // loss matrix n X K matrix
+    void l2norm(mxd fhat);
     virtual double lmmix(sinfo& si); //lm for random beta, marginalizes over mu and beta
     virtual double lmbeta(sinfo& si); //lm for fixed beta
     virtual std::vector<double> drawnodephivec(sinfo& si, rn& gen);
     vxd getbeta(){return ci.beta_vec;};
     void setbeta(vxd newbeta){ci.beta_vec = newbeta;}
+    
     //void predictbeta(dinfo* dipred, mxd* wts); // Get the beta weights 
     //void predict_interp(dinfo* dipred, finfo* fipred); // Interpolation prediction
+
 
     // Method for sampling homoscedastic variance for paramter sigma^2
     // No longer needed, just use psbrt model
@@ -159,13 +163,15 @@ public:
     //vxd beta;
     mxd covmatrix; // cache a covariance matrix -- used when updating hyperparameter then term node parameter (this saves from doing the same inversion twice)
     mxd betaset;
-    
+    mxd loss;
+
     //--------------------------------------------------
     //stuff that maybe should be protected
     protected:
     //--------------------
     //model information
     cinfo ci; //conditioning info (e.g. other parameters and prior and end node models)
+
     //--------------------
     //data
     //--------------------

@@ -456,7 +456,7 @@ res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fsdroot=fs
 res$nsprior = nsprior;res$selectp = selectp;res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
 res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
-res$printevery=printevery; res$xiroot=xiroot; res$minx=minx; res$maxx=maxx;
+res$printevery=printevery; res$xiroot=xiroot; #res$minx=minx; res$maxx=maxx;
 res$summarystats=summarystats; res$modelname=modelname
 class(xi)="OpenBT_cutinfo"
 res$xicuts=xi

@@ -39,6 +39,7 @@ void mxbrt::drawvec_mpislave(rn& gen){
 }
 
 //--------------------------------------------------
+// Hyper parameter terminal node model
 std::vector<double> mxbrt::drawnodephivec(sinfo& si, rn& gen){
     // Get exponential term for each beta vector value in sample space 
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
@@ -46,7 +47,7 @@ std::vector<double> mxbrt::drawnodephivec(sinfo& si, rn& gen){
     vxd gamma(sz);
     vxd outbeta(k), betavec(k);
     mxd Sig(k,k), Sig_inv(k,k), Prior_Sig_Inv(k,k), I(k,k);
-    double a,b,c,d,t2,u,g,mx;
+    double a,b,c,d,prb,t2,u,g,mx;
     std::vector<double> outbeta_stdvec;
 
     // Prior precision
@@ -61,25 +62,30 @@ std::vector<double> mxbrt::drawnodephivec(sinfo& si, rn& gen){
 
     // Get posterior pmf of beta
     for(int j=0;j<sz;j++){
+        // Terms from the likelihood 
         betavec = ci.beta0*betaset.col(j);
         b = (betavec.transpose()*betavec);
-        
-        c = betavec.transpose()*Sig*mxsi.sumfyw;
-        d = betavec.transpose()*Sig*betavec;
+        c = betavec.transpose()*Sig*mxsi.sumfyw; // quadratic term1 
+        d = betavec.transpose()*Sig*betavec; // quadratic term2
 
-        a = (1/t2)*(b - 2*c - d/t2);
+        // Terms from the prior probs of beta -- calibrated by node
+        prb = mxsi.sump(j); // this is just the loss
+
+        // Total exponential 
+        a = (1/t2)*(b - 2*c - d/t2) + prb;
 
         // Get gumbel random variables
         u = gen.uniform();
         g = -log(-log(u)); // gumbel rv
         gamma(j) = -0.5*a + g; // Used for sampling the categorical data
 
+        //cout << "prb = " << prb << "--- gamma = " << gamma(j) << endl;
         //if(rank==0){cout << "j= " << j << "... -0.5*a = " << -0.5*a << "---n=" << mxsi.n << endl;}
     }
     
     // Select the max value
     gamma.maxCoeff(&mx);
-    //if(rank==0){cout << "mx= " << mx << endl;}
+    //if(rank==0){cout << "mx= " << mx << "---prb[0] = " << mxsi.sump(0) << "---prb[1] = " << mxsi.sump(1) << endl;}
     // Set the out beta
     outbeta = ci.beta0*betaset.col(mx);
     outbeta_stdvec.insert(outbeta_stdvec.end(),outbeta.data(),outbeta.data()+k);
@@ -279,9 +285,10 @@ double mxbrt::lmmix(sinfo& si){
     double suml=0; //sum of log determinent 
     double sumq=0; //sum of quadratic term
     double sumpl=0; //sum of prior precision log determinant
-    double logc=0; //log number of components
+    double sumc=0; //log number of components
     double bt2b, qmax;
-    int sz = betaset.cols();
+    double cmax=0; // max coef for the prior loss in mxsi.sump
+    size_t sz = betaset.cols(), mx;
     std::vector<double> qvec; // quadratic term vector
     I = mxd::Identity(k,k); //Set identity matrix
 
@@ -300,30 +307,36 @@ double mxbrt::lmmix(sinfo& si){
     sumpl = -Prior_Sig_Inv.diagonal().array().log().sum(); //The negative appears here because we factor out -0.5 in the final sum
 
     //Get log number of components, scaled by 2 bc we factor out 1/2
-    logc = 2*log(sz);
+    //sumc = 2*log(sz); // Used for unifrom prior on beta set
 
-    for(int j=0;j<sz;j++){
+    for(size_t j=0;j<sz;j++){
         // Set betavec
         betavec = ci.beta0*betaset.col(j);
 
         // Exponential terms (removed common qquared residual term for numerical stability--it cancels anyway)
         beta_t2 = Prior_Sig_Inv*betavec;
         bt2b = betavec.transpose()*beta_t2; // Had to do this term separately, otherwise compiler showed an error
-        qvec.push_back(bt2b - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2));
+        qvec.push_back(-0.5*(bt2b - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2)+mxsi.sump(j))); // last term is prior prob
         
         //sumq += bt2b - (mxsi.sumfyw + beta_t2).transpose()*Sig_inv*(mxsi.sumfyw + beta_t2);        
     }
     // Get max value for quadratic
     qmax = *std::max_element(qvec.begin(),qvec.end());
-    
-    // Now get sum q
+
+    // Get the normalizing constant
+    (-0.5*mxsi.sump).maxCoeff(&mx);
+    cmax = -0.5*mxsi.sump(mx);
+
+    // Now get sum q and sumc
     for(int j=0;j<sz;j++){
         sumq += exp(qvec[j]-qmax);
+        sumc += exp(-0.5*mxsi.sump(j)-cmax);
     }
-    // Take log of sumq
+    // Take log of sumq and sumc
     sumq = log(sumq);
+    sumc = log(sumc);
 
-    return -0.5*(sumpl+suml+logc+qmax+sumq);    
+    return -0.5*(sumpl+suml-2*(sumc+sumq+qmax+cmax));    
 }
 
 //--------------------------------------------------
@@ -358,10 +371,15 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
         
         //Update sufficient stats
         mxsi.sump+=pv;
+    }else if(randhp){
+        // Add the loss
+        pv = vxd::Zero(k);
+        for(size_t l = 0; l<k; l++){pv(l) = loss(*diter,l);}
+        mxsi.sump+=pv;
     }else{
         //Set as 1's by default when no discrepancy is used
         mxsi.sump = vxd::Ones(k);
-}
+    }
     
     //Update sufficient stats for nodes
     mxsi.n+=1;
@@ -371,6 +389,20 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
     //mxsi.print_mx();
 
 }
+
+//--------------------------------------------------
+// Compute l2 norm for training data
+void mxbrt::l2norm(mxd fhat){
+    size_t n = yhat.size();
+    double ls = 0.0;
+    for(size_t i=0;i<n;i++){
+        for(size_t j=0;j<k;j++){
+            ls = (f(i) - fhat(i,j));
+            loss(i,j) = ls*ls;
+        }
+    }
+}
+
 
 //--------------------------------------------------
 // Predict beta -- get prior mean weights
@@ -406,7 +438,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
         
         //Cast the prior precision vectors to arrays - if discrepancy is true
         double sump_rarray[k], sump_larray[k];
-        if(nsprior){
+        if(nsprior || randhp){
             vector_to_array(tsil.sump, &sump_larray[0]); //function defined in brtfuns
             vector_to_array(tsir.sump, &sump_rarray[0]); //function defined in brtfuns
         }
@@ -422,7 +454,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
             MPI_Unpack(buffer,buffer_size,&position,&sumfyw_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,buffer_size,&position,&tsil.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
             MPI_Unpack(buffer,buffer_size,&position,&tsir.sumyyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
-            if(nsprior){
+            if(nsprior || randhp){
                 //Unpack prior precision if specified
                 MPI_Unpack(buffer,buffer_size,&position,&sump_larray,k,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sump_rarray,k,MPI_DOUBLE,MPI_COMM_WORLD);
@@ -466,7 +498,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     
     //Cast vectors for prior precision if specified
     double sump_rarray[k], sump_larray[k];
-    if(nsprior){
+    if(nsprior || randhp){
         vector_to_array(msil.sump, &sump_larray[0]); //function defined in brtfuns
         vector_to_array(msir.sump, &sump_rarray[0]); //function defined in brtfuns
     }
@@ -481,7 +513,7 @@ void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
     MPI_Pack(&sumfyw_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     MPI_Pack(&msil.sumyyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     MPI_Pack(&msir.sumyyw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
-    if(nsprior){
+    if(nsprior || randhp){
         MPI_Pack(&sump_larray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
         MPI_Pack(&sump_rarray,k,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
     }
@@ -635,7 +667,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         delete[] request;
 
         //For discrepancy models
-        if(nsprior){
+        if(nsprior||randhp){
             //receive sump, update, and send back
             for(size_t i=1; i<=(size_t)tc; i++) {
                 MPI_Recv(&tempsumpvec,k*siv.size(),MPI_DOUBLE,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
@@ -719,7 +751,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
         delete request;
         MPI_Recv(&sumffwvec,k*k*siv.size(),MPI_DOUBLE,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-        if(nsprior){
+        if(nsprior || randhp){
             // send sumpvec 
             request=new MPI_Request;
             MPI_Isend(&sumpvec,k*siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
@@ -738,7 +770,7 @@ void mxbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv){
             //std::cout << "tempsumffw["<<i<<"] = \n"<<tempsumffw<<std::endl;
         }
 
-        if(nsprior){
+        if(nsprior || randhp){
             //receive and update sumpvec if using discrepancy
             MPI_Wait(request,MPI_STATUSES_IGNORE);
             delete request;
