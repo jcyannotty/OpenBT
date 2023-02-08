@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
         uprop.resize(pu,"mala");
         cout << "start prop width = " << propwidth[0] << endl;
         propwidth.clear();
-        propwidth.resize(pu,2.4*2.4/pu);
+        propwidth.resize(pu,2.4/sqrt(pu));
         cout << "new prop width = " << propwidth[0] << endl;
     }
 

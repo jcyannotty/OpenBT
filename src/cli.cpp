@@ -1121,15 +1121,13 @@ return 0;
       // Update the which are fed into resiudals the variance model
       dips = di;
       dips -= faxb;
-      if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
       // Draw sigma
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
 #else
       psbm.draw(gen);
 #endif
-      disig = fpsbm;
-      if((i+1)%adaptevery==0 && mpirank==0) psbm.adapt(); 
+      disig = fpsbm; 
 /*
 #ifdef _OPENMPI
       axb.drawsigma(gen);
@@ -1149,6 +1147,8 @@ return 0;
 #else
       axb.drawvec(gen);
 #endif
+      dips = di;
+      dips -= faxb;
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
 #else
