@@ -144,3 +144,48 @@ singletree.openbtmixing = function(scan,N,j,xvec,xicuts){
   outtheta = tree$theta[(K*(h-1)+1):(K*h)] 
   return(outtheta)
 }
+
+
+# Tree predictions -- get predictions for each individual tree in the sum for an iteration of the MCMC
+gettrees.openbtmixing = function(scan,N,j,x,f,xicuts){
+  tree_fit = vector("list",fit$m)
+  tree_wts = vector("list",fit$m)
+  n = nrow(x)
+  K = ncol(f)
+  wts = matrix(0,nrow=n,ncol=K)
+  pred = 0
+  for(j in 1:fit$m){
+    for(i in 1:n){
+      wts[i] = singletree.openbtmixing(scan,ind,j,x[i,],xicuts)
+      pred[i] = sum(f[i,]*wts[i,])
+    }
+    tree_wts[[j]] = wts
+    tree_fit[[j]] = pred
+  }
+  out = list(tree_fit = tree_fit, tree_wts = tree_wts)
+  return(out)
+}
+
+# Get residuals each tree was regressed on
+# tree0 = last fit, tree1 = current fit
+treeresid.openbtmixing = function(tree_list0, tree_list1,y){
+  # Get residuals
+  m = length(tree_list0$tree_fit)
+  tree_resid = vector("list",fit$m)
+  for(j in 1:m){
+    last_ind = (j+1):m
+    cur_ind = setdiff(1:m,c(last_ind,j))
+    tree_resid[[j]] = y  
+    if(last_ind[1] <= m){
+      for(l in last_ind){
+        tree_resid[[j]] = tree_resid[[j]] - tree_list0$tree_fit[[l]]    
+      }
+    }
+    if(length(cur_ind)>0){
+      for(l in cur_ind){
+        tree_resid[[j]] = tree_resid[[j]] - tree_list1$tree_fit[[l]]    
+      }  
+    }
+  }
+  return(tree_resid)
+}

@@ -41,6 +41,31 @@ select_prior = function(num_models,sc,k=2, m=1){
   return(out) 
 }
 
+# Soft BART Split
+sbart_split = function(x,c,s,r=TRUE){
+  x0 = (x-c)/s
+  psi = 1/(1 + exp(-x0))
+  if(r){
+    prob = psi   
+  }else{
+    prob = 1 - psi
+  }
+  return(prob)
+}
+
+# SBART phi(x)
+# -- path = vector of true/false, path[i] = true if move right at ith internal node on path
+# -- cvec and xvec, the cutpoint and x value which determine the move
+sbart_phix = function(path, xvec, cvec, s){
+  log_phi = 0
+  for(i in 1:length(path)){
+    prb = sbart_split(xvec[i],cvec[i],s,r=path[i])
+    log_phi = log_phi + log(prb)
+  }
+  phi = exp(log_phi)
+  return(phi)
+}
+
 #-----------------------------------------------------
 # Prior prediction functions -- for all nodes
 # -- tnode_list: list, each item is a vector of indexes corresponding to which obs are assigned to the node
@@ -59,6 +84,21 @@ prior_predict = function(f_matrix, tnode_list, beta_matrix, tau_matrix){
     predmean[h] = f_matrix[h,]%*%beta_matrix[b,]
     predstd[h] = sqrt(diag(f_matrix[h,]%*%diag(tau_matrix[b,]^2)%*%t(f_matrix[h,])))
   }
+  outpred = list(predmean = predmean, predstd = predstd)
+  return(outpred)
+}
+
+# Soft prior predict
+soft_prior_predict = function(f_matrix, beta_matrix, tau_matrix, phi_matrix){
+  n = nrow(f_matrix)
+  predmean = rep(0,n)
+  predstd = rep(0,n)
+  B = nrow(beta_matrix)
+  for(b in 1:B){
+    predmean = predmean + phi_matrix[b,]*f_matrix%*%beta_matrix[b,]
+    predstd = predstd + phi_matrix[b,]*sqrt(diag(f_matrix%*%diag(tau_matrix[b,]^2)%*%t(f_matrix)))
+  }
+  
   outpred = list(predmean = predmean, predstd = predstd)
   return(outpred)
 }
@@ -95,6 +135,67 @@ post_predict = function(f_matrix, tnode_list, beta_matrix, tau_matrix, y_vec, si
   return(outpred)
 }
 
+# Soft post predict
+soft_post_predict = function(f_matrix, beta_matrix, tau_matrix, phi_matrix, y_vec, sigma){
+  # Define terms
+  K = ncol(f_matrix)
+  n = nrow(f_matrix)
+  B = nrow(beta_matrix)
+  y = y_vec
+  predmean = predstd = rep(0,n)
+  f = matrix(0,nrow=n,ncol=0)
+  tau_vec = NULL
+  beta_vec = NULL
+  for(j in 1:B){
+    # Terms
+    f = cbind(f,phi_matrix[j,]*f_matrix)
+    tau_vec = c(tau_vec,tau_matrix[j,])
+    beta_vec = c(beta_vec,beta_matrix[j,])
+  }
+ 
+  # Mean and Variance
+  prior_inv = diag(1/tau_vec^2)
+  Ainv = t(f)%*%f/sigma^2 + prior_inv
+  A = chol2inv(chol(Ainv))
+  b = t(f)%*%y/sigma^2 + prior_inv%*%beta_vec
+  Ab = A%*%b
+  
+  # Get predictions
+  predmean = f%*%Ab
+  predstd = sqrt(diag(f%*%A%*%t(f)))
+
+  outpred = list(predmean = predmean, predstd = predstd)
+  return(outpred)
+}
+
+# Soft posterior mean and std
+soft_post = function(f_matrix, beta_matrix, tau_matrix, phi_matrix, y_vec, sigma){
+  # Define terms
+  K = ncol(f_matrix)
+  n = nrow(f_matrix)
+  B = nrow(beta_matrix)
+  y = y_vec
+  predmean = predstd = rep(0,n)
+  f = matrix(0,nrow=n,ncol=0)
+  tau_vec = NULL
+  beta_vec = NULL
+  for(j in 1:B){
+    # Terms
+    f = cbind(f,phi_matrix[j,]*f_matrix)
+    tau_vec = c(tau_vec,tau_matrix[j,])
+    beta_vec = c(beta_vec,beta_matrix[j,])
+  }
+  
+  # Mean and Variance
+  prior_inv = diag(1/tau_vec^2)
+  Ainv = t(f)%*%f/sigma^2 + prior_inv
+  A = chol2inv(chol(Ainv))
+  b = t(f)%*%y/sigma^2 + prior_inv%*%beta_vec
+  Ab = A%*%b
+  
+  outpost = list(postmean = Ab, poststd = A)
+  return(outpost)
+}
 
 #-----------------------------------------------------
 # Terminal node MLE functions
@@ -190,7 +291,7 @@ post_beta_logun = function(yvec, f_matrix, sigma, tau, m){
 # Log Marginal likelihood and marginal priors -- computes densities at input y (or mu)
 #-----------------------------------------------------
 # Marginal Selection prior -- GMM after integrating over beta and mu
-lm_selet = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
+lm_select = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
   # Set beta_prior
   if(is.null(beta_prior)){beta_prior = rep(1/num_models, num_models)}
   if(length(beta_prior!=num_models)){stop("Incorrect dimension for beta_prior. Must be of length num_models!")}
@@ -204,3 +305,9 @@ lm_selet = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
   
   return(log(den))
 }
+
+
+#-----------------------------------------------------
+# Plotting Functions
+#-----------------------------------------------------
+
