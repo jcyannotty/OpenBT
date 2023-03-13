@@ -120,7 +120,7 @@ dlg = function(g,nl,dbar = NULL){
 # seed = value, used to reproduce results
 # random_x = (bool) do you want to generate randomly spaced x's?
 # x_eft_train = locations of the model runs to use to "fit" the EFT -- used to learn cbar or dbar
-get_data = function(n_train, n_test, s, sg, lg, minx, maxx, seed, random_x = FALSE, x_eft_train = NULL){
+get_data = function(n_train, n_test, s, sg, lg, minx, maxx, seed, random_x = FALSE, x_eft_train = NULL, x_train = NULL){
   # Find cbar and dbar if x_eft_train = NULL
   if(is.null(x_eft_train)){
     cbar = NULL
@@ -148,9 +148,10 @@ get_data = function(n_train, n_test, s, sg, lg, minx, maxx, seed, random_x = FAL
   if(random_x){
     x_train = runif(n_train, minx, maxx)
     x_train = x_train[order(x_train)]
-  }else{
+  }else if(is.null(x_train)){
     x_train = seq(minx, maxx, length = n_train)
   }
+  
   y_train = fg(x_train) + rnorm(n_train, 0, s)
   
   #Set a grid of test points

@@ -90,3 +90,49 @@ get_ftrue = function(fmatrix, wmatrix, biasvec){
   f = rowSums(fmatrix*wmatrix) + biasvec
   return(f)
 }
+
+
+#-----------------------------------------------------
+# Taylor Series expansions
+#-----------------------------------------------------
+# Taylor series of sin(X) of degree k centered around x0
+sin_exp = function(k,x0,x){
+  # Get degree list
+  deg = 0:k
+  
+  # Get every 4th term (derivative repaets every 4 terms)
+  h0 = deg[which(deg %% 4 == 0)]
+  h1 = deg[which(deg %% 4 == 1)]
+  h2 = deg[which(deg %% 4 == 2)]
+  h3 = deg[which(deg %% 4 == 3)]
+  
+  # Compute taylor series:
+  ts = sum((sin(x0)*(x-x0)^h0)/factorial(h0))
+  ts = ts + sum((cos(x0)*(x-x0)^h1)/factorial(h1))
+  ts = ts + sum((-sin(x0)*(x-x0)^h2)/factorial(h2))
+  ts = ts + sum((-cos(x0)*(x-x0)^h3)/factorial(h3))
+  
+  return(ts)
+}
+
+# Taylor series of sin(X) of degree k centered around x0
+cos_exp = function(k,x0,x){
+  # Get degree list
+  deg = 0:k
+  
+  # Get every 4th term (derivative repaets every 4 terms)
+  h0 = deg[which(deg %% 4 == 0)]
+  h1 = deg[which(deg %% 4 == 1)]
+  h2 = deg[which(deg %% 4 == 2)]
+  h3 = deg[which(deg %% 4 == 3)]
+  
+  # Compute taylor series:
+  ts = sum((cos(x0)*(x-x0)^h0)/factorial(h0))
+  ts = ts + sum((-sin(x0)*(x-x0)^h1)/factorial(h1))
+  ts = ts + sum((-cos(x0)*(x-x0)^h2)/factorial(h2))
+  ts = ts + sum((sin(x0)*(x-x0)^h3)/factorial(h3))
+  
+  return(ts)
+}
+
+
