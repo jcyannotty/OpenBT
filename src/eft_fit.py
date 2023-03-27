@@ -14,29 +14,32 @@ def fsg_terms(x,k):
     #Get the coefficients -- only even coefficients are non-zero
     # Get q(x) and yref(x)
     if k % 2 == 0:
-        sk = np.sqrt(2)*scipy.special.gamma(k + 1/2)*(-4)**(k/2)/math.factorial(k/2)
-        qx = x
-        yref = x*math.factorial(k/2 + 2)/np.sqrt(1-x**2)
+        sk = ((-2)**(k/2))*scipy.special.gamma(k + 1/2)/math.factorial(k/2)
+        #sk = np.sqrt(2)*scipy.special.gamma(k + 1/2)*(-4)**(k/2)/math.factorial(k/2)
+        qx = np.sqrt(2)*x**0.5
+        yref = np.sqrt(2)
     else:
         sk = 0
-        qx = x
+        qx = 0
         yref = 0
     # Get the polynomial term
-    tx = sk*x**k
-    out = {'tx':tx,'cx':sk,'qx':qx,'yref':yref}
+    cx = sk*x**(k/2)
+    tx = cx*yref*qx**k
+    out = {'tx':tx,'cx':cx,'qx':qx,'yref':yref}
     return out
 
 # Define Large-g expansion terms -- using coefs and Q(x)
 def flg_terms(x,k):
     #Get the coefficients
-    lk = scipy.special.gamma(k/2 + 0.25)*(-0.5)**(k)/(2*math.factorial(k))
+    lk = scipy.special.gamma(k/2 + 0.25)*(-1)**(k)/(2*math.factorial(k))
   
     #Get the expansion coef, q, and term
-    tx = lk*x**(-k)/np.sqrt(x)
-    yref = (1/(math.factorial(k+1)*x**(k+1.5)))*(0.75/0.5**(2*k+2))
+    yref = 1/np.sqrt(x)
     qx = 0.5
-    
-    out = {'tx':tx, 'cx':lk, 'qx':qx, 'yref':yref}
+    cx = lk*x**(-k)
+    tx = yref*cx*qx**k
+
+    out = {'tx':tx, 'cx':cx, 'qx':qx, 'yref':yref}
     return out
 
 
@@ -90,17 +93,17 @@ def get_exp(x_list,k, model = 'sg'):
     return out 
 
 # Checker
-fsg_terms(0.03, 2)
-flg_terms(0.1, 2)
+fsg_terms(0.25, 6)
+flg_terms(0.03, 4)
 
 # Set training points for model runs
 #x1_train = np.linspace(0.05, 0.5, 5)
 #x2_train = np.linspace(0.05, 0.5, 5)
 
-x1_train = np.array([0.03, 0.10, 0.15, 0.25])
-x2_train = np.array([0.25, 0.35,0.40,0.50])
+x1_train = np.array([0.05, 0.15, 0.25, 0.35, 0.45])
+x2_train = np.array([0.1, 0.2,0.30,0.40])
 
-x1_test = np.linspace(0.03, 0.5, 20)
+x1_test = np.linspace(0.01, 0.48, 20)
 x2_test = np.linspace(0.03, 0.5, 20)
 
 #x1_test = np.linspace(0.03, 0.5, 300)
@@ -110,7 +113,7 @@ x1_data = np.concatenate((x1_train,x1_test), axis = 0)
 x2_data = np.concatenate((x2_train,x2_test), axis = 0)
 
 #Get coefficients from both models
-ns = 2
+ns = 4
 c1_cols = []
 c1_list = []
 for i in range(ns+1): 
@@ -142,41 +145,55 @@ x2_data = x2_data[:,None]
 # Hyperparameters
 center0 = 0
 disp0 = 0
-df0 = 100
-scale0 = 2.5
+df0 = 3
+scale0 = 5
 kernel1 = RBF(length_scale=0.3, length_scale_bounds=(0.05, 4)) + WhiteKernel(1e-10, noise_level_bounds='fixed')
 kernel2 = RBF(length_scale=0.5, length_scale_bounds=(0.05, 1)) + WhiteKernel(1e-10, noise_level_bounds='fixed')
 
-exp1_res = get_exp(list(chain(*x1_data.tolist())), 2, 'sg')
-y1_df = exp1_res['ypred_df']
-coeffs1 = gm.coefficients(np.array(y1_df),ratio = 1,orders=np.arange(0,ns+1))
-
-gp1 = gm.ConjugateGaussianProcess(kernel1, center=center0, disp=disp0, df=df0, scale=5, n_restarts_optimizer=10)
-fit1 = gp1.fit(x1_train, coeffs1[:4,])
-fit1.predict(x1_test,return_std=True)
-np.sum(fit1.predict(x1_test,return_std=False),axis = 1)
-fit1.cbar_sq_mean_
+exp1_res = get_exp(list(chain(*x1_data.tolist())), ns, 'sg')
 
 ratio1 = np.array(list(chain(*exp1_res['qx_df'].values.tolist()))) # Reshape the array
 ref1 = np.array(list(chain(*exp1_res['yref_df'].values.tolist()))) # Reshape the array
 
-gp_trunc1 = gm.TruncationGP(kernel = fit1.kernel_, center=center0, disp=disp0, df=df0, scale=scale0, ref = ref1, ratio = ratio1)
-fit_trunc1 = gp_trunc1.fit(x1_data, y=np.array(exp1_res['ypred_df']), orders=np.arange(0,ns+1))
-fit_trunc1.predict(x1_data, order = 2, return_std = True)
+y1_df = exp1_res['ypred_df']
+coeffs1 = gm.coefficients(np.array(y1_df),ratio = ratio1,ref=ref1,orders=np.arange(0,ns+1))
 
-fhat1 = fit_trunc1.predict(x1_data, order = 2, return_std = False)
-std1 = fit_trunc1.predict(x1_data, order = 2, return_std = True)[1]
+gp1 = gm.ConjugateGaussianProcess(kernel1, center=center0, disp=disp0, df=df0, scale=scale0, n_restarts_optimizer=10)
+fit1 = gp1.fit(x1_train, coeffs1[:len(x1_train),])
+fit1.predict(x1_test,return_std=True)
+fit1.cbar_sq_mean_
+fit1.scale_
+fit1.df_
+
+gp_trunc1 = gm.TruncationGP(kernel = fit1.kernel_, center=center0, disp=disp0, df=fit1.df_, scale=fit1.scale_, ref = ref1, ratio = ratio1)
+
+fhat1 = y1_df.iloc[:,ns] + gp_trunc1.predict(x1_data, order = ns, return_std = False)
+std1 = gp_trunc1.predict(x1_data, order = ns, return_std = True, kind = 'trunc')[1]
+cov1 = gp_trunc1.predict(x1_data, order = ns, return_cov = True)[1]
+
+#fit_trunc1 = gp_trunc1.fit(x1_data, y=np.array(exp1_res['ypred_df']), orders=np.arange(0,ns+1))
+#fhat1 = fit_trunc1.predict(x1_data, order = 2, return_std = False)
+#std1 = fit_trunc1.predict(x1_data, order = 2, return_std = True, kind = 'trunc')[1]
+#cov1 = fit_trunc1.predict(x1_data, order = 2, return_cov = True)[1]
+
 
 fig, ax = plt.subplots(figsize=(3.2, 3.2))
-ax.plot(x1_test, fhat1[5:], zorder = 2)
-#ax.fill_between(x1_test[:,0], fhat1[5:] + 2*std1[5:], fhat1[5:] - 2*std1[5:], zorder=1)
+ax.plot(x1_test, fhat1[len(x1_train):], zorder = 2)
+ax.fill_between(x1_test[:,0], fhat1[len(x1_train):] + 2*std1[len(x1_train):], fhat1[len(x1_train):] - 2*std1[len(x1_train):], zorder=1)
+plt.show()
+
+fig, ax = plt.subplots(figsize=(3.2, 3.2))
+ax.plot(x1_test, exp1_res['coef_df'].iloc[len(x1_train):,2], zorder = 2)
+ax.plot(x1_test, exp1_res['coef_df'].iloc[len(x1_train):,4], zorder = 2, color = 'red')
+#ax.plot(x1_test, exp1_res['coef_df'].iloc[len(x1_train):,6], zorder = 2, color = 'green')
+ax.plot(x1_test, exp1_res['coef_df'].iloc[len(x1_train):,0], zorder = 2, color = 'purple')
 plt.show()
 
 
 center0 = 0
 disp0 = 0
-df0 = 10
-scale0 = 0.2
+df0 = 3
+scale0 = 5
 
 exp2_res = get_exp(list(chain(*x2_data.tolist())), 4, 'lg')
 y2_df = exp2_res['ypred_df']
@@ -184,25 +201,36 @@ y2_df = exp2_res['ypred_df']
 ratio2 = np.array(list(chain(*exp2_res['qx_df'].values.tolist()))) # Reshape the array
 ref2 = np.array(list(chain(*exp2_res['yref_df'].values.tolist()))) # Reshape the array
 
-coeffs2 = gm.coefficients(np.array(y2_df),ratio = ref2,orders=np.arange(0,nl+1))
+coeffs2 = gm.coefficients(np.array(y2_df),ratio = ratio2,ref = ref2, orders=np.arange(0,nl+1))
 
-gp2 = gm.ConjugateGaussianProcess(kernel2, center=center0, disp=disp0, df=df0, scale=5, n_restarts_optimizer=10)
-fit2 = gp2.fit(x2_train, coeffs2[:4,])
-#fit2.predict(x2_test,return_std=True)
-#np.sum(fit2.predict(x2_test,return_std=False),axis = 1)
+gp2 = gm.ConjugateGaussianProcess(kernel2, center=center0, disp=disp0, df=df0, scale=scale0, n_restarts_optimizer=10)
+fit2 = gp2.fit(x2_train, coeffs2[:len(x2_train),])
 fit2.cbar_sq_mean_
 
-gp_trunc2 = gm.TruncationGP(kernel = fit2.kernel_, center=center0, disp=disp0, df=df0, scale=scale0, ref = ref2, ratio = ratio2)
-fit_trunc2 = gp_trunc2.fit(x2_data, y=np.array(exp2_res['ypred_df']), orders=np.arange(0,nl+1))
-#fit_trunc2.predict(x2_data, order = 4, return_std = True)
+gp_trunc2 = gm.TruncationGP(kernel = fit2.kernel_, center=center0, disp=disp0, df=fit2.df_, scale=fit2.scale_, ref = ref2, ratio = ratio2)
+fhat2 = y2_df.iloc[:,ns] + gp_trunc2.predict(x2_data, order = nl, return_std = False)
+std2 = gp_trunc2.predict(x2_data, order = nl, return_std = True, kind = 'trunc')[1]
+cov2 = gp_trunc2.predict(x2_data, order = nl, return_cov = True)[1]
 
-fhat2 = fit_trunc2.predict(x2_data, order = 4, return_std = False)
-std2 = fit_trunc2.predict(x2_data, order = 4, return_std = True)[1]
+#fit_trunc1 = gp_trunc1.fit(x1_data, y=np.array(exp1_res['ypred_df']), orders=np.arange(0,ns+1))
+#fhat1 = fit_trunc1.predict(x1_data, order = 2, return_std = False)
+#std1 = fit_trunc1.predict(x1_data, order = 2, return_std = True, kind = 'trunc')[1]
+#cov1 = fit_trunc1.predict(x1_data, order = 2, return_cov = True)[1]
+
 
 fig, ax = plt.subplots(figsize=(3.2, 3.2))
-ax.plot(x2_test, fhat2[5:], zorder = 2)
-ax.fill_between(x1_test[:,0], fhat2[5:] + 2*std2[5:], fhat2[5:] - 2*std2[5:], zorder=1)
+ax.plot(x2_test, fhat2[len(x2_train):], zorder = 2)
+ax.fill_between(x2_test[:,0], fhat2[len(x2_train):] + 2*std2[len(x2_train):], fhat2[len(x2_train):] - 2*std2[len(x2_train):], zorder=1)
 plt.show()
+
+fig, ax = plt.subplots(figsize=(3.2, 3.2))
+ax.plot(x2_test, exp2_res['coef_df'].iloc[len(x2_train):,2], zorder = 2)
+ax.plot(x2_test, exp2_res['coef_df'].iloc[len(x2_train):,4], zorder = 2, color = 'red')
+#ax.plot(x1_test, exp1_res['coef_df'].iloc[len(x1_train):,6], zorder = 2, color = 'green')
+ax.plot(x2_test, exp2_res['coef_df'].iloc[len(x2_train):,0], zorder = 2, color = 'purple')
+plt.show()
+
+
 
 #-----------------------------------------------------
 nn = fhat1.shape[0]
