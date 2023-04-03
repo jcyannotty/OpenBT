@@ -66,6 +66,18 @@ sbart_phix = function(path, xvec, cvec, s){
   return(phi)
 }
 
+# Random Assignments
+sbart_drawz = function(phix){
+  B = ncol(phix)
+  n = nrow(phix)
+  z = apply(phix, 1, function(x) sample(1:B, size = 1, prob = x))
+  z_ind = matrix(0,ncol = B, nrow = n)
+  for(i in 1:n){
+    z_ind[i,z[i]] = 1
+  }
+  return(z_ind)
+}
+
 #-----------------------------------------------------
 # Prior prediction functions -- for all nodes
 # -- tnode_list: list, each item is a vector of indexes corresponding to which obs are assigned to the node
@@ -197,6 +209,51 @@ soft_post = function(f_matrix, beta_matrix, tau_matrix, phi_matrix, y_vec, sigma
   return(outpost)
 }
 
+# Regular BMM Post
+mu_post = function(f_matrix, tnode_list, beta_matrix, tau_matrix, y_vec, sigma){
+  # Define terms
+  K = ncol(f_matrix)
+  n = nrow(f_matrix)
+  B = length(tnode_list)
+  mumean = mucov = vector('list',B)
+  # Loop through tnodes
+  for(j in 1:B){
+    # Terms
+    h = tnode_list[[j]]
+    f = f_matrix[h,]
+    y = y_vec[h] 
+    prior_inv = diag(1/tau_matrix[j,]^2)
+    
+    # Mean and Variance
+    Ainv = t(f)%*%f/sigma^2 + prior_inv
+    A = chol2inv(chol(Ainv))
+    b = t(f)%*%y/sigma^2 + prior_inv%*%beta_matrix[j,]
+    Ab = A%*%b
+    
+    # Get mu post
+    mumean[[j]] = Ab
+    mucov[[j]] = A
+  }
+  outpred = list(mu_mean = mumean, mu_cov = mucov)
+  return(outpred)
+}
+
+# Soft Z post
+soft_z_pred = function(f_matrix, phix, mu_mean_list){
+  # Setup
+  B = ncol(phix)
+  K = ncol(f_matrix)
+  n = nrow(f_matrix)
+  wts_matrix = matrix(0,nrow = n, ncol= K)
+  # Get wts
+  for(j in 1:B){
+    wts_matrix = wts_matrix +  phix[,j]*matrix(mu_mean_list[[j]], nrow = n, ncol = K, byrow = TRUE)  
+  }
+  # Get predction
+  outpred = list(pred_mean = rowSums(f_matrix*wts_matrix), wts_mean = wts_matrix)
+  return(outpred)
+}
+
 #-----------------------------------------------------
 # Terminal node MLE functions
 #-----------------------------------------------------
@@ -205,6 +262,8 @@ mle_predict = function(f_matrix, tnode_list, y_vec, sigma){
   n = nrow(f_matrix)
   B = length(tnode_list)
   predmean = predstd = rep(0,n)
+  mle_mu = list()
+  mle_cov = list()
   # Get predictions by terminal node
   for(b in 1:B){
     h = tnode_list[[b]]
@@ -214,8 +273,10 @@ mle_predict = function(f_matrix, tnode_list, y_vec, sigma){
     mu_hat = ftf_inv%*%t(f)%*%y 
     predmean[h] = f%*%mu_hat
     predstd[h] = sqrt(diag(f%*%(ftf_inv)%*%t(f)))*sigma
+    mle_mu[[b]] = mu_hat
+    mle_cov[[b]] = ftf_inv/sigma^2
   }
-  outpred = list(predmean = predmean, predstd = predstd)
+  outpred = list(predmean = predmean, predstd = predstd, mle_mu = mle_mu, mle_cov = mle_cov)
   return(outpred)
 }
 
