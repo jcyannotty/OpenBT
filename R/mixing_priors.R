@@ -41,6 +41,8 @@ select_prior = function(num_models,sc,k=2, m=1){
   return(out) 
 }
 
+#-----------------------------------------------------
+# Soft BART and random path functions
 # Soft BART Split
 sbart_split = function(x,c,s,r=TRUE){
   x0 = (x-c)/s
@@ -66,8 +68,36 @@ sbart_phix = function(path, xvec, cvec, s){
   return(phi)
 }
 
+# Random path splits
+rpath_split = function(x,c,q,xmin,xmax,r=TRUE,gam=0.5){
+  # Get half points and distances
+  a = c - gam*(c-xmin)
+  b = c + gam*(xmax-c)
+  d1 = (c-x)/(c-a)
+  d2 = (x-c)/(b-c)
+  
+  # Get psi
+  #if(x < xmin | x>xmax){
+    # Default return prob = 0
+    #psi = 0
+    #r = TRUE
+  #}else 
+  if(x<c){
+    psi = 0.5*max(1-d1,0)^q
+  }else{
+    psi = 1 - 0.5*max(1-d2,0)^q
+  }  
+  # Get the probability of the right/left move (specified by r = TRUE/FALSE)
+  if(r){
+    prob = psi   
+  }else{
+    prob = 1 - psi
+  }
+  return(prob)
+}
+
 # Random Assignments
-sbart_drawz = function(phix){
+rpath_drawz = function(phix){
   B = ncol(phix)
   n = nrow(phix)
   z = apply(phix, 1, function(x) sample(1:B, size = 1, prob = x))
@@ -76,6 +106,22 @@ sbart_drawz = function(phix){
     z_ind[i,z[i]] = 1
   }
   return(z_ind)
+}
+
+# rpath phix 
+rpath_phix = function(path, xvec, cvec, xminvec, xmaxvec, q, gam=0.5){
+  log_phi = 0
+  for(i in 1:length(path)){
+    prb = rpath_split(xvec[i],cvec[i],q,xmin=xminvec[i],xmax=xmaxvec[i],r=path[i],gam=gam)
+    log_phi = log_phi + log(prb)
+  }
+  phi = exp(log_phi)
+  return(phi)   
+}
+
+# Rpath draw bandwidth
+rpath_draw_gam = function(){
+  
 }
 
 #-----------------------------------------------------
@@ -318,6 +364,51 @@ plot_predict = function(x,y,predmean, predstd, tnode_list=NULL, ci = 0.95, y_lim
 
 }
 
+# Point wise prediction plots
+plot_predict_ptwise = function(x,y,predmean, predstd, tnode_list=NULL, ci = 0.95, y_lim=NULL, title = "Predict", color = 'black', bounds = TRUE){
+  # Setup and get bounds
+  alpha = (1-ci)/2
+  z = qnorm(1-alpha,0,1)
+  ub = predmean + z*predstd
+  lb = predmean - z*predstd
+  
+  # Set up range
+  rng = max(predmean) - min(predmean)
+  if(is.null(y_lim)){y_lim = c(min(predmean)-rng*0.25, max(predmean))+rng*0.25}
+  
+  # Point colors
+  tnode_cols = c('red','blue','green4','orchid3','orange')
+
+  # Plot
+  if(is.null(tnode_list)){
+    plot(x, predmean, xlab = 'X', ylab = 'Y', main = title, panel.first = {grid(col = 'lightgrey')}, col = color, ylim = y_lim, pch = 16)
+    points(x,y, cex = 0.8, pch = 16)
+    if(bounds){
+      for(i in 1:length(x)){
+        lines(c(x[i],x[i]), c(lb[i],ub[i]), col = color, lty = 'dashed')  
+      }
+    }
+  }else{
+    # Plot
+    plot(x, y, xlab = 'X', ylab = 'Y', main = title, panel.first = {grid(col = 'lightgrey')}, pch = 16, ylim = y_lim)
+    B = length(tnode_list)
+    for(b in 1:B){
+      h = tnode_list[[b]]
+      points(x[h],predmean[h], pch = 17, col = tnode_cols[b])
+      if(bounds){
+        for(i in 1:length(x)){
+          lines(c(x[i],x[i]), c(lb[i],ub[i]), col = color, lty = 'dashed')  
+        }
+      }
+    }
+  }
+}
+
+#-----------------------------------------------------
+# Sum of Trees prediction
+#-----------------------------------------------------
+
+
 
 #-----------------------------------------------------
 # Posterior Distributions
@@ -351,7 +442,44 @@ post_beta_logun = function(yvec, f_matrix, sigma, tau, m){
 #-----------------------------------------------------
 # Log Marginal likelihood and marginal priors -- computes densities at input y (or mu)
 #-----------------------------------------------------
+# Log marginal likelihood
+lm_bmm = function(tnode_list,rvec,f_matrix,sig,beta_matrix,tau_matrix){
+  K = ncol(f_matrix)
+  n = nrow(f_matrix)
+  B = length(tnode_list)
+  s2 = sig^2
+  lm_list = 0
+  # Loop through tnodes
+  for(j in 1:B){
+    # Terms
+    h = tnode_list[[j]]
+    f = f_matrix[h,]
+    y = rvec[h]
+    nb = nrow(f)
+    prior_inv = diag(1/tau_matrix[j,]^2)
+    
+    # Quadratic term
+    Ainv = t(f)%*%f/sigma^2 + prior_inv
+    A = chol2inv(chol(Ainv))
+    b = t(f)%*%y/sigma^2 + prior_inv%*%beta_matrix[j,]
+    btAb = t(b)%*%A%*%b
+    
+    # Get prior terms
+    btPb = t(beta_matrix[j,])%*%prior_inv%*%beta_matrix[j,]
+    
+    # Log terms
+    logc = -nb/2*log(2*pi*s2) - 0.5*sum(log(tau_matrix[j,]^2))
+    logd = 0.5*log(det(A))
+    loge = -0.5*(rtr/s2 + btPb - btAb)
+    
+    # Get mu post
+    lm_list[b] = logc + logd + loge
+  } 
+  return(lm_list)
+}
+
 # Marginal Selection prior -- GMM after integrating over beta and mu
+# -- NOT FINISHED
 lm_select = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
   # Set beta_prior
   if(is.null(beta_prior)){beta_prior = rep(1/num_models, num_models)}
@@ -369,6 +497,69 @@ lm_select = function(muvec,num_models,k=2, m=1,beta_prior=NULL){
 
 
 #-----------------------------------------------------
-# Plotting Functions
+# MCMC Functions
 #-----------------------------------------------------
+# Birth proposal prob
+log_bart_birth_proposal = function(ncut, nvar, B, prbirth){
+  pi = -log(ncut) - log(nvar) - log(B) + log(prbirth)
+  return(pi)  
+}
+
+# Death proposal prob
+log_bart_death_proposal = function(D, prdeath){
+  pi = -log(D) + log(prdeath)
+  return(pi)  
+}
+
+# Random path RJMCMC proposal
+log_rpath_birth_proposal = function(x, zx, nid, xmin, xmax,v,c,p){
+  # Get obs involved in the birth
+  z_birth = zx[,nid]
+  h = which(z_birth == 1)
+  nz = length(h)
+  
+  # Get branching probability - prob of right move
+  psix = 0
+  for(i in 1:length(h)){
+    psix[i] = rpath_split(x[h[i],v],c,p,xmin,xmax,r=TRUE)
+  }
+  
+  # Get the path assignments
+  znew = rbinom(nz,1,psix)
+  log_q = sum(log(psix^znew*(1-psix)^(1-znew)))
+  
+  out = list(znew = znew, log_q = log_q)
+  return(out)
+}
+
+log_tree_prior = function(alpha,beta,depth){
+    
+} 
+
+
+# Log MH ratio for bd in BART
+# qn = q(T' | T), qc = q(T | T')
+mh_logstep_bart = function(pdc,pdn,qc,qn, current_val, new_val){
+  #Acceptance/Rejection -- LOG SCALE
+  r = pdn - pdc + qc - qn
+  if(is.infinite(r) | is.nan(r)){
+    theta0 = current_val
+    accept = 0
+  }else{
+    alpha = min(0, r)
+    u = runif(1, min = 0, max = 1)
+    if(alpha > log(u)){
+      theta0 = new_val
+      accept = 1
+      #if(alpha < -4){print(paste0("alpha = ",alpha, " -- U = ",u))}
+    }else{
+      theta0 = current_val
+      accept = 0
+    }
+  }
+  
+  mh_list = list(theta0 = theta0, accept = accept)
+  return(mh_list)
+}
+
 

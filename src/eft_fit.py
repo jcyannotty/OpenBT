@@ -249,7 +249,7 @@ plt.show()
 
 
 #-----------------------------------------------------
-# From Samba
+# From Samba -- see Semposki et al. (2022)
 #-----------------------------------------------------
 import numpy as np
 from scipy import special, integrate 
@@ -870,3 +870,153 @@ ax.plot(x_test, fitxw['w_lower'][:,1], 'blue')
 ax.plot(x_test, fitxw['w_upper'][:,1], 'blue')
 ax.set_xlabel("x"); ax.set_ylabel("w(x)")
 plt.show()
+
+
+
+#--------------------------------------------------
+# From Melendez Paper
+#--------------------------------------------------
+import gsum as gm
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as stats
+import os
+import h5py
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel
+
+
+cmaps = [plt.get_cmap(name) for name in ['Oranges', 'Greens', 'Blues', 'Reds', 'plasma']]
+colors = [cmap(0.55 - 0.1 * (i==0)) for i, cmap in enumerate(cmaps)]
+light_colors = [cmap(0.25) for cmap in cmaps]
+
+edgewidth = 0.6
+
+x = np.linspace(0, 1, 100)
+X = x[:, None]  # make a 2D version of x to match the input data structure from SciKitLearn
+n_orders = 5    # Here we examine the case where we have info on four non-trivial orders
+orders = np.arange(0, n_orders)
+
+final_order = 20  # We are going to treat the order-20 result as the final, converged answer
+orders_all = np.arange(0, final_order+1)
+
+# The true values of the hyperparameters for generating the EFT coefficients
+ls = 0.25
+sd = 1
+center = 0
+ref = 5
+ratio = 0.6
+nugget = 1e-10
+seed = 10
+
+
+# X_mask = np.array([i % 5 == 0 for i in range(len(X_all))])[:, None]
+
+kernel = RBF(length_scale=ls, length_scale_bounds='fixed') + \
+    WhiteKernel(noise_level=nugget, noise_level_bounds='fixed')
+gp = gm.ConjugateGaussianProcess(kernel=kernel, center=center, df=np.inf, scale=sd, nugget=0)
+
+# Draw coefficients and then use `partials` to create the sequence of partial sums
+# that defines the order-by-order EFT predictions
+# Negative sign to make y_n positive, for aesthetics only
+coeffs_all = - gp.sample_y(X, n_samples=final_order+1, random_state=seed)
+data_all = gm.partials(coeffs_all, ratio, ref=ref, orders=orders_all)
+diffs_all = np.array([data_all[:, 0], *np.diff(data_all, axis=1).T]).T
+
+# Get the "all-orders" curve
+data_true = data_all[:, -1]
+
+# Will only consider "known" lower orders for most of the notebook
+coeffs = coeffs_all[:, :n_orders]
+data = data_all[:, :n_orders]
+diffs = diffs_all[:, :n_orders]
+
+
+top_legend_kwargs = dict(
+    loc='lower left',
+    bbox_to_anchor=(0, 1.02, 1, 0.5), ncol=4,
+    borderpad=0.37,
+    labelspacing=0.,
+    handlelength=1.4,
+    handletextpad=0.4, borderaxespad=0,
+    mode='expand',
+    fancybox=False
+)
+
+fig, ax = plt.subplots(1, 1, figsize=(2.45, 2.6))
+
+for i, curve in enumerate(data.T):
+    ax.plot(x, curve, label=r'$y_{}$'.format(i), c=colors[i])
+
+ax.text(0.95, 0.95, 'Predictions', ha='right', va='top',
+        transform=ax.transAxes)
+
+legend = ax.legend(**top_legend_kwargs)
+
+# Format
+ax.set_xlabel(r'$x$')
+ax.set_xticks([0, 0.5, 1])
+ax.set_xticks([0.25, 0.75], minor=True)
+ax.set_xticklabels([0, 0.5, 1])
+ax.set_xlim(0, 1)
+fig.tight_layout()
+plt.show()
+
+fig, ax = plt.subplots(1, 1, figsize=(2.45, 2.6))
+
+for i in range(n_orders):
+    ax.plot(x, coeffs[:, i], label=r'$c_{}$'.format(i), c=colors[i])
+
+ax.text(0.95, 0.95, 'Coefficients', ha='right', va='top',
+           transform=ax.transAxes)
+
+legend = ax.legend(**top_legend_kwargs)
+
+# Format
+ax.set_xlabel(r'$x$')
+ax.set_xticks([0, 0.5, 1])
+ax.set_xticks([0.25, 0.75], minor=True)
+ax.set_xticklabels([0, 0.5, 1])
+ax.set_xlim(0, 1)
+fig.tight_layout()
+plt.show()
+
+
+
+# By setting disp=0 and df=inf, no updating of hyperparameters occurs
+# The priors become Dirac delta functions at mu=center and cbar=scale
+# But this assumption could be relaxed, if desired
+mask = np.array([(i-14) % 25 == 0 for i in range(len(x))])
+trunc_gp = gm.TruncationGP(kernel=kernel, ref=ref, ratio=ratio, disp=0, df=np.inf, scale=1, optimizer=None)
+# Still only fit on a subset of all data to update mu and cbar!
+# We must beware of numerical issues of using data that are "too close"
+trunc_gp.fit(X[mask], data[mask], orders=orders)
+
+std_list = []
+fig, axes = plt.subplots(2, 3, sharex=True, sharey=True, figsize=(2.37, 2.3))
+for i, n in enumerate(orders):
+    # Only get the uncertainty due to truncation (kind='trunc')
+    _, std_trunc = trunc_gp.predict(X, order=n, return_std=True, kind='trunc')
+
+    # Order by order std
+    std_list.append(std_trunc[0])
+
+    for j in range(i, n_orders):
+        ax = axes.ravel()[j]
+        ax.plot(x, data[:, i], zorder=i-5, c=colors[i])
+        ax.fill_between(x, data[:, i] + 2*std_trunc, data[:, i] - 2*std_trunc,
+                        zorder=i-5, facecolor=light_colors[i], edgecolor=colors[i], lw=edgewidth)
+    ax = axes.ravel()[i]
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_ylim(-15, 37)
+fig.tight_layout(h_pad=0.3, w_pad=0.3);
+plt.show()
+
+
+### Save the Data to txt file
+fdir = '/home/johnyannotty/Documents/Candidacy_Exam'
+np.savetxt(fdir + "/eft_finite_order_exp.txt", data)
+np.savetxt(fdir + "/eft_coefs.txt", coeffs)
+np.savetxt(fdir + "/eft_x.txt", X)
+np.savetxt(fdir + "/eft_delta_std.txt", np.array(std_list))
