@@ -165,7 +165,8 @@ openbtcal = function(
   rgyc = range(yc_train)
   disc = 2*abs(mean(yf_train) - mean(yc_train)) 
   tau1 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k1)
-  tau2 =  disc/(2*sqrt(m)*k2)
+  tau2 =  disc/(sqrt(m)*k2)
+  #tau2 =  disc/(2*sqrt(m)*k2)
   
   # Variance prior
   overalllambdaf = overallsdf^2
