@@ -74,10 +74,11 @@ openbtcal = function(
   # model type definitions
   modeltype=0 # undefined
   MODEL_OSBART=1 # On-site BART Calibration
+  MODEL_ORTHBART=2 # Orthogonal On-site BART Calibration
   if(is.null(model)){ 
     cat("Model type not specified.\n")
     cat("Available options are:\n")
-    cat("model='osbart'\n")
+    cat("model='osbart', 'orthbart'\n")
     stop("missing model type.\n")
   }
   if(model=="osbart"){
@@ -93,6 +94,19 @@ openbtcal = function(
     pbd=c(pbd,0.0)
   }
   
+  if(model=="orthbart"){
+    modeltype=MODEL_ORTHBART
+    if(is.null(ntree)) ntree=100
+    if(is.null(ntreeh)) ntreeh=1
+    if(is.null(k1)) k1=2
+    if(is.null(k2)) k2=2
+    if(is.null(overallsdf)) overallsdf=sd(yf_train)
+    if(is.null(overallsdc)) overallsdc=sd(yc_train)
+    if(is.null(overallnuf)) overallnuf=10
+    if(is.null(overallnuc)) overallnuc=10
+    pbd=c(pbd,0.0)
+  }
+
   #--------------------------------------------------
   # Calibration priors
   #--------------------------------------------------

@@ -54,6 +54,9 @@ public:
    void resetst() { st.tonull(); st=mb[0].t; } //copy mb0's tree to st.
    void collapseensemble();
 
+   // Orthogonal discrepancy
+   void set_orthogonal_delta(bool orthd){this->orth_delta = orthd;for(size_t j=0;j<m;j++) mb[j].set_orthogonal_delta(orthd);}
+
     //--------------------
     //data
     //--------------------------------------------------

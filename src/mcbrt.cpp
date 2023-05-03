@@ -149,6 +149,18 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
     vxd postmean(2), evals(2), stdnorm(2), muvec(2), HWinvR(2);
     double tau1_sqr = ci.tau1*ci.tau1;
     double tau2_sqr = ci.tau2*ci.tau2;
+    double suma2 = 0.0;
+
+    // Rescale tau2 if orthogonal delta
+    if(orth_delta){
+        for(size_t j=0;j<mci.delta_alist.size();j++){suma2+=mci.delta_alist[j]*mci.delta_alist[j];} 
+        if(mci.delta_alist.size()>1){
+            tau2_sqr = tau2_sqr*(1-mci.delta_area*mci.delta_area/suma2);
+        }else{
+            tau2_sqr = tau2_sqr*0.05; // minimum variance
+        }    
+    }
+     
 
     I = Eigen::MatrixXd::Identity(2,2); //Set identity matrix
     
@@ -211,7 +223,21 @@ double mcbrt::drawtheta2(std::vector<sinfo*> sivec, rn &gen)
     
     double sumw=0.0, summeanw=0.0, postvar, postmean, w, theta2;
     double tau2_sqr = ci.tau2*ci.tau2;
+    double suma2=0.0;
     std::vector<double> mv;
+
+    // Rescale tau2 if orthogonal delta -- same areas for all nodes in subtree
+    if(orth_delta){
+        mcinfo& mci=static_cast<mcinfo&>(*sivec[0]);
+        for(size_t j=0;j<mci.delta_alist.size();j++){suma2+=mci.delta_alist[j]*mci.delta_alist[j];} 
+        if(mci.delta_alist.size()>1){
+            tau2_sqr = tau2_sqr*(1-mci.delta_area*mci.delta_area/suma2);
+        }else{
+            tau2_sqr = tau2_sqr*0.05; // minimum variance
+        }
+    }
+
+    // Get modularized information 
     for(size_t i=0;i<sivec.size();i++){
         // cast to mcinfo and get modularized mean and var
         mcinfo& mci=static_cast<mcinfo&>(*sivec[i]); 
@@ -309,11 +335,22 @@ double mcbrt::lmnode(mcinfo &mci){
     double tau1_sqr = ci.tau1*ci.tau1;
     double tau2_sqr = ci.tau2*ci.tau2;
     double siginv_det, q, v; 
+    double suma2=0.0;
     mxd Sig(2,2);
     vxd meanvec(2);
 
     // Initialize lm values
     double lmout = 0.0;
+
+    // Rescale tau2 if orthogonal delta
+    if(orth_delta){
+        for(size_t j=0;j<mci.delta_alist.size();j++){suma2+=mci.delta_alist[j]*mci.delta_alist[j];} 
+        if(mci.delta_alist.size()>1){
+            tau2_sqr = tau2_sqr*(1-mci.delta_area*mci.delta_area/suma2);
+        }else{
+            tau2_sqr = tau2_sqr*0.05; // minimum variance
+        }
+    }
 
     // Does this node have field observations 
     if(mci.sumwf>0){
@@ -365,9 +402,20 @@ double mcbrt::lmsubtree(mcinfo &mci){
     double sum_logw = 0.0;
     double w = 1.0;
     double B = 0; // number of nodes in the subtree
+    double suma2=0.0;
 
     // Set subtree and sibling moments
     mci.setsubtreemoments(ci.mu1, ci.tau1);
+
+    // Rescale tau2 if orthogonal delta
+    if(orth_delta){
+        for(size_t j=0;j<mci.delta_alist.size();j++){suma2+=mci.delta_alist[j]*mci.delta_alist[j];} 
+        if(mci.delta_alist.size()>1){
+            tau2_sqr = tau2_sqr*(1-mci.delta_area*mci.delta_area/suma2);
+        }else{
+            tau2_sqr = tau2_sqr*0.05; // minimum variance
+        }
+    }
 
     // Sum over the vector componenets with non-zero variances (meaning field data is on the ith node)
     for(size_t i = 0;i < mci.subtree_mean.size();i++){
@@ -535,7 +583,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         std::vector<double> a(uvec[0],0);
         std::vector<double> b(uvec[0],0);
         std::vector<double> area_bd;
-        double areanx;
+        double areanx = 1.0;
 
         // Get all bottom nodes
         // Get the area across the rest of the discrepancy partitions excluding nx
@@ -566,7 +614,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
             if(U!=std::numeric_limits<int>::max()) {
                 b[i]=(*xi)[i][U];
             }else{
-                b[i]=(*xi)[i][(*xi)[i].size()];
+                b[i]=(*xi)[i][(*xi)[i].size()-1];
             }
             // Update the area
             areanx = areanx*(b[i] - a[i]); 
@@ -584,14 +632,16 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
             nx->rgi(v,&L,&U);
             
             // Redefine the left and right areas 
-            areal = areal*((*xi)[v][c]-(*xi)[v][L])/((*xi)[v][U]-(*xi)[v][L]);
+            if(L==std::numeric_limits<int>::min()){L = (*xi)[v][0];}
+            if(U==std::numeric_limits<int>::max()){U = (*xi)[v][(*xi)[v].size()-1];}
+            
+            areal = areal*((*xi)[v][c]-(*xi)[v][L])/((*xi)[v][U]-(*xi)[v][L]); 
             arear = arear*((*xi)[v][U]-(*xi)[v][c])/((*xi)[v][U]-(*xi)[v][L]);
-
+            
             // Add to area vector
             area_bd = area;
             area.push_back(areal); area.push_back(arear);
             area_bd.push_back(areanx);
-
             // Add areas to suff stats
             mcl.setdeltaarea(areanx, area, area_bd); // left is different than parent
             mcr.setdeltaarea(areanx, area, area_bd); // right is different than parent
@@ -690,7 +740,85 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
        
         // Add the sibling information from mcl to mcr
         mcr.setsiblinginfo(mcl);
-    }   
+    }
+
+    // Orthogonal discrepancy for death -- CLEAN UP into one or multiple functions!!
+    if(orth_delta){
+        std::vector<double> a(uvec[0],0);
+        std::vector<double> b(uvec[0],0);
+        std::vector<double> area_bd;
+        double areanx = 1.0;
+        std::vector<double> area;
+        tree::npv obnv;
+
+        // Get all bottom nodes
+        // Get the area across the rest of the discrepancy partitions excluding nx
+        // Then redo the subtree calculation
+        t.getbots(obnv);
+        area = get_orthogonal_scales_bd(obnv, uroots, l->p);
+        (l->p)->nodeinsubtree(uroots,subtree);
+
+        // Get the rectangles with respect to x-space for nx (assume u predictors come after all x predictors)
+        for(size_t i=0;i<uvec[0];i++){
+            // reset upper and lower bounds
+            int L,U;
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+
+            // Get the interval [L,U] indexes
+            if(subtree){
+                subtree->rgi(i,&L,&U);
+            }else{
+                (l->p)->rgi(i,&L,&U);
+            }
+            
+            // Now we have the interval endpoints, put corresponding values in a,b matrices.
+            if(L!=std::numeric_limits<int>::min()){ 
+                a[i]=(*xi)[i][L];
+            }else{
+                a[i]=(*xi)[i][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                b[i]=(*xi)[i][U];
+            }else{
+                b[i]=(*xi)[i][(*xi)[i].size()-1];
+            }
+            // Update the area
+            areanx = areanx*(b[i] - a[i]); 
+        }
+
+        if(subtree){
+            area.push_back(areanx);
+            mcl.setdeltaarea(areanx, area); // left has same area as parent
+            mcr.setdeltaarea(areanx, area); // right has same area as parent
+        }else{
+            double areal =  areanx;
+            double arear =  areanx;
+            int L,U;
+            int v0, c0;
+            v0 = (l->p)->v;
+            c0 = (l->p)->c;
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            (l->p)->rgi(v0,&L,&U);
+            
+            // Redefine the left and right areas 
+            if(L==std::numeric_limits<int>::min()){L = (*xi)[v0][0];}
+            if(U==std::numeric_limits<int>::max()){U = (*xi)[v0][(*xi)[v0].size()-1];}
+            
+            areal = areal*((*xi)[v0][c0]-(*xi)[v0][L])/((*xi)[v0][U]-(*xi)[v0][L]); 
+            arear = arear*((*xi)[v0][U]-(*xi)[v0][c0])/((*xi)[v0][U]-(*xi)[v0][L]);
+            
+
+            // Add to area vector
+            area_bd = area;
+            area.push_back(areal); area.push_back(arear);
+            area_bd.push_back(areanx);
+
+            // Add areas to suff stats
+            mcl.setdeltaarea(areanx, area, area_bd); // left is different than parent
+            mcr.setdeltaarea(areanx, area, area_bd); // right is different than parent
+        }
+    }
+
 }
 
 //--------------------------------------------------
@@ -793,7 +921,7 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
     // Orthogonal discrepancy - get scales
     if(orth_delta){
         // Get the very top root of the tree
-        toproot = path[path.size()];
+        toproot = path[path.size()-1];
         // Get its bottom nodes
         toproot->getbots(obnv);
         // Get subtree information
@@ -1423,8 +1551,12 @@ std::vector<double> mcbrt::get_orthogonal_scales(tree::npv bnv, tree::npv uroots
     std::vector<std::vector<double> > a(uvec[0],std::vector<double>(B));
     std::vector<std::vector<double> > b(uvec[0],std::vector<double>(B));
     std::vector<double> area(B,1);
+    double atemp = 1.0;
 
     // Get the rectangles with respect to x-space (assume u predictors come after all x predictors)
+    //cout << "uvec[0] = " << uvec[0] << endl;
+    //cout << "xnodes.size() = " << xnodes.size() << endl;
+    //cout << "unmap.size() = " << unmap.size() << endl;
     for(size_t i=0;i<uvec[0];i++){
         for(size_t j = 0; j<xnodes.size();j++){
             // reset upper and lower bounds
@@ -1444,9 +1576,12 @@ std::vector<double> mcbrt::get_orthogonal_scales(tree::npv bnv, tree::npv uroots
             if(U!=std::numeric_limits<int>::max()) {
                 b[i][j]=(*xi)[i][U];
             }else{
-                b[i][j]=(*xi)[i][(*xi)[i].size()];
+                b[i][j]=(*xi)[i][(*xi)[i].size()-1];
             }
             // Update the area
+            //cout << "area[j] = " << area[j] << endl;
+            //cout << "a[i][j] = " << a[i][j] << endl;
+            //cout << "b[i][j] = " << b[i][j] << endl;
             area[j] = area[j]*(b[i][j] - a[i][j]); 
         }
 
@@ -1470,12 +1605,21 @@ std::vector<double> mcbrt::get_orthogonal_scales(tree::npv bnv, tree::npv uroots
             if(U!=std::numeric_limits<int>::max()) {
                 b[i][l]=(*xi)[i][U];
             }else{
-                b[i][l]=(*xi)[i][(*xi)[i].size()];
+                b[i][l]=(*xi)[i][(*xi)[i].size()-1];
             }
             // Update the area
             area[l] = area[l]*(b[i][l] - a[i][l]); 
         }
     }
+
+    // Condition for when only a root node in the tree
+    if(B == 0){ 
+        for(size_t i = 0; i<uvec[0];i++){
+            atemp = atemp*((*xi)[i][(*xi)[i].size()-1] - (*xi)[i][0]);
+        }
+        area.push_back(atemp);
+    }
+
     // Return area
     return(area);
 }
@@ -1504,6 +1648,7 @@ std::vector<double> mcbrt::get_orthogonal_scales_bd(tree::npv obnv, tree::npv ur
             }
         }
     }
+        
     // Now get areas
     area = get_orthogonal_scales(obnv, uroots, unmap, xnodes);
     return(area);

@@ -333,12 +333,12 @@ public:
             double nu, lambda;
 
             // Store scaling information for orthogonal discrepancy
-            std::map<tree::tree_cp,double> Amap;
+            //std::map<tree::tree_cp,double> Amap;
 
         };
     //--------------------
     //constructors/destructors
-    mcbrt():brt(), orth_delta(false) {}
+    mcbrt():brt(){}
     //mxbrt(size_t ik):brt(ik) {}
     //--------------------
     //methods
