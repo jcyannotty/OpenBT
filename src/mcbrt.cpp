@@ -76,6 +76,7 @@ void mcbrt::drawthetavec(rn& gen)
     std::vector<size_t> xnodes; // non-subtree nodes
     std::vector<sinfo*> unodestats; // subtree suff stats  
     size_t ind;
+    std::vector<std::vector<double>> orthogarea;
 
     // Initialize theta1 and theta2 for the subtrees
     double theta1, theta2;
@@ -99,6 +100,15 @@ void mcbrt::drawthetavec(rn& gen)
         }
     }
 
+    // Get the scales if using orthogonal discrepancy
+    if(orth_delta){
+        orthogarea = get_orthogonal_scales_draw(bnv,uroots,unmap,xnodes);
+        for(size_t i=0;i<bnv.size();i++){
+            mcinfo& mci=static_cast<mcinfo&>(*(siv[i]));
+            mci.setdeltaarea(orthogarea[1][i],orthogarea[0]);
+        }
+    }
+
 #ifdef _OPENMPI
     mpi_resetrn(gen);
 #endif
@@ -117,7 +127,7 @@ void mcbrt::drawthetavec(rn& gen)
         } 
         // Draw theta2 for the subtrees
         theta2 = drawtheta2(unodestats,gen);
-        //cout << "drawthetavec here 2" << endl;
+        
         // Draw theta1 per node conditional on theta2
         for(size_t j=0;j<unodestats.size();j++){
             ind = unmap[uroots[i]][j]; // bottom node/suff stat index
@@ -125,7 +135,6 @@ void mcbrt::drawthetavec(rn& gen)
             thetavec << theta1, theta2; // create the eigen thetavec
             bnv[ind]->setthetavec(thetavec); // Set thetavec
         }
-        //cout << "drawthetavec here 3" << endl;
     }
 
     delete &siv;  //and then delete the vector of pointers.
@@ -277,7 +286,7 @@ double mcbrt::lm(sinfo& si)
     mcinfo& mci=static_cast<mcinfo&>(si); // cast si into mcinfo
     double lmstree = 0.0, lmn = 0.0;
     
-    // Get subtre lm if node contains subtree info        
+    // Get subtree lm if node contains subtree info        
     if(mci.subtree_info){
         lmstree = lmsubtree(mci);
         //cout << "subtree lm " << lmn << "-----" << rank << endl;
@@ -434,7 +443,9 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
     tree::tree_p subtree; // subtree pointer root
     tree::npv subbnv; // bottom nodes for the subtree of interest
     tree::npv uroots; // roots to subtree(s)
+    tree::npv obnv; // bottom node vector for orthogonal discrepancy
     std::vector<mcinfo*> mcv; // mcinfo vector used for subtrees
+    std::vector<double> area; // area vector for orthogonal discrepancy
     sil.n=0; sir.n=0;
     //cout << "BIRTH" << endl;
     // Cast suff stats to mcinfo -- this usually happens in add_obs_to_suff
@@ -517,6 +528,74 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
         mcr.setsubtreeinfo(mcv); 
         // Add the sibling information from mcl to mcr
         mcr.setsiblinginfo(mcl);       
+    }
+
+    // Get areas if using orthogonal delta
+    if(orth_delta){
+        std::vector<double> a(uvec[0],0);
+        std::vector<double> b(uvec[0],0);
+        std::vector<double> area_bd;
+        double areanx;
+
+        // Get all bottom nodes
+        // Get the area across the rest of the discrepancy partitions excluding nx
+        // Then redo the subtree calculation
+        t.getbots(obnv);
+        area = get_orthogonal_scales_bd(obnv, uroots, nx);
+        nx->nodeinsubtree(uroots,subtree);
+
+        // Get the rectangles with respect to x-space for nx (assume u predictors come after all x predictors)
+        for(size_t i=0;i<uvec[0];i++){
+            // reset upper and lower bounds
+            int L,U;
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+
+            // Get the interval [L,U] indexes
+            if(subtree){
+                subtree->rgi(i,&L,&U);
+            }else{
+                nx->rgi(i,&L,&U);
+            }
+            
+            // Now we have the interval endpoints, put corresponding values in a,b matrices.
+            if(L!=std::numeric_limits<int>::min()){ 
+                a[i]=(*xi)[i][L];
+            }else{
+                a[i]=(*xi)[i][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                b[i]=(*xi)[i][U];
+            }else{
+                b[i]=(*xi)[i][(*xi)[i].size()];
+            }
+            // Update the area
+            areanx = areanx*(b[i] - a[i]); 
+        }
+
+        if(subtree){
+            area.push_back(areanx);
+            mcl.setdeltaarea(areanx, area); // left has same area as parent
+            mcr.setdeltaarea(areanx, area); // right has same area as parent
+        }else{
+            double areal =  areanx;
+            double arear =  areanx;
+            int L,U;
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            nx->rgi(v,&L,&U);
+            
+            // Redefine the left and right areas 
+            areal = areal*((*xi)[v][c]-(*xi)[v][L])/((*xi)[v][U]-(*xi)[v][L]);
+            arear = arear*((*xi)[v][U]-(*xi)[v][c])/((*xi)[v][U]-(*xi)[v][L]);
+
+            // Add to area vector
+            area_bd = area;
+            area.push_back(areal); area.push_back(arear);
+            area_bd.push_back(areanx);
+
+            // Add areas to suff stats
+            mcl.setdeltaarea(areanx, area, area_bd); // left is different than parent
+            mcr.setdeltaarea(areanx, area, area_bd); // right is different than parent
+        }
     }
 }
 
@@ -673,11 +752,15 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 {
     tree::npv path;
     tree::npv uroots, nxuroots; // Roots to all calibration subtree
+    tree::npv obnv, ouroots; // bnv and uroots for orthogonal discrepancy
     tree::tree_p subtree, troot; // subtree pointer root
+    tree::tree_p toproot; // toproot for orthogonal delta
+    std::vector<double> area; //Area by discrepancy region -- for orthogonal delta
+    std::map<tree::tree_cp,double> area_by_node; // for orthogonal discrepancy
+
 
     // Set the root of the tree for the rotation. 
     // If nx is in a subtree, then we need to use its subtree root rather than using nx 
-    //cout << "nx = " << nx->nid() << "-----" << rank << endl;
     troot = nx;
     local_subsuff_setroot(nx,subtree,troot,uroots);
 
@@ -688,9 +771,9 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
     //cout << "troot = " << troot->nid() << "-----" << rank << endl;
     //cout << "tree size = " << troot->treesize() << "-----" << rank << endl;
     //cout << "bnv size = " << bnv.size() << "-----" << rank << endl;
+    
 #ifdef _OPENMP
     typedef tree::npv::size_type bvsz;
-    cout << "HERE????" << endl;
     siv.clear(); //need to setup space threads will add into
     siv.resize(bnv.size());
     for(bvsz i=0;i!=bnv.size();i++) siv[i]=newsinfo();
@@ -706,6 +789,23 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 #endif
     // Now pool information across nodes depending of the calibration subtree status
     local_subsuff_nodecases(troot,subtree,bnv,siv);
+
+    // Orthogonal discrepancy - get scales
+    if(orth_delta){
+        // Get the very top root of the tree
+        toproot = path[path.size()];
+        // Get its bottom nodes
+        toproot->getbots(obnv);
+        // Get subtree information
+        toproot->getsubtreeroots(ouroots, uvec);
+        // Get the orthogonal discrepancy scales
+        get_orthogonal_scales_rot(obnv, ouroots, area, area_by_node);
+        // Now map each siv element to an area_by_node
+        for(size_t i=0;i<bnv.size();i++){
+            mcinfo& mci=static_cast<mcinfo&>(*(siv[i]));
+            mci.setdeltaarea(area_by_node[bnv[i]],area);
+        }  
+    }
 }
 
 //--------------------------------------------------
@@ -832,16 +932,10 @@ void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree:
     // Now check conditions for how to pool the information across nodes in a common subtree
     if(!subtree && nxuroots.size()>0){
         // If nx is not in a subtree, but nodes below nx are in subtree(s)
-        //cout << "bnv size before = " << bnv.size() << "----" << rank << endl;
-        //cout << "siv size before = " << siv.size() << "----" << rank << endl;
         local_subsuff_subtree(nxuroots,nx,bnv,siv);
-        //cout << "local_subsuff_nx_subtree..." << endl;
-        //cout << "bnv size = " << bnv.size() << "----" << rank << endl;
-        //cout << "siv size = " << siv.size() << "----" << rank << endl;        
     }else if(subtree){
         // Either nx creates the calibration subtree or it is in one already
-        //local_subsuff_subtree(siv);
-        //cout << "local_subsuff_subtree..." << endl;
+        local_subsuff_subtree(siv);        
     }else{
         // This set of suff stats is not associated with a claibration subtree -- no need to pool information    
     }
@@ -1319,4 +1413,207 @@ std::vector<double> mcbrt::klgradient(size_t nf, std::vector<double> gradh,std::
 
     // return the gradient
     return grad;
+}
+
+//--------------------------------------------------
+// get orthogonal scales -- for orthogonal discrepancy
+std::vector<double> mcbrt::get_orthogonal_scales(tree::npv bnv, tree::npv uroots, std::map<tree::tree_cp, std::vector<size_t>> unmap, std::vector<size_t> xnodes){
+    // Set scales for the xnodes
+    int B = xnodes.size() + uroots.size();
+    std::vector<std::vector<double> > a(uvec[0],std::vector<double>(B));
+    std::vector<std::vector<double> > b(uvec[0],std::vector<double>(B));
+    std::vector<double> area(B,1);
+
+    // Get the rectangles with respect to x-space (assume u predictors come after all x predictors)
+    for(size_t i=0;i<uvec[0];i++){
+        for(size_t j = 0; j<xnodes.size();j++){
+            // reset upper and lower bounds
+            int L,U;
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+
+            // Get the interval [L,U] indexes
+            size_t ind = xnodes[j];
+            bnv[ind]->rgi(i,&L,&U);
+
+            // Now we have the interval endpoints, put corresponding values in a,b matrices.
+            if(L!=std::numeric_limits<int>::min()){ 
+                a[i][j]=(*xi)[i][L];
+            }else{
+                a[i][j]=(*xi)[i][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                b[i][j]=(*xi)[i][U];
+            }else{
+                b[i][j]=(*xi)[i][(*xi)[i].size()];
+            }
+            // Update the area
+            area[j] = area[j]*(b[i][j] - a[i][j]); 
+        }
+
+        // Set scales for the subtrees
+        for(size_t j = 0; j<uroots.size();j++){
+            // reset upper and lower bounds
+            int L,U;
+            size_t l = j + xnodes.size();
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+
+            // Get the interval [L,U] indexes
+            size_t ind = unmap[uroots[j]][0];
+            bnv[ind]->rgi(i,&L,&U);
+
+            // Now we have the interval endpoints, put corresponding values in a,b matrices.
+            if(L!=std::numeric_limits<int>::min()){ 
+                a[i][l]=(*xi)[i][L];
+            }else{
+                a[i][l]=(*xi)[i][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                b[i][l]=(*xi)[i][U];
+            }else{
+                b[i][l]=(*xi)[i][(*xi)[i].size()];
+            }
+            // Update the area
+            area[l] = area[l]*(b[i][l] - a[i][l]); 
+        }
+    }
+    // Return area
+    return(area);
+}
+
+
+//--------------------------------------------------
+// Set orthogonal scales for birth and death
+std::vector<double> mcbrt::get_orthogonal_scales_bd(tree::npv obnv, tree::npv uroots, tree::tree_p nx){
+    std::vector<size_t> xnodes;
+    tree::tree_p subtree;
+    std::map<tree::tree_cp,std::vector<size_t>> unmap; // subtree map
+    std::vector<double> area;
+
+    // Check is the node in bnv is in a subtree
+    for(size_t i=0;i<obnv.size();i++){
+        subtree = 0;
+        // Setup to for the area calculation
+        if(obnv[i] != nx){
+            obnv[i]->nodeinsubtree(uroots,subtree);
+            if(subtree){
+                // This node is in a subtree, append i to the corresponding map
+                unmap[subtree].push_back(i);
+            }else{
+                // Not in a subtree
+                xnodes.push_back(i);
+            }
+        }
+    }
+    // Now get areas
+    area = get_orthogonal_scales(obnv, uroots, unmap, xnodes);
+    return(area);
+}
+
+
+//--------------------------------------------------
+// Orthogonal Scales for draw step
+std::vector<std::vector<double>> mcbrt::get_orthogonal_scales_draw(tree::npv bnv, tree::npv uroots, 
+                                                                std::map<tree::tree_cp,std::vector<size_t>> unmap, 
+                                                                std::vector<size_t> xnodes)
+{
+    std::vector<double> area;
+    std::vector<double> area_by_node(bnv.size());
+    std::vector<std::vector<double>> area_out(2);
+    size_t ind, aind;
+
+    // Get the area vector -- unique areas
+    area = get_orthogonal_scales(bnv, uroots, unmap, xnodes);
+
+    // Expand area to get the areas for each node
+    for(size_t j = 0; j<xnodes.size();j++){
+        // Get the interval [L,U] indexes
+        ind = xnodes[j];
+        area_by_node[ind] = area[j];
+    }
+
+    // Set scales for the subtrees
+    for(size_t j=0; j<uroots.size();j++){
+        aind = xnodes.size()+j;
+        for(size_t l=0; l<unmap[uroots[j]].size();l++){
+            ind = unmap[uroots[j]][l];
+            area_by_node[ind] = area[aind];
+        }
+    }
+
+    // Set the area out vector
+    area_out[0] = area;
+    area_out[1] = area_by_node;
+    
+    // Return area
+    return(area_out);                                                    
+}
+
+//--------------------------------------------------
+// Get orthogonal scales -- rotate and perturb
+void mcbrt::get_orthogonal_scales_rot(tree::npv obnv, tree::npv uroots, std::vector<double> &area,std::map<tree::tree_cp,double> &area_by_node)
+{
+    std::vector<size_t> xnodes;
+    tree::tree_p subtree;
+    std::map<tree::tree_cp,std::vector<size_t>> unmap; // subtree map
+    size_t aind, ind;
+
+    // Check is the node in bnv is in a subtree
+    for(size_t i=0;i<obnv.size();i++){
+        subtree = 0;
+        obnv[i]->nodeinsubtree(uroots,subtree);
+        if(subtree){
+            // This node is in a subtree, append i to the corresponding map
+            unmap[subtree].push_back(i);
+        }else{
+            // Not in a subtree
+            xnodes.push_back(i);
+        }
+    }
+
+    // Now call the original set_orthogonal_scales
+    area = get_orthogonal_scales(obnv, uroots, unmap, xnodes);
+
+    //convert area vector into a map for area by node
+    for(size_t j = 0; j<xnodes.size();j++){
+        // Get the interval [L,U] indexes
+        ind = xnodes[j];
+        area_by_node[obnv[ind]] = area[j];
+    }
+
+    // Set scales for the subtrees
+    for(size_t j=0; j<uroots.size();j++){
+        aind = xnodes.size()+j;
+        for(size_t l=0; l<unmap[uroots[j]].size();l++){
+            ind = unmap[uroots[j]][l];
+            area_by_node[obnv[ind]] = area[aind];
+        }
+    }
+
+} 
+
+
+//--------------------------------------------------
+// Set orthogonal scales without xroots -- adds the additional step of computing xnodes vector
+std::vector<double> mcbrt::get_orthogonal_scales(tree::npv obnv, tree::npv uroots){
+    std::vector<size_t> xnodes;
+    tree::tree_p subtree;
+    std::map<tree::tree_cp,std::vector<size_t>> unmap; // subtree map
+    std::vector<double> area;
+
+    // Check is the node in bnv is in a subtree
+    for(size_t i=0;i<obnv.size();i++){
+        subtree = 0;
+        obnv[i]->nodeinsubtree(uroots,subtree);
+        if(subtree){
+            // This node is in a subtree, append i to the corresponding map
+            unmap[subtree].push_back(i);
+        }else{
+            // Not in a subtree
+            xnodes.push_back(i);
+        }
+    }
+
+    // Now call the original set_orthogonal_scales
+    area = get_orthogonal_scales(obnv, uroots, unmap, xnodes);
+    return(area);
 }

@@ -20,10 +20,10 @@ class mcinfo : public sinfo{
         */ 
         
         //Constructors:
-        mcinfo():sinfo(),sumyw(0.0),sumzw(0.0),sumwf(0.0),sumwc(0.0),nf(0),subtree_info(false),sibling_info(false),subtree_node(false) {} //Initialize mxinfo with default settings
-        mcinfo(bool st):sinfo(),sumyw(0.0),sumzw(0.0),sumwf(0.0),sumwc(0.0),nf(0),subtree_info(false),sibling_info(false),subtree_node(st) {}
-        mcinfo(double syw, double szw, double swf, double swc, size_t nf):sinfo(),sumyw(syw),sumzw(szw),sumwf(swf),sumwc(swc),nf(nf),subtree_info(false),sibling_info(false),subtree_node(false) {}
-        mcinfo(const mcinfo& is):sinfo(is),sumyw(is.sumyw),sumzw(is.sumzw),sumwf(is.sumwf),sumwc(is.sumwc),nf(is.nf),subtree_info(false), sibling_info(false),subtree_node(false) {}
+        mcinfo():sinfo(),sumyw(0.0),sumzw(0.0),sumwf(0.0),sumwc(0.0),nf(0),subtree_info(false),sibling_info(false),subtree_node(false),delta_area(0)  {} //Initialize mcinfo with default settings
+        mcinfo(bool st):sinfo(),sumyw(0.0),sumzw(0.0),sumwf(0.0),sumwc(0.0),nf(0),subtree_info(false),sibling_info(false),subtree_node(st),delta_area(0) {}
+        mcinfo(double syw, double szw, double swf, double swc, size_t nf):sinfo(),sumyw(syw),sumzw(szw),sumwf(swf),sumwc(swc),nf(nf),subtree_info(false),sibling_info(false),subtree_node(false),delta_area(0) {}
+        mcinfo(const mcinfo& is):sinfo(is),sumyw(is.sumyw),sumzw(is.sumzw),sumwf(is.sumwf),sumwc(is.sumwc),nf(is.nf),subtree_info(false), sibling_info(false),subtree_node(false),delta_area(0){}
         
         virtual ~mcinfo() {} 
 
@@ -54,6 +54,13 @@ class mcinfo : public sinfo{
         double sibling_sumwf;
         double sibling_sumwc;
 
+        // Orthogonal Discrepancy scaling
+        double delta_scale_num;
+        double delta_scale_denom;
+        double delta_area;
+        std::vector<double> delta_alist; // area list
+        std::vector<double> delta_alist_bd; // area list for birth and death -- annoying hack right now
+ 
         // Computing mean and variance for calculation in the joint model
         std::vector<double> getmoments(double mu1, double tau1){
             std::vector<double> out_meanvar;
@@ -139,45 +146,26 @@ class mcinfo : public sinfo{
             sibling_sumwc = mci.sumwc;
         }
 
-        /*
-        // Setters for the subtree info
-        void setsubtreeinfo(std::vector<mcinfo*> mcv, double mu1, double tau1){            
-            double node_mean, node_var;
-            std::vector<double> node_vec;
-            for(int i=0;i<mcv.size();i++){
-                // Get the node mean and variance
-                node_vec = (*mcv[i]).getmoments(mu1, tau1);
-                node_mean = node_vec[0];
-                node_var = node_vec[1];
-                
-                // Pushback into the subtree vectors
-                subtree_mean.push_back(node_mean);
-                subtree_var.push_back(node_var);
-                subtree_info = true;
+        // Set delta area -- for orthogonal discrepancy
+        // General setter
+        void setdeltaarea(double a, std::vector<double> alist){
+            delta_area = a;
+            for(size_t i=0;i<alist.size();i++){
+                delta_alist.push_back(alist[i]);
             }
         }
-        */
-
-        /*
-        void setsiblinginfo(mcinfo &mci, double mu1, double tau1){
-            // Compute vtilde and mtilde for this node
-            double t1_sqr = tau1*tau1;
-            double mtilde, vtilde, vhat, rhat;
-
-            vtilde = 1/(mci.sumwc + 1/t1_sqr);
-            mtilde = vtilde*(mci.sumzw + mu1/t1_sqr);
-            
-            // Compute the required field data information 
-            rhat = mci.sumyw/mci.sumwf;
-            vhat = 1/mci.sumwf;
-
-            // Pushback into the subtree vectors
-            sibling_var = vhat + vtilde;
-            sibling_mean = rhat - mtilde;
-            sibling_info = true; 
+        // For birth and death moves
+        void setdeltaarea(double a, std::vector<double> alist, std::vector<double> alist_bd){
+            delta_area = a;
+            for(size_t i=0;i<alist.size();i++){
+                delta_alist.push_back(alist[i]);
+            }
+            for(size_t i=0;i<alist_bd.size();i++){
+                delta_alist_bd.push_back(alist_bd[i]);
+            }
         }
-        */
 
+    
         // Define Operators -- override from sinfo class
         // Compound addition operator - used when adding sufficient statistics
         // Note -- no need to overload operator for the sibling info!!
@@ -200,7 +188,7 @@ class mcinfo : public sinfo{
             if(mrhs.subtree_info && !subtree_info){
                 // mrhs has subtree_info but this one does not!-- add it to this instance of mcinfo
                 subtree_info = true;
-                // using push_back here just incase this mcinfo instance already has subtree info and this mrhs is just adding more
+                // using push_back here just in case this mcinfo instance already has subtree info and this mrhs is just adding more
                 for(size_t i=0;i<mrhs.subtree_sumyw.size();i++){
                     //subtree_mean.push_back(mrhs.subtree_mean[i]);
                     //subtree_var.push_back(mrhs.subtree_var[i]);
@@ -225,6 +213,30 @@ class mcinfo : public sinfo{
                 sibling_sumwf+=mrhs.sibling_sumwf;
                 sibling_sumwc+=mrhs.sibling_sumwc;
             }
+            
+            // Overloading the addition operator for area info
+            // Overloading for alists
+            // Adding delta areas -- designed for birth and death when adding suff stats
+            if(!mrhs.subtree_node){
+                // No subtree -- need to add both left and right child to get parent
+                delta_area += mrhs.delta_area;    
+            }else if(mrhs.subtree_node && delta_area == 0){
+                // Subtree -- need to add first child to get parent (since child area = parent area)
+                delta_area += mrhs.delta_area;
+            }
+            // Create total area vectors
+            if(delta_alist.size() == 0 && mrhs.delta_alist_bd.size()>0){
+                // First account for the birth and death move only
+                for(size_t i=0;i<mrhs.subtree_sumyw.size();i++){
+                    delta_alist.push_back(mrhs.delta_alist_bd[i]);
+                }
+            }else if(delta_alist.size() == 0 && mrhs.delta_alist.size()>0){
+                // Then account for the general addition
+                for(size_t i=0;i<mrhs.subtree_sumyw.size();i++){
+                    delta_alist.push_back(mrhs.delta_alist[i]);
+                }
+            } 
+
             return *this;
         }
 
@@ -257,6 +269,12 @@ class mcinfo : public sinfo{
                     this->sibling_sumwc = mrhs.sibling_sumwc;
                     this->sibling_info = mrhs.sibling_info;
                 }
+                // Overload for the areas
+                this->delta_area = mrhs.delta_area;
+                if(mrhs.delta_alist.size()>0){
+                    this->delta_alist = delta_alist;
+                }
+
                 return *this; 
             }
             return *this;
@@ -313,10 +331,14 @@ public:
             double mu1, mu2, tau1, tau2; //mu1 & tau1 = prior mean/std for eta, mu2 & tau2 = prior mean/std for delta 
             double* sigma; 
             double nu, lambda;
+
+            // Store scaling information for orthogonal discrepancy
+            std::map<tree::tree_cp,double> Amap;
+
         };
     //--------------------
     //constructors/destructors
-    mcbrt():brt() {}
+    mcbrt():brt(), orth_delta(false) {}
     //mxbrt(size_t ik):brt(ik) {}
     //--------------------
     //methods
@@ -353,6 +375,16 @@ public:
     double lmsubtree(mcinfo& mci); // Used to pool information together across nodes within a subtree
     double lmsubtreenode(mcinfo &mci); // Individual node in subtree -- applied to a node that is in a subtree but does not have the subtree info stored 
 
+    // Orthogonal discrepancy functions
+    std::vector<double> get_orthogonal_scales(tree::npv bnv, tree::npv uroots, std::map<tree::tree_cp,std::vector<size_t>> unmap, std::vector<size_t> xnodes);
+    std::vector<double> get_orthogonal_scales(tree::npv bnv, tree::npv uroots); // set orthogonal scales when you don't have xnodes already (adds an additional step)
+    std::vector<double> get_orthogonal_scales_bd(tree::npv obnv, tree::npv uroots,tree::tree_p nx); // set orthogonal scales for birth and death
+    std::vector<std::vector<double>> get_orthogonal_scales_draw(tree::npv bnv, tree::npv uroots, std::map<tree::tree_cp,std::vector<size_t>> unmap, std::vector<size_t> xnodes); // set orthogonal scales for draw
+    void get_orthogonal_scales_rot(tree::npv bnv, tree::npv uroots, std::vector<double> &area,std::map<tree::tree_cp,double> &area_by_node); // set orthogonal scales for rot and perturb
+
+    void set_orthogonal_delta(bool orthd){orth_delta = orthd;}
+    
+    
     // Gradient functions for calibration parameter updates -- maybe virtual (??)
     std::vector<double> klgradient(size_t nf, std::vector<double> gradh, std::vector<double> &xgrad, std::vector<size_t> ucols, std::vector<double> uvals); 
 
@@ -361,6 +393,7 @@ public:
     //model information
     cinfo ci; //conditioning info (e.g. other parameters and prior and end node models)
     std::vector<double> etahat;
+    bool orth_delta;
     
     //--------------------
     //data
