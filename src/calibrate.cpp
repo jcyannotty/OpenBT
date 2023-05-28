@@ -28,6 +28,7 @@ using std::endl;
 
 #define MODEL_OSBART 1
 #define MODEL_ORTHBART 2
+#define MODEL_MODBART 3
 
 int main(int argc, char* argv[])
 {
@@ -475,6 +476,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     acb.setuvars(ucols); // set calibration vector
 
     if(modeltype == MODEL_ORTHBART){acb.set_orthogonal_delta(true);}else{acb.set_orthogonal_delta(false);}
+    if(modeltype == MODEL_MODBART){acb.set_modularization(true);}else{acb.set_modularization(false);}
 
     //--------------------------------------------------
     // Set product variance models

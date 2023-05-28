@@ -22,8 +22,8 @@ void mcbrt::add_observation_to_suff(diterator& diter, sinfo& si)
     
     // Get the precision and the increment the sample sizes
     w=1.0/(ci.sigma[*diter]*ci.sigma[*diter]);
-    mci.n+=1;
-    mci.nf+=(*fi)(*diter,1); // This is 1 if field obs and 0 if model run
+    mci.n+=1-(*fi)(*diter,1); // This adds 0 if field obs and 1 if model run
+    mci.nf+=(*fi)(*diter,1); // This adds 1 if field obs and 0 if model run
    
     // If this is a field observation the fi == 1, else it is a model run
     if((*fi)(*diter,1) == 1){
@@ -77,6 +77,7 @@ void mcbrt::drawthetavec(rn& gen)
     std::vector<sinfo*> unodestats; // subtree suff stats  
     size_t ind;
     std::vector<std::vector<double>> orthogarea;
+    std::vector<double> theta1_modvec;
 
     // Initialize theta1 and theta2 for the subtrees
     double theta1, theta2;
@@ -114,26 +115,61 @@ void mcbrt::drawthetavec(rn& gen)
 #endif
     // Draw theta1 and theta2 from non subtree nodes
     for(size_t i=0;i<xnodes.size();i++) {
-        bnv[xnodes[i]]->setthetavec(drawnodethetavec(*(siv[xnodes[i]]),gen));
+        // add modularization condition here....
+        if(modular){
+            bnv[xnodes[i]]->setthetavec(drawnodethetavec_modular(*(siv[xnodes[i]]),gen));
+        }else{
+            bnv[xnodes[i]]->setthetavec(drawnodethetavec(*(siv[xnodes[i]]),gen));
+        }
     }
 
+    // add second modularization step for subtree here....
     // Loop through subtrees (the ids stored in uroots) and draw thetas
-    for(size_t i=0;i<uroots.size();i++){
-        // Get all bot nodes in the subtree
-        unodestats.clear();
-        for(size_t j=0;j<unmap[uroots[i]].size();j++){
-            ind = unmap[uroots[i]][j]; // bottom node/suff stat index
-            unodestats.push_back(siv[ind]);
-        } 
-        // Draw theta2 for the subtrees
-        theta2 = drawtheta2(unodestats,gen);
-        
-        // Draw theta1 per node conditional on theta2
-        for(size_t j=0;j<unodestats.size();j++){
-            ind = unmap[uroots[i]][j]; // bottom node/suff stat index
-            theta1 = drawtheta1(*(siv[ind]),gen,theta2);
-            thetavec << theta1, theta2; // create the eigen thetavec
-            bnv[ind]->setthetavec(thetavec); // Set thetavec
+    // Get all bot nodes in the subtree
+    if(modular){
+        // Modularization 
+        for(size_t i=0;i<uroots.size();i++){
+            // Get all bot nodes in the subtree
+            unodestats.clear();
+            theta1_modvec.clear();
+            for(size_t j=0;j<unmap[uroots[i]].size();j++){
+                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                unodestats.push_back(siv[ind]);
+            }
+            // Draw theta1 for the each node in subtree
+            for(size_t j=0;j<unodestats.size();j++){
+                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                theta1 = drawtheta1_modular(*(siv[ind]),gen);
+                theta1_modvec.push_back(theta1);
+            }
+            // Draw theta2
+            theta2 = drawtheta2_modular(unodestats,theta1_modvec, gen);
+            // Set thetavec with individual theta1 and common theta2
+            for(size_t j=0;j<unodestats.size();j++){
+                ind = unmap[uroots[i]][j];
+                thetavec << theta1_modvec[j], theta2;
+                bnv[ind]->setthetavec(thetavec);
+            }
+        }
+    }else{
+        // Regular Sampler
+        for(size_t i=0;i<uroots.size();i++){
+            // Get all bot nodes in the subtree
+            unodestats.clear();
+            for(size_t j=0;j<unmap[uroots[i]].size();j++){
+                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                unodestats.push_back(siv[ind]);
+            } 
+            // Draw theta2 for the subtrees
+            theta2 = drawtheta2(unodestats,gen);
+            
+            // Draw theta1 per node conditional on theta2
+            for(size_t j=0;j<unodestats.size();j++){
+                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                theta1 = drawtheta1(*(siv[ind]),gen,theta2);
+                thetavec << theta1, theta2; // create the eigen thetavec
+                bnv[ind]->setthetavec(thetavec); // Set thetavec
+            }
         }
     }
 
@@ -161,10 +197,9 @@ vxd mcbrt::drawnodethetavec(sinfo& si, rn& gen){
         }    
     }
      
-
     I = Eigen::MatrixXd::Identity(2,2); //Set identity matrix
     
-    // Set Priors
+    // Set Prior Precision
     Prior_Sig_Inv = mxd::Zero(2,2);
     Prior_Sig_Inv(0,0) = 1/tau1_sqr;
     Prior_Sig_Inv(1,1) = 1/tau2_sqr;
@@ -237,7 +272,7 @@ double mcbrt::drawtheta2(std::vector<sinfo*> sivec, rn &gen)
         }
     }
 
-    // Get modularized information 
+    // Get modularized prior information 
     for(size_t i=0;i<sivec.size();i++){
         // cast to mcinfo and get modularized mean and var
         mcinfo& mci=static_cast<mcinfo&>(*sivec[i]); 
@@ -284,6 +319,82 @@ double mcbrt::drawtheta1(sinfo &si, rn &gen, double theta2)
     return theta1;
 }
 
+
+//--------------------------------------------------
+// Draw node thetavec modularization style
+vxd mcbrt::drawnodethetavec_modular(sinfo& si, rn& gen){
+    mcinfo& mci=static_cast<mcinfo&>(si); // Casting might not be needed since its done earlier
+    vxd outtheta(2);
+    double postmean2 = 0.0, postvar2 = 0.0;
+    double theta1 = 0.0, theta2 = 0.0;
+    double tau1_sqr = ci.tau1*ci.tau1;
+    double tau2_sqr = ci.tau2*ci.tau2;
+    double suma2 = 0.0;
+
+    // Get theta1 using the model runs
+    theta1 = drawtheta1_modular(mci, gen);
+
+    // Get the theta2 using the field obs
+    postvar2 = 1/(mci.sumwf + 1/tau2_sqr);
+    postmean2 = postvar2*(mci.sumyw - theta1 + ci.mu2/tau2_sqr);
+    theta2 = postmean2 + sqrt(postvar2)*gen.normal();
+
+    // return the theta1 and theta2 vector
+    outtheta << theta1, theta2;
+    return outtheta;
+}
+
+
+//--------------------------------------------------
+// Modularization: drawtheta1
+double mcbrt::drawtheta1_modular(sinfo& si, rn& gen){
+    mcinfo& mci=static_cast<mcinfo&>(si);
+    double mtilde, vtilde, theta1;
+    double t1_sqr = ci.tau1*ci.tau1;
+    
+    // Compute vtilde and mtilde
+    vtilde = 1/(mci.sumwc + 1/t1_sqr);
+    mtilde = vtilde*(mci.sumzw + ci.mu1/t1_sqr);
+
+    // Only model runs on this node
+    theta1 = mtilde + gen.normal()*sqrt(vtilde);
+    return theta1;
+}
+
+
+//--------------------------------------------------
+// Modularization: drawtheta2
+double mcbrt::drawtheta2_modular(std::vector<sinfo*> sivec, std::vector<double> &theta1_vec, rn& gen){
+    double sumw=0.0, summeanw=0.0, postvar, postmean, w, theta2, theta1;
+    double rhat, vhat;
+    double tau2_sqr = ci.tau2*ci.tau2;
+    double suma2=0.0;
+    std::vector<double> mv;
+
+    // Get modularized prior information 
+    for(size_t i=0;i<sivec.size();i++){
+        // cast to mcinfo and get modularized mean and var
+        mcinfo& mci=static_cast<mcinfo&>(*sivec[i]); 
+        // Compile suff stats from field obs
+        rhat = mci.sumyw/mci.sumwf;
+        vhat = 1/mci.sumwf;
+        if(vhat>0){w = 1/vhat;}else{w = 0.0;}
+        if(mci.nf>0){theta1 = theta1_vec[i];}else{theta1 = 0.0;}
+        // Store the collected suff stats
+        sumw += w;
+        summeanw += mv[0]*w - theta1;
+    }
+
+    // Now get the posterior mean and variance
+    postvar = 1/(sumw + 1/tau2_sqr);
+    postmean = postvar*(summeanw + ci.mu2/tau2_sqr);
+
+    // Draw a random variable
+    theta2 = postmean + gen.normal()*sqrt(postvar); 
+    return theta2;
+}
+
+    
 //--------------------------------------------------
 // Set f for mcbrt, also sets eta
 void mcbrt::local_setf_vec(diterator& diter)
@@ -473,7 +584,7 @@ double mcbrt::lmsubtreenode(mcinfo &mci){
         vhat = 1/mci.sumwf;
         lmf = 0.5*(log(2*M_PI*vhat) + rhat*rhat/vhat);
     }
-    // Model runs (mci.n > mci.nf)
+    // Model runs mci.n>0 (Previously, mci.n > mci.nf)
     if(mci.sumwc>0){
         lmc = 0.5*tau1_sqr*(mci.sumzw + ci.mu1/tau1_sqr)*(mci.sumzw + ci.mu1/tau1_sqr)/(tau1_sqr*mci.sumwc + 1); //mean term
         lmc += -0.5*ci.mu1*ci.mu1/tau1_sqr; //prior mean term
@@ -1110,6 +1221,7 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             ns = tsir.subtree_sumyw.size();
             double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
             double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
+            unsigned int sbt_nf_array[ns];
             
             if(msir.subtree_info){
                 // Cast vectors to array
@@ -1117,8 +1229,8 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
                 std::copy(tsir.subtree_sumzw.begin(),tsir.subtree_sumzw.end(),sbt_sumzw_array);
                 std::copy(tsir.subtree_sumwf.begin(),tsir.subtree_sumwf.end(),sbt_sumwf_array);
                 std::copy(tsir.subtree_sumwc.begin(),tsir.subtree_sumwc.end(),sbt_sumwc_array);
+                std::copy(tsir.subtree_nf.begin(),tsir.subtree_nf.end(),sbt_nf_array);
                 tsir.subtree_info = true;
-                //buffer_size = buffer_size*(ns+1);
             }
             
             // Ensure tsir and tsil are correctly marked as subtree nodes if applicable
@@ -1146,23 +1258,22 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumzw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwf_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwc_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&sbt_nf_array,ns,MPI_UNSIGNED,MPI_COMM_WORLD);
 
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumyw.push_back(sbt_sumyw_array[j]);}
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumzw.push_back(sbt_sumzw_array[j]);}
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumwf.push_back(sbt_sumwf_array[j]);}
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumwc.push_back(sbt_sumwc_array[j]);}
-                //tsir.subtree_sumyw.insert(tsir.subtree_sumyw.begin(), std::begin(sbt_sumyw_array),std::end(sbt_sumyw_array));
-                //tsir.subtree_sumyw.insert(tsir.subtree_sumzw.begin(), std::begin(sbt_sumzw_array),std::end(sbt_sumzw_array));
-                //tsir.subtree_sumyw.insert(tsir.subtree_sumwf.begin(), std::begin(sbt_sumwf_array),std::end(sbt_sumwf_array));
-                //tsir.subtree_sumyw.insert(tsir.subtree_sumwc.begin(), std::begin(sbt_sumwc_array),std::end(sbt_sumwc_array));
+                for(size_t j=0;j<ns;j++){tsir.subtree_nf.push_back(sbt_nf_array[j]);}
             }
-            // Unpack sibling info for the right node (if should have sibling info, otherwise there is a problem)
-            // God willing, you'll find avoid having to pass this sibling info
+            // Unpack sibling info for the right node (it should have sibling info, otherwise there is a problem)
+            // God willing, you'll avoid having to pass this sibling info
             if(msir.sibling_info){
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumyw,1,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumwf,1,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_sumwc,1,MPI_DOUBLE,MPI_COMM_WORLD);
+                MPI_Unpack(buffer,buffer_size,&position,&tsir.sibling_nf,1,MPI_UNSIGNED,MPI_COMM_WORLD);
                 tsir.sibling_info = true;
             }
             tsil.n=(size_t)ln;
@@ -1177,24 +1288,21 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
     {
         int position=0;  
         unsigned int ln,rn;
-        
+
         size_t ns = 0;
         ns = msir.subtree_sumyw.size();
         double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
         double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
+        unsigned int sbt_nf_array[ns];
         if(msir.subtree_info){
             // Cast vectors to array
             std::copy(msir.subtree_sumyw.begin(),msir.subtree_sumyw.end(),sbt_sumyw_array);
             std::copy(msir.subtree_sumzw.begin(),msir.subtree_sumzw.end(),sbt_sumzw_array);
             std::copy(msir.subtree_sumwf.begin(),msir.subtree_sumwf.end(),sbt_sumwf_array);
             std::copy(msir.subtree_sumwc.begin(),msir.subtree_sumwc.end(),sbt_sumwc_array);
-            //buffer_size = buffer_size*(ns+1); 
+            std::copy(msir.subtree_nf.begin(),msir.subtree_nf.end(),sbt_nf_array); 
         }
-        /*
-        if(msir.sibling_info){
-            buffer_size = buffer_size + SIZE_UINT6*2;
-        }
-        */
+        
         char buffer[buffer_size];
         ln=(unsigned int)msil.n;
         rn=(unsigned int)msir.n;
@@ -1216,6 +1324,7 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             MPI_Pack(&sbt_sumzw_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
             MPI_Pack(&sbt_sumwf_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
             MPI_Pack(&sbt_sumwc_array,ns,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&sbt_nf_array,ns,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
         }
         // Pack the sibling info for the right node (if should have sibling info, otherwise there is a problem)
         if(msir.sibling_info){
@@ -1223,6 +1332,7 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             MPI_Pack(&msir.sibling_sumzw,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
             MPI_Pack(&msir.sibling_sumwf,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
             MPI_Pack(&msir.sibling_sumwc,1,MPI_DOUBLE,buffer,buffer_size,&position,MPI_COMM_WORLD);
+            MPI_Pack(&msir.sibling_nf,1,MPI_UNSIGNED,buffer,buffer_size,&position,MPI_COMM_WORLD);
         }
         MPI_Send(buffer,buffer_size,MPI_PACKED,0,0,MPI_COMM_WORLD);     
     }
@@ -1235,6 +1345,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
 {
 #ifdef _OPENMPI
     unsigned int nvec[siv.size()];
+    unsigned int nfvec[siv.size()];
     double sumywvec[siv.size()];
     double sumzwvec[siv.size()];
     double sumwfvec[siv.size()];
@@ -1249,6 +1360,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
     for(size_t i=0;i<siv.size();i++) { // on root node, these should be 0 because of newsinfo().
         mcinfo* msi=static_cast<mcinfo*>(siv[i]);
         nvec[i]=(unsigned int)msi->n;    // cast to int
+        nfvec[i]=(unsigned int)msi->nf;
         sumywvec[i]=msi->sumyw;
         sumzwvec[i]=msi->sumzw;
         sumwfvec[i]=msi->sumwf;
@@ -1284,17 +1396,12 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
     if(rank==0) {
         MPI_Status status;
         unsigned int tempnvec[siv.size()];
+        unsigned int tempnfvec[siv.size()];
         double tempsumywvec[siv.size()];
         double tempsumzwvec[siv.size()];
         double tempsumwfvec[siv.size()];
         double tempsumwcvec[siv.size()];
         
-        /*
-        double temp_sb_sumyw_vec[sbtvs];
-        double temp_sb_sumzw_vec[sbtvs];
-        double temp_sb_sumwf_vec[sbtvs];
-        double temp_sb_sumwc_vec[sbtvs];
-        */
         //cout << "siv.size() (rank) = " << siv.size() << "----" << rank << endl;
         // receive nvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -1317,6 +1424,30 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         }
         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
         delete[] request;
+
+
+        // receive nfvec, update and send back.
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Recv(&tempnfvec,siv.size(),MPI_UNSIGNED,MPI_ANY_SOURCE,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+            for(size_t j=0;j<siv.size();j++){
+                nfvec[j]+=tempnfvec[j];
+                //cout << "nfvec = " << nfvec[j] << endl; 
+            }
+        }
+        request=new MPI_Request[tc];
+
+        for(size_t i=1; i<=(size_t)tc; i++) {
+            MPI_Isend(&nfvec,siv.size(),MPI_UNSIGNED,i,0,MPI_COMM_WORLD,&request[i-1]);
+        }
+        
+        // cast back to mci
+        for(size_t i=0;i<siv.size();i++) {
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->nf=(size_t)nfvec[i];    // cast back to size_t
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+
 
         // receive sumywvec, update and send back.
         for(size_t i=1; i<=(size_t)tc; i++) {
@@ -1399,6 +1530,7 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         delete[] request;
     
     } else {
+
         MPI_Request *request=new MPI_Request;
         MPI_Status status;
         //cout << "siv.size() (rank) = " << siv.size() << "----" << rank << endl;
@@ -1408,14 +1540,27 @@ void mcbrt::local_mpi_reduce_allsuff(std::vector<sinfo*>& siv)
         delete request;
         MPI_Recv(&nvec,siv.size(),MPI_UNSIGNED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
 
-        // send sumywvec, update nvec, receive sumywvec
+        // send nfvec, update nvec, receive nfwvec
         request=new MPI_Request;
-        MPI_Isend(&sumywvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        MPI_Isend(&nfvec,siv.size(),MPI_UNSIGNED,0,0,MPI_COMM_WORLD,request);
         // cast back to msi
         for(size_t i=0;i<siv.size();i++) {
             mcinfo* msi=static_cast<mcinfo*>(siv[i]);
             msi->n=(size_t)nvec[i];    // cast back to size_t
             //cout << "nvec = " << nvec[i] << endl;
+        }
+        MPI_Wait(request,MPI_STATUSES_IGNORE);
+        delete request;
+        MPI_Recv(&nfvec,siv.size(),MPI_UNSIGNED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+
+        // send sumywvec, update nfvec, receive sumywvec
+        request=new MPI_Request;
+        MPI_Isend(&sumywvec,siv.size(),MPI_DOUBLE,0,0,MPI_COMM_WORLD,request);
+        // cast back to msi
+        for(size_t i=0;i<siv.size();i++) {
+            mcinfo* msi=static_cast<mcinfo*>(siv[i]);
+            msi->nf=(size_t)nfvec[i];    // cast back to size_t
+            //cout << "nfvec = " << nfvec[i] << endl;
         }
         MPI_Wait(request,MPI_STATUSES_IGNORE);
         delete request;

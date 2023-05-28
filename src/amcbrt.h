@@ -16,7 +16,7 @@ public:
    //constructors/destructors
    amcbrt(): mcbrt(),st(0),m(200),mb(m),notjmus(m),divec(m) {}
    amcbrt(size_t im): mcbrt(),st(0),m(im),mb(m),notjmus(m),divec(m) {}
-   //amxbrt(size_t im, size_t ik): mxbrt(ik),st(0),m(im),mb(m),notjmus(m),divec(m) {}
+   
    virtual ~amcbrt() {
       if(!notjmus.empty()) {
          for(size_t j=0;j<m;j++) notjmus[j].clear();
@@ -56,6 +56,9 @@ public:
 
    // Orthogonal discrepancy
    void set_orthogonal_delta(bool orthd){this->orth_delta = orthd;for(size_t j=0;j<m;j++) mb[j].set_orthogonal_delta(orthd);}
+
+   // Modularization
+   void set_modularization(bool mod){this->modular = mod;for(size_t j=0;j<m;j++) mb[j].set_modularization(mod);}
 
     //--------------------
     //data

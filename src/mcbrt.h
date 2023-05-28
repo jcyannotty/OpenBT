@@ -49,10 +49,12 @@ class mcinfo : public sinfo{
         std::vector<double> subtree_sumzw;
         std::vector<double> subtree_sumwf;
         std::vector<double> subtree_sumwc;
+        std::vector<double> subtree_nf;
         double sibling_sumyw;
         double sibling_sumzw;
         double sibling_sumwf;
         double sibling_sumwc;
+        double sibling_nf;
 
         // Orthogonal Discrepancy scaling
         double delta_scale_num;
@@ -90,7 +92,7 @@ class mcinfo : public sinfo{
             for(size_t i=0;i<subtree_sumwc.size();i++){
                 // Constructor to create a new instance of mcinfo that allows us to use the getmoments() method 
                 // set nf = 1 by default (nf value is not needed here)
-                mcinfo mci(subtree_sumyw[i],subtree_sumzw[i],subtree_sumwf[i],subtree_sumwc[i],1);
+                mcinfo mci(subtree_sumyw[i],subtree_sumzw[i],subtree_sumwf[i],subtree_sumwc[i],subtree_nf[i]); // nf was 1 previously
                 // Get the node mean and variance
                 node_vec = mci.getmoments(mu1, tau1);
                 node_mean = node_vec[0];
@@ -103,7 +105,7 @@ class mcinfo : public sinfo{
 
             // Now set sibling info if this node has it as well and do the same process
             if(sibling_info){
-                mcinfo mci(sibling_sumyw,sibling_sumzw,sibling_sumwf,sibling_sumwc,1); // set nf = 1 by default, its not important here
+                mcinfo mci(sibling_sumyw,sibling_sumzw,sibling_sumwf,sibling_sumwc,sibling_nf); // set nf = 1 by default, its not important here
                 node_vec = mci.getmoments(mu1, tau1);
                 sibling_mean = node_vec[0];
                 sibling_var = node_vec[1];            
@@ -121,6 +123,7 @@ class mcinfo : public sinfo{
                 subtree_sumzw.push_back((*mcv[i]).sumzw);
                 subtree_sumwf.push_back((*mcv[i]).sumwf);
                 subtree_sumwc.push_back((*mcv[i]).sumwc);
+                subtree_nf.push_back((*mcv[i]).nf);
             }
         }
 
@@ -131,6 +134,7 @@ class mcinfo : public sinfo{
             subtree_sumzw.resize(sz);
             subtree_sumwf.resize(sz);
             subtree_sumwc.resize(sz);
+            subtree_nf.resize(sz);
         }
 
         // Set sibling information -- essential for birth and death steps. If the right child holds subtree_info,
@@ -144,6 +148,7 @@ class mcinfo : public sinfo{
             sibling_sumzw = mci.sumzw;
             sibling_sumwf = mci.sumwf;
             sibling_sumwc = mci.sumwc;
+            sibling_nf = mci.nf;
         }
 
         // Set delta area -- for orthogonal discrepancy
@@ -196,6 +201,7 @@ class mcinfo : public sinfo{
                     subtree_sumzw.push_back(mrhs.subtree_sumzw[i]);
                     subtree_sumwf.push_back(mrhs.subtree_sumwf[i]);
                     subtree_sumwc.push_back(mrhs.subtree_sumwc[i]);
+                    subtree_nf.push_back(mrhs.subtree_nf[i]);
                 }
             }else if(mrhs.subtree_info && subtree_info){
                 // mrhs has subtree_info and so does this one -- add the terms together to this instance of mcinfo
@@ -204,6 +210,7 @@ class mcinfo : public sinfo{
                     subtree_sumzw[i]+=mrhs.subtree_sumzw[i];
                     subtree_sumwf[i]+=mrhs.subtree_sumwf[i];
                     subtree_sumwc[i]+=mrhs.subtree_sumwc[i];
+                    subtree_nf[i]+=mrhs.subtree_nf[i];
                 }
             }
             // Overloading addition operator for sibling info -- adding two nodes that have sibling info (occurs in mpi only)
@@ -212,6 +219,7 @@ class mcinfo : public sinfo{
                 sibling_sumzw+=mrhs.sibling_sumzw;
                 sibling_sumwf+=mrhs.sibling_sumwf;
                 sibling_sumwc+=mrhs.sibling_sumwc;
+                sibling_nf+=mrhs.sibling_nf;
             }
             
             // Overloading the addition operator for area info
@@ -257,6 +265,7 @@ class mcinfo : public sinfo{
                     this->subtree_sumzw = mrhs.subtree_sumzw;
                     this->subtree_sumwf = mrhs.subtree_sumwf;
                     this->subtree_sumwc = mrhs.subtree_sumwc;
+                    this->subtree_nf = mrhs.subtree_nf;
                     this->subtree_mean = mrhs.subtree_mean;
                     this->subtree_var = mrhs.subtree_var;
                     this->subtree_info = mrhs.subtree_info;
@@ -267,6 +276,7 @@ class mcinfo : public sinfo{
                     this->sibling_sumzw = mrhs.sibling_sumzw;
                     this->sibling_sumwf = mrhs.sibling_sumwf;
                     this->sibling_sumwc = mrhs.sibling_sumwc;
+                    this->sibling_nf = mrhs.sibling_nf;
                     this->sibling_info = mrhs.sibling_info;
                 }
                 // Overload for the areas
@@ -314,7 +324,6 @@ class mcinfo : public sinfo{
                 std::cout << "sibling_sumwf = " << sibling_sumwf << std::endl;
                 std::cout << "sibling_sumwc = " << sibling_sumwc << std::endl;
             }
-
             std::cout << "**************************************" << std::endl;
         }
 };
@@ -339,7 +348,6 @@ public:
     //--------------------
     //constructors/destructors
     mcbrt():brt(){}
-    //mxbrt(size_t ik):brt(ik) {}
     //--------------------
     //methods
     void drawvec(rn& gen);
@@ -383,6 +391,13 @@ public:
     void get_orthogonal_scales_rot(tree::npv bnv, tree::npv uroots, std::vector<double> &area,std::map<tree::tree_cp,double> &area_by_node); // set orthogonal scales for rot and perturb
 
     void set_orthogonal_delta(bool orthd){orth_delta = orthd;}
+
+    // Modularization
+    void set_modularization(bool orthd){modular = orthd;}
+    virtual double drawtheta2_modular(std::vector<sinfo*> sivec,std::vector<double> &theta1_vec,rn& gen);
+    virtual double drawtheta1_modular(sinfo& si, rn& gen);
+    virtual vxd drawnodethetavec_modular(sinfo& si, rn& gen);
+    
     
     
     // Gradient functions for calibration parameter updates -- maybe virtual (??)
@@ -394,6 +409,7 @@ public:
     cinfo ci; //conditioning info (e.g. other parameters and prior and end node models)
     std::vector<double> etahat;
     bool orth_delta;
+    bool modular;
     
     //--------------------
     //data
