@@ -143,11 +143,12 @@ void mcbrt::drawthetavec(rn& gen)
                 theta1_modvec.push_back(theta1);
             }
             // Draw theta2
-            theta2 = drawtheta2_modular(unodestats,theta1_modvec, gen);
+            theta2 = drawtheta2_modular(unodestats,theta1_modvec,gen);
             // Set thetavec with individual theta1 and common theta2
             for(size_t j=0;j<unodestats.size();j++){
                 ind = unmap[uroots[i]][j];
-                thetavec << theta1_modvec[j], theta2;
+                thetavec(0) = theta1_modvec[j];
+                thetavec(1) =  theta2;
                 bnv[ind]->setthetavec(thetavec);
             }
         }
@@ -336,7 +337,7 @@ vxd mcbrt::drawnodethetavec_modular(sinfo& si, rn& gen){
 
     // Get the theta2 using the field obs
     postvar2 = 1/(mci.sumwf + 1/tau2_sqr);
-    postmean2 = postvar2*(mci.sumyw - theta1 + ci.mu2/tau2_sqr);
+    postmean2 = postvar2*(mci.sumyw - theta1*mci.sumwf + ci.mu2/tau2_sqr);
     theta2 = postmean2 + sqrt(postvar2)*gen.normal();
 
     // return the theta1 and theta2 vector
@@ -358,6 +359,8 @@ double mcbrt::drawtheta1_modular(sinfo& si, rn& gen){
 
     // Only model runs on this node
     theta1 = mtilde + gen.normal()*sqrt(vtilde);
+    //cout << "mtilde = " << mtilde << endl;
+    //cout << "vtilde = " << vtilde << endl;
     return theta1;
 }
 
@@ -369,20 +372,23 @@ double mcbrt::drawtheta2_modular(std::vector<sinfo*> sivec, std::vector<double> 
     double rhat, vhat;
     double tau2_sqr = ci.tau2*ci.tau2;
     double suma2=0.0;
-    std::vector<double> mv;
 
     // Get modularized prior information 
     for(size_t i=0;i<sivec.size();i++){
         // cast to mcinfo and get modularized mean and var
         mcinfo& mci=static_cast<mcinfo&>(*sivec[i]); 
         // Compile suff stats from field obs
-        rhat = mci.sumyw/mci.sumwf;
-        vhat = 1/mci.sumwf;
-        if(vhat>0){w = 1/vhat;}else{w = 0.0;}
-        if(mci.nf>0){theta1 = theta1_vec[i];}else{theta1 = 0.0;}
+        if(mci.sumwf>0){
+            rhat = mci.sumyw/mci.sumwf;
+            vhat = 1/mci.sumwf;
+            w = 1/vhat;
+        }else{
+            w = 0.0;
+        }        
+        if(mci.nf>0){theta1 = theta1_vec[i];}else{theta1 = 0.0;} // swtich back to mci.sumwf > 0 condition
         // Store the collected suff stats
         sumw += w;
-        summeanw += mv[0]*w - theta1;
+        summeanw += (rhat - theta1)*w;
     }
 
     // Now get the posterior mean and variance

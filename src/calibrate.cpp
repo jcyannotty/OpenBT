@@ -664,10 +664,12 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 #endif
         // Update the residuals, not using methodwrappper now bc I didn't create additional dinfo objects 
         for(size_t j=0;j<nf;j++){
-            rf[j] = y[j]-acb.f(j);    
+            rf[j] = y[j]-acb.f(j);
+            //cout << "acb.f(j) = " << acb.f(j) << endl;    
         }
         for(size_t j=0;j<nc;j++){
             rc[j] = y[nf+j]-acb.f(nf+j);
+            //cout << "acb.f(nf+j) = " << acb.f(nf+j) << endl;
         }
         
         if((i+1)%adaptevery==0 && mpirank==0) acb.adapt();
@@ -783,7 +785,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         }
         
 #endif 
-    if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();
+        if((i+1)%adaptevery==0 && mpirank==0) uvec.adapt();
     }
 
     //------------------------------------------------------------------------------
