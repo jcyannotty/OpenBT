@@ -927,10 +927,12 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 #endif
         // Update the residuals, not using methodwrappper now bc I didn't create additional dinfo objects 
         for(size_t j=0;j<nf;j++){
-            rf[j] = y[j]-acb.f(j);    
+            rf[j] = y[j]-acb.f(j);
+            //cout << "y[j] = " << y[j] << "--- acb.f(j) = " << acb.f(j) << "----rf[j] = " << rf[j] << endl;    
         }
         for(size_t j=0;j<nc;j++){
-            rc[j] = y[nf+j]-acb.f(nf+j);    
+            rc[j] = y[nf+j]-acb.f(nf+j);
+            //cout << "rc[j] = " << rc[j] << endl;    
         }
         // Update varaince trees
 #ifdef _OPENMPI
@@ -942,10 +944,12 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
 #endif
         // Update the value of sigma in sig -- replaces the wrapper
         for(size_t j=0;j<nf;j++){
-            sig[j] = psbmf.f(j);    
+            sig[j] = psbmf.f(j);
+            //cout << "sigf[j] = " << sig[j] << endl;   
         }
         for(size_t j=0;j<nc;j++){
-            sig[nf+j] = psbmc.f(j);    
+            sig[nf+j] = psbmc.f(j); 
+            //cout << "sigc[j] = " << sig[nf+j] << endl;   
         }
         
         // Update calibration parameters

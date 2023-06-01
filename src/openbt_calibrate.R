@@ -655,3 +655,110 @@ posterior.openbtcal = function(fit,q.lower=0.025,q.upper=0.975){
   class(res)="OpenBT_calparams"
   return(res)
 }
+
+
+
+
+# Scan the trees in the posterior to extract tree properties
+# Returns the mean trees as a list of lists in object mt
+# and the variance trees as a list of lists in object st.
+# The format is mt[[i]][[j]] is the jth posterior tree from the ith posterior
+# sum-of-trees (ensemble) sample.
+# The tree is encoded in 4 vectors - the node ids, the node variables,
+# the node cutpoints and the node thetas.
+scanpost.openbtcalibrate<-function(post){
+  fp=file(paste(post$folder,"/",post$modelname,".fit",sep=""),open="r")
+  if(scan(fp,what=integer(),nmax=1,quiet=TRUE) != post$nd) stop("Error scanning posterior\n")
+  if(scan(fp,what=integer(),nmax=1,quiet=TRUE) != post$m) stop("Error scanning posterior\n")
+  if(scan(fp,what=integer(),nmax=1,quiet=TRUE) != post$mh) stop("Error scanning posterior\n")
+  if(scan(fp,what=integer(),nmax=1,quiet=TRUE) != post$nd*post$m) stop("Error scanning posterior\n")
+  
+  # scan mean trees
+  numnodes=scan(fp,what=integer(),nmax=post$nd*post$m,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  ids=scan(fp,what=integer(),nmax=lenvec,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  vars=scan(fp,what=integer(),nmax=lenvec,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  cuts=scan(fp,what=integer(),nmax=lenvec,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  thetas=scan(fp,what=double(),nmax=lenvec,quiet=TRUE)
+  
+  # scan var trees
+  if(scan(fp,what=integer(),nmax=1,quiet=TRUE) != post$nd*post$mh) stop("Error scanning posterior\n")
+  snumnodes=scan(fp,what=integer(),nmax=post$nd*post$mh,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  sids=scan(fp,what=integer(),nmax=lenvec,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  svars=scan(fp,what=integer(),nmax=lenvec,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  scuts=scan(fp,what=integer(),nmax=lenvec,quiet=TRUE)
+  lenvec=scan(fp,what=integer(),nmax=1,quiet=TRUE)
+  sthetas=scan(fp,what=double(),nmax=lenvec,quiet=TRUE)
+  
+  close(fp)
+  
+  # Now rearrange things into lists of lists so its easier to manipulate
+  mt=list()
+  ndx=2
+  cs.numnodes=c(0,cumsum(numnodes))
+  for(i in 1:post$nd) {
+    ens=list()
+    for(j in 1:post$m)
+    {
+      tree=list(id=ids[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]],
+                var=vars[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]],
+                cut=cuts[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]],
+                theta=thetas[(2*cs.numnodes[ndx-1]+1):(2*cs.numnodes[ndx])])
+      ens[[j]]=tree
+      ndx=ndx+1
+    }
+    mt[[i]]=ens
+  }
+  
+  
+  st=list()
+  ndx=2
+  cs.numnodes=c(0,cumsum(snumnodes))
+  for(i in 1:post$nd) {
+    ens=list()
+    for(j in 1:post$mh)
+    {
+      tree=list(id=sids[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]],
+                var=svars[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]],
+                cut=scuts[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]],
+                theta=sthetas[(cs.numnodes[ndx-1]+1):cs.numnodes[ndx]])
+      ens[[j]]=tree
+      ndx=ndx+1
+    }
+    st[[i]]=ens
+  }
+  
+  return(list(mt=mt,st=st))
+}
+
+
+## Find terminal nodes from scanned tree
+tnodes_from_scan.openbtcalibrate = function(tree_list){
+  vlist = tree_list$var
+  idlist = tree_list$id
+  tnodes = c()
+  tnodes_theta = matrix(0,nrow = 0, ncol = 2) 
+  
+  if(length(idlist)>1){
+    for(i in 1:(length(idlist)-1)){
+      if(idlist[i+1] != 2*idlist[i]){
+        tnodes = c(tnodes, idlist[i])
+        tnodes_theta = rbind(tnodes_theta,matrix(tree_list$theta[(2*(i-1)+1):(i*2)], 
+                                                 nrow = 1, ncol = 2))  
+      }
+    }
+  }
+  # Append the last node in the list to the terminal node info
+  sz = length(idlist)
+  tnodes = c(tnodes,idlist[sz])
+  tnodes_theta = rbind(tnodes_theta,matrix(tree_list$theta[(2*(sz-1)+1):(sz*2)], nrow = 1, ncol = 2))
+  
+  out = list(tnodes = tnodes, tnodes_theta = tnodes_theta)
+  return(out)
+}
