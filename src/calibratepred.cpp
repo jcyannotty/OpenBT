@@ -430,9 +430,12 @@ int main(int argc, char* argv[])
         // Predict eta and delta separately
         acb.predict_thetavec(&dip,&fiter);
 
-        //Store these weights into the Vector of Eigen Matrices
+        //Store these predictions into the Vector of Eigen Matrices
+        vxd onevec(np);
+        onevec = vxd::Ones(np);
         for(size_t j = 0;j<2; j++){
             flist[j].row(i) = fiter.row(j); //populate the ith row of each flist[j] matrix (ith post draw) for item j (eta or delta)
+            if(j==0){flist[j].row(i) = flist[j].row(i) + ycmean*onevec.transpose();} // recenter the data
         }
 
         // Load the next u

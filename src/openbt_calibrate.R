@@ -121,6 +121,10 @@ openbtcal = function(
     pbd=c(pbd,0.0)
   }
 
+  # Create a spot for common arguments.... 
+  if(is.null(mu1)) mu1=0
+  if(is.null(mu2)) mu2=0
+
   #--------------------------------------------------
   # Calibration priors
   #--------------------------------------------------
@@ -185,13 +189,14 @@ openbtcal = function(
   yf_mean = mean(yf_train)
   yc_mean = mean(yc_train)
   
+
   #--------------------------------------------------
   # Priors
   #--------------------------------------------------
   # Theta priors -- need to adjust calibration
   rgyf = range(yf_train)
   rgyc = range(yc_train)
-  disc = 2*abs(mean(yf_train) - mean(yc_train)) 
+  disc = 2*abs(yf_mean - yc_mean) 
   tau1 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k1)
   tau2 =  disc/(sqrt(m)*k2)
   #tau2 =  disc/(2*sqrt(m)*k2)
@@ -274,6 +279,13 @@ openbtcal = function(
   }
   
   #--------------------------------------------------
+  # Centering and scaling data
+  #--------------------------------------------------
+  # Mean center the data by yc_mean
+  yf_train = yf_train - yc_mean
+  yc_train = yc_train - yc_mean
+  
+  #--------------------------------------------------
   # Banner prints
   #--------------------------------------------------
   if(modeltype==MODEL_OSBART)
@@ -288,7 +300,7 @@ openbtcal = function(
 
 
   #--------------------------------------------------
-  #write out config file
+  # write out config file
   #--------------------------------------------------
   xroot="x"
   yroot="y"
@@ -386,6 +398,7 @@ openbtcal = function(
   res=list()
   res$modeltype=modeltype; res$model=model
   res$nf = nf; res$nc = nc;res$px = px; res$pu = pu;
+  res$yc_mean = yc_mean; res$yf_mean = yf_mean
   res$prior_list = prior_list; res$xcols = xcols; res$ucols = ucols;
   res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
   res$nadapt=nadapt; res$adaptevery=adaptevery;res$mu1=mu1;res$mu2=mu2;res$tau1=tau1;res$tau2=tau2;
@@ -440,9 +453,9 @@ predict.openbtcal = function(fit=NULL,xf_test=NULL,xc_test=NULL,ucols=NULL,tc=2,
     colnames(xc_test) = c(paste0('x',xcols),paste0('u',ucols-px))
   }
   
-  #yf_mean = fit$yf_mean
-  #yc_mean = fit$yc_mean
-  yf_mean = yc_mean = 0
+  yf_mean = fit$yf_mean
+  yc_mean = fit$yc_mean
+  #yf_mean = yc_mean = 0
   
   # Set roots
   xproot="xp"

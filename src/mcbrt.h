@@ -39,9 +39,11 @@ class mcinfo : public sinfo{
         // Important for the proposals and drawing theta
         std::vector<double> subtree_var; // Variances for the common nodes in the subtree (those that are not involved in birth/death) 
         std::vector<double> subtree_mean; // Means for the common nodes in the subtree (those that are not involved in birth/death)
+        //std::vector<double> subtree_vhat; // Component of subtree_var
         bool subtree_info; // Does this instance of mcinfo contain information for the rest of the subtree (other than its individual node info)?
         double sibling_var; // Variance for the sibling of a node involved in birth/death -- essential in birth/death
         double sibling_mean; // Mean for the sibling of a node involved in birth/death -- essential in birth/death
+        //double sibling_vhat; // component of sibling_var
         bool sibling_info; // Does this instance of mcinfo contain information of a sibling node
         bool subtree_node; // Is this instance of mcinfo in a subtree -- needed to differentiate between cases in lm and drawtheta
 

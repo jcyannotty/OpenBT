@@ -378,19 +378,27 @@ double mcbrt::drawtheta2_modular(std::vector<sinfo*> sivec, std::vector<double> 
         // cast to mcinfo and get modularized mean and var
         mcinfo& mci=static_cast<mcinfo&>(*sivec[i]); 
         // Compile suff stats from field obs
+        if(mci.nf>0){theta1 = theta1_vec[i];}else{theta1 = 0.0;} // swtich back to mci.sumwf > 0 condition
+        sumw += mci.sumwf;
+        summeanw += mci.sumyw - theta1*mci.sumwf;
+        /*
         if(mci.sumwf>0){
-            rhat = mci.sumyw/mci.sumwf;
-            vhat = 1/mci.sumwf;
+            //rhat = mci.sumyw/mci.sumwf;
+            //vhat = 1/mci.sumwf;
             w = 1/vhat;
         }else{
             w = 0.0;
         }        
-        if(mci.nf>0){theta1 = theta1_vec[i];}else{theta1 = 0.0;} // swtich back to mci.sumwf > 0 condition
+        
         // Store the collected suff stats
         sumw += w;
         summeanw += (rhat - theta1)*w;
+        */
     }
-
+    // compute rhat and vhat 
+    //vhat = 1/sumw;
+    //rhat = summeanw*vhat;
+    
     // Now get the posterior mean and variance
     postvar = 1/(sumw + 1/tau2_sqr);
     postmean = postvar*(summeanw + ci.mu2/tau2_sqr);
@@ -504,6 +512,7 @@ double mcbrt::lmnode(mcinfo &mci){
 
 //--------------------------------------------------
 // integrated likelihood for a mcinfo instance which is storing the joint information across the nodes
+// p(rhat1,...,rhatB | Tj, u, sigma2)
 double mcbrt::lmsubtree(mcinfo &mci){
     // Initialize terms for lm
     double tau2_sqr = ci.tau2*ci.tau2;
@@ -545,7 +554,7 @@ double mcbrt::lmsubtree(mcinfo &mci){
             B+=1;
         }
     }
-    // Add sibling info if this suff stat instance has it & if it has filed obs on it
+    // Add sibling info if this suff stat instance has it & if it has field obs on it
     if(mci.sibling_info){
         if(mci.sibling_var>0){
             w = 1/mci.sibling_var;
@@ -577,6 +586,7 @@ double mcbrt::lmsubtree(mcinfo &mci){
 
 //--------------------------------------------------
 // integrated likelihood for an individual node in the subtree -- adds its additional information
+// g(rhatb) & p(rvec^c) b=1,...,B
 double mcbrt::lmsubtreenode(mcinfo &mci){
     // Initialize terms for lm
     double tau1_sqr = ci.tau1*ci.tau1;

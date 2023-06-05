@@ -529,6 +529,8 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     psbmf.setmi(pbdh,pbh,minnumboth,doperth,stepwperth,probchvh,&chgv);
     psbmf.setci(nuf,lambdaf);
 
+    cout << "lamf = " << lambdaf << endl; 
+
     //--------------------------------------------------
     // Product variance model for the error in the model runs
     psbrt psbmc(mh);
@@ -665,7 +667,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Update the residuals, not using methodwrappper now bc I didn't create additional dinfo objects 
         for(size_t j=0;j<nf;j++){
             rf[j] = y[j]-acb.f(j);
-            //cout << "acb.f(j) = " << acb.f(j) << endl;    
+            //cout << "acb.f(j) + ycmean = " << acb.f(j) + ycmean << endl;    
         }
         for(size_t j=0;j<nc;j++){
             rc[j] = y[nf+j]-acb.f(nf+j);
@@ -953,6 +955,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         }
         
         // Update calibration parameters
+/*
 #ifdef _OPENMPI
         // Reset csumwr2 and nsumwr2
         csumwr2 = 0.0; 
@@ -1042,6 +1045,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         }
 #endif
+*/
         if(mpirank==0) {
             acb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
             psbmf.savetree(i,mh,sfnn,sfid,sfvar,sfc,sftheta);
