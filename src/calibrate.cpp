@@ -955,7 +955,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         }
         
         // Update calibration parameters
-/*
+
 #ifdef _OPENMPI
         // Reset csumwr2 and nsumwr2
         csumwr2 = 0.0; 
@@ -1045,7 +1045,6 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             uvec.updatex(xf,ucols,p,nf); // used in the f variance model
         }
 #endif
-*/
         if(mpirank==0) {
             acb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
             psbmf.savetree(i,mh,sfnn,sfid,sfvar,sfc,sftheta);

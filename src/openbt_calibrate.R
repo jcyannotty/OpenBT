@@ -775,3 +775,29 @@ tnodes_from_scan.openbtcalibrate = function(tree_list){
   out = list(tnodes = tnodes, tnodes_theta = tnodes_theta)
   return(out)
 }
+
+
+# tree stats from scan
+tree_stats_from_scan.openbtcalibrate = function(tree_list,p){
+  N = length(tree_list)
+  m = length(tree_list[[1]])
+  vt = matrix(0, nrow = N, ncol = p)
+  ct = vector(mode="list",p)
+  
+  for(i in 1:N){
+    vti = rep(0,p)
+    for(j in 1:m){
+      h1 = which(tree_list[[i]][[j]]$cut > 0)
+      for(k in 1:p){
+        h2 = which(tree_list[[i]][[j]]$var[h1] == k-1)
+        vti[k] = length(h2)
+        cti = tree_list[[i]][[j]]$cut[h1[h2]]
+        ct[[k]] = append(ct[[k]],cti)
+      }
+      vt[i,] = vt[i,] + vti 
+    }
+    cat("Progress: ", round(i/N,4), "\r")
+  }
+  out_list = list(vt = vt, ct = ct)
+  return(out_list)
+}
