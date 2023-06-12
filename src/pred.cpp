@@ -624,7 +624,7 @@ if(modeltype!=MODEL_MIXBART){
          axb.predict_mix(&dip, &fi_test);
       }
       */
-      axb.predict_mix(&dip, &fi_test);
+      axb.predict_vec(&dip, &fi_test);
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
    }
 

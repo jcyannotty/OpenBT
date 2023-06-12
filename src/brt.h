@@ -132,9 +132,34 @@ public:
    };
    class cinfo { //parameters for end node model prior
    };
+   // random path info class
+   class rpinfo{
+      public:
+         rpinfo(): gamma(0.5), q(2.0) {}
+         double gamma;
+         double q;
+         mxd phix;
+
+         double psix(double x, double c, double L, double U){
+            double psi = 0.0;
+            double a, b, d1, d2;   
+            a = c - (c-L)*gamma;
+            b = c + (U-c)*gamma;
+            d1 = (c-x)/(c-a);
+            d2 = (x-c)/(b-c);
+            
+            if(x<c){
+               psi = 0.5*std::pow(std::max(1-d1,0.0),q);
+            }else{
+               psi = 1-0.5*std::pow(std::max(1-d2,0.0),q);
+            }
+            return(psi);
+         }
+
+   };
    //--------------------
    //constructors/destructors
-   brt():t(0.0),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0),randhp(false) {}
+   brt():t(0.0),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0),randhp(false),randpath(false),rpi(){}
    //brt(size_t ik):t(vxd::Zero(ik)),tp(),xi(0),ci(),di(0),mi(),tc(1),rank(0) {}
    virtual ~brt() { if(mi.varcount) delete[] mi.varcount; }
    //--------------------
@@ -158,7 +183,8 @@ public:
    void addstats(unsigned int* vc, double* tad, unsigned int* tmd, unsigned int* tid) { *tad+=mi.tavgd; *tmd=std::max(*tmd,mi.tmaxd); *tid=std::min(*tid,mi.tmind); for(size_t i=0;i<xi->size();i++) vc[i]+=mi.varcount[i]; }
    void resetstats() { mi.tavgd=0.0; mi.tmaxd=0; mi.tmind=0; for(size_t i=0;i<xi->size();i++) mi.varcount[i]=0; }
    void setci() {}
-   void sethpi(size_t sz) {this->randhp = true; this->kp=sz; this->t.phi.resize(sz,0);} // set random hyperparameter info
+   void sethpi(size_t sz) {this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);} // set random hyperparameter info
+   void setrpi(double gam, double q) {randpath = true; rpi.q = q, rpi.gamma = gam;} // set random path information
    void draw(rn& gen);
    void draw_mpislave(rn& gen);
    void mpislave_bd(rn& gen);
@@ -205,15 +231,15 @@ public:
    void bd_vec(rn& gen);
 
    //Set the data, the vector of predicted values, and residuals
-   void setdata_mix(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_mix(); setr_mix();}
+   void setdata_vec(dinfo *di) {this->di=di; resid.resize(di->n); yhat.resize(di->n); setf_vec(); setr_vec();}
    void setfi(finfo *fi, size_t k){this->fi = fi; this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);this->nsprior = false;} //sets the pointer for the f matrix and k as members of brt 
    void setk(size_t k){this->k = k; this->t.thetavec.resize(k); this->t.thetavec=vxd::Zero(k);} //sets the number of models for mixing--used in programs that do not need to read in function data (ex: mixingwts.cpp))
    void setfsd(finfo *fsd){this->fisd = fsd; this->nsprior = true;} //sets the function discrepancies 
-   void setf_mix();
-   void setr_mix(); 
-   void predict_mix(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
+   void setf_vec();
+   void setr_vec(); 
+   void predict_vec(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
    void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // remove
-   void get_mix_wts(dinfo* dipred, mxd* wts);
+   void predict_thetavec(dinfo* dipred, mxd* wts);
    void get_mix_theta(dinfo* dipred, mxd* wts); // Remove
    void get_fi(){std::cout << "fi = \n" << *fi << std::endl;}
     
@@ -228,7 +254,7 @@ public:
    
    // Use for random hyper parameters
    void savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi); 
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper); 
 
 protected:
    //--------------------
@@ -266,8 +292,8 @@ protected:
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew);     //uses subsuff
    void getpertsuff(tree::tree_p pertnode, tree::npv& bnv, size_t oldc,        //uses subsuff
                   std::vector<sinfo*>& sivold, std::vector<sinfo*>& sivnew);
-   void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); 
-   void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);
+   virtual void local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir); 
+   virtual void local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir);
    virtual double lm(sinfo& si); //uses pi. 
    virtual double drawnodetheta(sinfo& si, rn& gen);
    void local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& siv);
@@ -309,15 +335,21 @@ protected:
    finfo *fi; //pointer to the f matrix
    finfo *fisd; //pointer to the std matrix for fhat  
    bool nsprior; //True/False -- use stationary or nonstationy prior
-   size_t k; // vector size -- number of models
+   size_t k; // vector size -- dimension of theta
    size_t kp; // vector size for hyperparameters
-   
+
+   // Random path information
+   bool randpath; // Are we using a random path
+   tree::npv randz; // random path assignments, vector of node pointers
+   rpinfo rpi;
+
+
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
-   virtual std::vector<double> drawnodephivec(sinfo& si, rn& gen); // General method for ampling hyperparameters in a hierarchical model
-   virtual void local_setf_mix(diterator& diter);
-   virtual void local_setr_mix(diterator& diter);
-   virtual void local_predict_mix(diterator& diter, finfo& fipred);
-   virtual void local_get_mix_wts(diterator& diter, mxd& wts);
+   virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen); // General method for ampling hyperparameters in a hierarchical model
+   virtual void local_setf_vec(diterator& diter);
+   virtual void local_setr_vec(diterator& diter);
+   virtual void local_predict_vec(diterator& diter, finfo& fipred);
+   virtual void local_predict_thetavec(diterator& diter, mxd& wts);
    virtual void local_get_mix_theta(diterator& diter, mxd& wts);
    
    // #ifdef _OPENMP
@@ -325,10 +357,10 @@ protected:
    //void local_ompgetsuff_mix(tree::tree_p l, tree::tree_p r, dinfo di, sinfo& sil, sinfo& sir);
    //void local_ompallsuff_mix(dinfo di, tree::npv bnv,std::vector<sinfo*>& siv);
    //void local_ompsubsuff_mix(dinfo di, tree::tree_p nx, tree::npv& path, tree::npv bnv,std::vector<sinfo*>& siv);
-   void local_ompsetf_mix(dinfo di);
-   void local_ompsetr_mix(dinfo di);
-   void local_omppredict_mix(dinfo dipred, finfo fipred);
-   void local_ompget_mix_wts(dinfo dipred, mxd wts);
+   void local_ompsetf_vec(dinfo di);
+   void local_ompsetr_vec(dinfo di);
+   void local_omppredict_vec(dinfo dipred, finfo fipred);
+   void local_omppredict_thetavec(dinfo dipred, mxd wts);
    void local_ompget_mix_theta(dinfo dipred, mxd wts);
 
    //Save and Load tree with vector parameters
@@ -343,9 +375,9 @@ protected:
 
    // Save for random hyperparameters
    void local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-               std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi);
+               std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-               std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi);
+               std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
 
 };
 

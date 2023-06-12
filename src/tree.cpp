@@ -670,7 +670,7 @@ void tree::treetovec(int* oid, int* ov, int* oc, double* othetavec, double* ophi
       ov[i]=(int)nds[i]->getv();
       oc[i]=(int)nds[i]->getc();
       thetavec_temp = nds[i]->getthetavec();
-      phivec_temp = nds[i]->getphi();
+      phivec_temp = nds[i]->getthetahyper();
 
       //Temporary fix for annoyance caused in rotation step -- check to see if any of the internal theta's are a zero vector of dimension 2
       //Right now, k = 2 by default, so when assigning a new theta to a rotated internal node, it gets a zero vec of dim 2. If we have more than 2 models then this is an issue

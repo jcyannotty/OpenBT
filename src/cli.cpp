@@ -970,7 +970,7 @@ return 0;
    //set individual function discrepacnies if provided 
    if(nsprior) {axb.setfsd(&fsd);}
    //data objects
-   axb.setdata_mix(&di);  //set the data
+   axb.setdata_vec(&di);  //set the data
    //thread count
    axb.settc(tc-1);      //set the number of slaves when using MPI.
    //mpi rank

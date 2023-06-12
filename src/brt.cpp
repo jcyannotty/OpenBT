@@ -1334,7 +1334,7 @@ void brt::drawthetavec(rn& gen)
    for(size_t i=0;i<bnv.size();i++) {
       // Update random hyperparameters if randhp is true
       if(randhp){
-         bnv[i]->setphivec(drawnodephivec(*(siv[i]),gen));   
+         bnv[i]->setthetahypervec(drawnodehypervec(*(siv[i]),gen));   
       }
       // Update thetavec
       bnv[i]->setthetavec(drawnodethetavec(*(siv[i]),gen));
@@ -1356,8 +1356,8 @@ Eigen::VectorXd brt::drawnodethetavec(sinfo& si, rn& gen)
 }
 
 //--------------------------------------------------
-// Draw node phi vector where phi is a set of random hyper parameters 
-std::vector<double> brt::drawnodephivec(sinfo& si, rn& gen){
+// Draw node hyperparameter vector for random hyper parameters 
+std::vector<double> brt::drawnodehypervec(sinfo& si, rn& gen){
    // Placeholder, edit in model specific classes
    std::vector<double> temp(1,0);
    return temp;
@@ -1643,16 +1643,16 @@ void brt::bd_vec(rn& gen)
 //Model Mixing - set residuals and fitted values
 //--------------------------------------------------
 //set the vector of predicted values
-void brt::setf_mix() {
+void brt::setf_vec() {
    #ifdef _OPENMP
 #     pragma omp parallel num_threads(tc)
-      local_ompsetf_mix(*di); //faster if pass dinfo by value.
+      local_ompsetf_vec(*di); //faster if pass dinfo by value.
    #else
          diterator diter(di);
-         local_setf_mix(diter);
+         local_setf_vec(diter);
    #endif
 }
-void brt::local_ompsetf_mix(dinfo di)
+void brt::local_ompsetf_vec(dinfo di)
 {
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
@@ -1663,10 +1663,10 @@ void brt::local_ompsetf_mix(dinfo di)
    calcbegend(n,my_rank,thread_count,&beg,&end);
 
    diterator diter(&di,beg,end);
-   local_setf_mix(diter);
+   local_setf_vec(diter);
 #endif
 }
-void brt::local_setf_mix(diterator& diter)
+void brt::local_setf_vec(diterator& diter)
 {
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
@@ -1679,16 +1679,16 @@ void brt::local_setf_mix(diterator& diter)
 
 //--------------------------------------------------
 //set the vector of residual values
-void brt::setr_mix() {
+void brt::setr_vec() {
    #ifdef _OPENMP
 #     pragma omp parallel num_threads(tc)
-      local_ompsetr_mix(*di); //faster if pass dinfo by value.
+      local_ompsetr_vec(*di); //faster if pass dinfo by value.
    #else
          diterator diter(di);
-         local_setr_mix(diter);
+         local_setr_vec(diter);
    #endif
 }
-void brt::local_ompsetr_mix(dinfo di)
+void brt::local_ompsetr_vec(dinfo di)
 {
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
@@ -1699,17 +1699,17 @@ void brt::local_ompsetr_mix(dinfo di)
    calcbegend(n,my_rank,thread_count,&beg,&end);
 
    diterator diter(&di,beg,end);
-   local_setr_mix(diter);
+   local_setr_vec(diter);
 #endif
 }
-void brt::local_setr_mix(diterator& diter)
+void brt::local_setr_vec(diterator& diter)
 {
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
 
    for(;diter<diter.until();diter++) {
       bn = t.bn(diter.getxp(),*xi);
-      bn = t.bn(diter.getxp(),*xi);
+      //bn = t.bn(diter.getxp(),*xi);
       thetavec_temp = bn->getthetavec();
       resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
    }
@@ -1717,18 +1717,18 @@ void brt::local_setr_mix(diterator& diter)
 //--------------------------------------------------
 //predict the response at the (npred x p) input matrix *x
 //Note: the result appears in *dipred.y.
-void brt::predict_mix(dinfo* dipred, finfo* fipred) {
+void brt::predict_vec(dinfo* dipred, finfo* fipred) {
    #ifdef _OPENMP
 #     pragma omp parallel num_threads(tc)
-      local_omppredict_mix(*dipred, *fipred); //faster if pass dinfo by value.
+      local_omppredict_vec(*dipred, *fipred); //faster if pass dinfo by value.
    #else
          diterator diter(dipred);
-         local_predict_mix(diter, *fipred);
+         local_predict_vec(diter, *fipred);
    #endif
 }
 
 //Local predictions for model mixing over omp
-void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
+void brt::local_omppredict_vec(dinfo dipred, finfo fipred)
 {
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
@@ -1739,12 +1739,12 @@ void brt::local_omppredict_mix(dinfo dipred, finfo fipred)
    calcbegend(n,my_rank,thread_count,&beg,&end);
 
    diterator diter(&dipred,beg,end);
-   local_predict_mix(diter, fipred);
+   local_predict_vec(diter, fipred);
 #endif
 }
 
 //Local preditions for model mixing
-void brt::local_predict_mix(diterator& diter, finfo& fipred){
+void brt::local_predict_vec(diterator& diter, finfo& fipred){
    tree::tree_p bn;
    vxd thetavec_temp(k); 
    for(;diter<diter.until();diter++) {
@@ -1770,26 +1770,26 @@ void brt::predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fp
    //Run the same functions -- just now using the updated prediction matrix
    #ifdef _OPENMP
 #     pragma omp parallel num_threads(tc)
-      local_omppredict_mix(*dipred, fdpred); //faster if pass dinfo by value.
+      local_omppredict_vec(*dipred, fdpred); //faster if pass dinfo by value.
    #else
          diterator diter(dipred);
-         local_predict_mix(diter, fdpred);
+         local_predict_vec(diter, fdpred);
    #endif
 }
 
 //--------------------------------------------------
 //Get modeling mixing weights
-void brt::get_mix_wts(dinfo* dipred, mxd *wts){
+void brt::predict_thetavec(dinfo* dipred, mxd *wts){
    #ifdef _OPENMP
 #     pragma omp parallel num_threads(tc)
-      local_ompget_mix_wts(*dipred, *wts); //faster if pass dinfo by value.
+      local_ompget_predict_thetavec(*dipred, *wts); //faster if pass dinfo by value.
    #else
          diterator diter(dipred);
-         local_get_mix_wts(diter, *wts);
+         local_predict_thetavec(diter, *wts);
    #endif   
 }
 
-void brt::local_get_mix_wts(diterator &diter, mxd &wts){
+void brt::local_predict_thetavec(diterator &diter, mxd &wts){
    tree::tree_p bn;
    vxd thetavec_temp(k); 
    for(;diter<diter.until();diter++) {
@@ -1799,7 +1799,7 @@ void brt::local_get_mix_wts(diterator &diter, mxd &wts){
    }
 }
 
-void brt::local_ompget_mix_wts(dinfo dipred, mxd wts){
+void brt::local_omppredict_thetavec(dinfo dipred, mxd wts){
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
    int thread_count = omp_get_num_threads();
@@ -1809,7 +1809,7 @@ void brt::local_ompget_mix_wts(dinfo dipred, mxd wts){
    calcbegend(n,my_rank,thread_count,&beg,&end);
 
    diterator diter(&dipred,beg,end);
-   local_get_mix_wts(diter, wts);
+   local_predict_thetavec(diter, wts);
 #endif
 }
 
@@ -1974,22 +1974,22 @@ void brt::local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 //--------------------------------------------------
 // Save function
 void brt::savetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi)
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper)
 {
    #ifdef _OPENMP
 #    pragma omp parallel num_threads(tc)
-     local_ompsavetree_vec(iter,m,nn,id,v,c,theta,phi);
+     local_ompsavetree_vec(iter,m,nn,id,v,c,theta,hyper);
    #else
      int beg=0;
      int end=(int)m;
-     local_savetree_vec(iter,beg,end,nn,id,v,c,theta,phi);
+     local_savetree_vec(iter,beg,end,nn,id,v,c,theta,hyper);
    #endif
 }
 
 //--------------------------------------------------
 //void brt::local_ompsavetree(int* id, int* v, int* c, double* theta)
 void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi)
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper)
 {
 #ifdef _OPENMP
    int my_rank = omp_get_thread_num();
@@ -1999,14 +1999,14 @@ void brt::local_ompsavetree_vec(size_t iter, size_t m, std::vector<int>& nn, std
    int end=0;
    calcbegend(n,my_rank,thread_count,&beg,&end);
    if(end>my_rank)
-      local_savetree_vec(iter,beg,end,nn,id,v,c,theta,phi);
+      local_savetree_vec(iter,beg,end,nn,id,v,c,theta,hyper);
 #endif
 }
 
 //--------------------------------------------------
 void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, 
      std::vector<std::vector<int> >& v, std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta,
-     std::vector<std::vector<double> >& phi)
+     std::vector<std::vector<double> >& hyper)
 {
    //beg,end are not used in the single-tree models.
    nn[iter]=t.treesize();
@@ -2014,10 +2014,10 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
    v[iter].resize(nn[iter]);
    c[iter].resize(nn[iter]);
    theta[iter].resize(k*nn[iter]);
-   phi[iter].resize(kp*nn[iter]);
+   hyper[iter].resize(kp*nn[iter]);
 
    //t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0]);
-   t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],&phi[iter][0],k,kp);
+   t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],&hyper[iter][0],k,kp);
 }
 
 /*

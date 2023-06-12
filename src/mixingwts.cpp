@@ -306,7 +306,7 @@
 
         //Get the current posterior draw of the weights
         wts_iter = mxd::Zero(k,np);
-        axb.get_mix_wts(&dip, &wts_iter);
+        axb.predict_thetavec(&dip, &wts_iter);
         
         //Get terminal node parameters for the 1st pt on the node -- remove later
         //theta_iter = mxd::Zero(k,m);

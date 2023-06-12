@@ -646,7 +646,7 @@ int main(int argc, char* argv[])
     //axb.setfi(&fi, nummodels+1);
     axb.setfi(&fi, nummodels);
     //data objects
-    axb.setdata_mix(&dinfo_list[0]);  //set the data
+    axb.setdata_vec(&dinfo_list[0]);  //set the data
     //thread count
     axb.settc(tc-1);      //set the number of slaves when using MPI.
     //mpi rank
@@ -1021,7 +1021,7 @@ int main(int argc, char* argv[])
             }
             if(!hardreject){
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
-                axb.predict_mix(&dips_list[0],&fiprop);
+                axb.predict_vec(&dips_list[0],&fiprop);
 
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
                 for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
@@ -1184,7 +1184,7 @@ int main(int argc, char* argv[])
             }
             if(!hardreject){
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience                
-                axb.predict_mix(&dips_list[0],&fiprop);
+                axb.predict_vec(&dips_list[0],&fiprop);
 
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
                 for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 
@@ -1344,7 +1344,7 @@ int main(int argc, char* argv[])
             }
             if(!hardreject){    
                 // Get mixed predictions, using the same dinfo for the field obs variance model for convenience
-                axb.predict_mix(&dips_list[0],&fiprop);
+                axb.predict_vec(&dips_list[0],&fiprop);
             
                 // Get new weight sum of residuals squared, r_list[0][j] holds the new predictions (for convenience)
                 for(size_t j=0;j<nvec[0];j++){nsumwr2+=((y_list[0][j]-r_list[0][j])/sig_vec[0][j])*((y_list[0][j]-r_list[0][j])/sig_vec[0][j]);} 

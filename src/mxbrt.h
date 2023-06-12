@@ -137,7 +137,7 @@ public:
     void l2norm(mxd fhat);
     virtual double lmmix(sinfo& si); //lm for random beta, marginalizes over mu and beta
     virtual double lmbeta(sinfo& si); //lm for fixed beta
-    virtual std::vector<double> drawnodephivec(sinfo& si, rn& gen);
+    virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen);
     vxd getbeta(){return ci.beta_vec;};
     void setbeta(vxd newbeta){ci.beta_vec = newbeta;}
     

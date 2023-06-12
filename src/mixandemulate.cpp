@@ -637,7 +637,7 @@ int main(int argc, char* argv[])
     //function output information
     axb.setfi(&fi, nummodels+1);
     //data objects
-    axb.setdata_mix(&dinfo_list[0]);  //set the data
+    axb.setdata_vec(&dinfo_list[0]);  //set the data
     //thread count
     axb.settc(tc-1);      //set the number of slaves when using MPI.
     //mpi rank
@@ -925,7 +925,7 @@ int main(int argc, char* argv[])
         if(mpirank>0){
             // draw new weight matrix
             wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
-            axb.get_mix_wts(&diw, &wts_iter);  
+            axb.predict_thetavec(&diw, &wts_iter);  
         } 
         
         //Emulation Steps
@@ -973,7 +973,7 @@ int main(int argc, char* argv[])
         
         // Get the current model mixing weights    
         wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
-        axb.get_mix_wts(&diw, &wts_iter);  
+        axb.predict_thetavec(&diw, &wts_iter);  
 
         // Emulation Steps
         for(int j=0;j<nummodels;j++){
@@ -1074,7 +1074,7 @@ int main(int argc, char* argv[])
         // Get the current model mixing weights   
         if(mpirank>0){
             wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
-            axb.get_mix_wts(&diw, &wts_iter);  
+            axb.predict_thetavec(&diw, &wts_iter);  
         } 
         
         //Emulation Steps
@@ -1119,7 +1119,7 @@ int main(int argc, char* argv[])
         
         // Get the current model mixing weights    
         wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
-        axb.get_mix_wts(&diw, &wts_iter);  
+        axb.predict_thetavec(&diw, &wts_iter);  
 
         // Emulation Steps
         for(int j=0;j<nummodels;j++){
@@ -1209,7 +1209,7 @@ int main(int argc, char* argv[])
         // Get the current model mixing weights   
         if(mpirank>0){
             wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
-            axb.get_mix_wts(&diw, &wts_iter);  
+            axb.predict_thetavec(&diw, &wts_iter);  
         } 
         
         //Emulation Steps
@@ -1253,7 +1253,7 @@ int main(int argc, char* argv[])
         
         // Get the current model mixing weights    
         wts_iter = mxd::Zero(nummodels+1,dimix_list[0].n); //resets wt matrix
-        axb.get_mix_wts(&diw, &wts_iter);  
+        axb.predict_thetavec(&diw, &wts_iter);  
 
         // Emulation Steps
         for(int j=0;j<nummodels;j++){

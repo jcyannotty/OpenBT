@@ -19,10 +19,10 @@ void mxbrt::drawvec(rn& gen){
     brt::drawvec(gen);
 
     // Update the in-sample predicted vector
-    setf_mix();
+    setf_vec();
 
     // Update the in-sample residual vector
-    setr_mix();
+    setr_vec();
 }
 
 //--------------------------------------------------
@@ -32,15 +32,15 @@ void mxbrt::drawvec_mpislave(rn& gen){
     brt::drawvec_mpislave(gen);
 
     // Update the in-sample predicted vector
-    setf_mix();
+    setf_vec();
 
     // Update the in-sample residual vector
-    setr_mix();
+    setr_vec();
 }
 
 //--------------------------------------------------
 // Hyper parameter terminal node model
-std::vector<double> mxbrt::drawnodephivec(sinfo& si, rn& gen){
+std::vector<double> mxbrt::drawnodehypervec(sinfo& si, rn& gen){
     // Get exponential term for each beta vector value in sample space 
     mxsinfo& mxsi=static_cast<mxsinfo&>(si);
     int sz = betaset.cols();
@@ -129,10 +129,10 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
 
     // Update beta if random
     if(randhp){
-        // Set up Prior precision and read in the posterior covaraiance (calculated in drawnodephivec)
+        // Set up Prior precision and read in the posterior covaraiance (calculated in drawnodehypervec)
         betavec = ci.beta_vec;
         Prior_Sig_Inv = (1/t2)*I;
-        Sig = covmatrix; // saved from drawnodephivec step, no need to recalculate
+        Sig = covmatrix; // saved from drawnodehypervec step, no need to recalculate
     }else{
         // No random hyper parameters, need to compute covariance
         Sig_inv = mxsi.sumffw + Prior_Sig_Inv; //Get inverse covariance matrix

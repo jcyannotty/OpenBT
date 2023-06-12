@@ -37,7 +37,7 @@ public:
    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.sigma=sigma; ci.beta0=beta0; for(size_t j=0;j<m;j++) mb[j].setci(tau,beta0,sigma); }
    void setci(mxd invtau2_matrix, vxd beta_vec, double* sigma) {ci.invtau2_matrix.resize(invtau2_matrix.rows(),invtau2_matrix.rows()); ci.beta_vec.resize(beta_vec.rows());
       ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma,ci.diffpriors = true; for(size_t j=0;j<m;j++) mb[j].setci(invtau2_matrix,beta_vec,sigma);} //Set when using prior's that differ by function
-   void sethpi(size_t sz){this->randhp = true; this->kp=sz; this->t.phi.resize(sz,0);for(size_t j=0;j<m;j++) mb[j].sethpi(sz);}
+   void sethpi(size_t sz){this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);for(size_t j=0;j<m;j++) mb[j].sethpi(sz);}
    void setbi(size_t ik){ci.randbeta=true; ci.beta_vec = ci.beta0*vxd::Ones(ik); this->betaset = mxd::Identity(ik,ik);for(size_t j=0;j<m;j++) mb[j].setbi(ik);}
    void setloss(mxd iloss){this->loss.resize(iloss.rows(),iloss.cols()); this->loss = iloss; for(size_t j=0;j<m;j++) mb[j].setloss(iloss);}
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
@@ -47,7 +47,7 @@ public:
       this->fisd = fsd; this->nsprior= true; 
       for(size_t j=0;j<m;j++) mb[j].setfsd(fsd);}
    void setk(size_t k) {this->k = k; for(size_t j=0;j<m;j++) mb[j].setk(k); }
-   void setdata_mix(dinfo *di);
+   void setdata_vec(dinfo *di);
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }
    tree::tree_p gettree(size_t i) { return &mb[i].t; }
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
@@ -84,15 +84,15 @@ protected:
     //mcmc info
     //--------------------
     //methods
-    virtual void local_setf_mix(diterator& diter);  //set the vector of predicted values
-    virtual void local_setr_mix(diterator& diter);  //set the vector of residuals
-    virtual void local_predict_mix(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
-    virtual void local_get_mix_wts(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
+    virtual void local_setf_vec(diterator& diter);  //set the vector of predicted values
+    virtual void local_setr_vec(diterator& diter);  //set the vector of residuals
+    virtual void local_predict_vec(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
+    virtual void local_predict_thetavec(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
     virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
     virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                    std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& phi);
+                    std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
     virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                     std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
 
