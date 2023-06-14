@@ -129,6 +129,8 @@ public:
     virtual std::vector<sinfo*>& newsinfovec(size_t dim) { std::vector<sinfo*>* si = new std::vector<sinfo*>; si->resize(dim); for(size_t i=0;i<dim;i++) si->push_back(new mxsinfo(k)); return *si; }
     virtual void local_mpi_reduce_allsuff(std::vector<sinfo*>& siv);
     virtual void local_mpi_sr_suffs(sinfo& sil, sinfo& sir);
+    //virtual void local_predict_vec(diterator& diter,finfo& fipred);
+    //virtual void local_predict_thetavec(diterator& diter, mxd& wts);
     void pr_vec();
 
     // Additional methods needed for each mixing tree, these methods are designed for random beta 

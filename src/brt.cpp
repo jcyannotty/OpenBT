@@ -2020,6 +2020,99 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
    t.treetovec(&id[iter][0],&v[iter][0],&c[iter][0],&theta[iter][0],&hyper[iter][0],k,kp);
 }
 
+
+
+
+//--------------------------------------------------
+// Random Path Functions
+//--------------------------------------------------
+// predict_vec_rpath
+void brt::get_phix(diterator &diter, mxd &phix){
+   tree::npv bnv; 
+   int L,U, v0, c0;
+   double lb, ub, psi0;
+   // Get bottom nodes and initialize phix
+   t.getbots(bnv);
+   phix = mxd::Zero(di->n, 1);
+   if(bnv.size()>1){
+      // Get the upper and lower bounds for each path
+      for(size_t j=0;j<bnv.size();j++){
+         // Reset L and U to min and max & then update
+         L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+         v0 = bnv[j]->p->v;
+         bnv[j]->rgi(v0,&L,&U);
+         
+         // Now we have the interval endpoints, put corresponding values in a,b matrices.
+         if(L!=std::numeric_limits<int>::min()){ 
+               lb=(*xi)[v0][L];
+         }else{
+               lb=(*xi)[v0][0];
+         }
+         if(U!=std::numeric_limits<int>::max()) {
+               ub=(*xi)[v0][U];
+         }else{
+               ub=(*xi)[v0][(*xi)[v0].size()-1];
+         }
+
+         // Get cutpoint
+         c0 = (*xi)[v0][bnv[j]->p->c];
+
+         // fix this loop...compute phix using the 
+         for(;diter<diter.until();diter++){
+            double *xx = diter.getxp();
+            psi0 = rpi.psix(xx[v0],c0,lb,ub);
+            phix(*diter,j)=phix(*diter,j)*psi0; // might want to use logs and then exp later
+         }
+      }
+   }else{
+      phix = mxd::Zero(di->n, 1);
+   }   
+}
+
+void brt::predict_vec_rpath(dinfo* dipred, finfo* fipred){
+   mxd phix;
+   diterator diter(dipred);
+   get_phix(diter,phix);
+   local_predict_vec_rpath(diter, *fipred, phix);        
+}
+
+void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix){
+   tree::npv bnv;
+   vxd thetavec_temp(k); 
+   t.getbots(bnv);
+   for(;diter<diter.until();diter++) {
+      thetavec_temp = vxd::Zero(k);
+      for(size_t i=0;i<bnv.size();i++){
+         thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(*diter,i);
+      }
+      diter.sety(fipred.row(*diter)*thetavec_temp);
+   }   
+}
+
+
+void brt::predict_thetavec_rpath(dinfo* dipred, mxd* wts){
+   mxd phix;
+   diterator diter(dipred);
+   get_phix(diter,phix);
+   local_predict_thetavec_rpath(diter,*wts, phix);          
+}
+
+
+void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix){
+   tree::npv bnv;
+   vxd thetavec_temp(k); 
+   t.getbots(bnv);
+   for(;diter<diter.until();diter++) {
+      thetavec_temp = vxd::Zero(k);
+      for(size_t i=0;i<bnv.size();i++){
+         thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(*diter,i);
+      }
+      wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
+   }
+}
+
+
+
 /*
 //--------------------------------------------------
 //peturb proposal for internal node cut points.

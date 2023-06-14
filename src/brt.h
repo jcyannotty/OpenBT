@@ -184,7 +184,7 @@ public:
    void resetstats() { mi.tavgd=0.0; mi.tmaxd=0; mi.tmind=0; for(size_t i=0;i<xi->size();i++) mi.varcount[i]=0; }
    void setci() {}
    void sethpi(size_t sz) {this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);} // set random hyperparameter info
-   void setrpi(double gam, double q) {randpath = true; rpi.q = q, rpi.gamma = gam;} // set random path information
+   void setrpi(double gam, double q, size_t n){randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n);} // set random path information
    void draw(rn& gen);
    void draw_mpislave(rn& gen);
    void mpislave_bd(rn& gen);
@@ -343,6 +343,8 @@ protected:
    tree::npv randz; // random path assignments, vector of node pointers
    rpinfo rpi;
 
+   // Set randz pointer...tyis should be initialized as the root
+   void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.getptr(t.nid());}};
 
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
    virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen); // General method for ampling hyperparameters in a hierarchical model
@@ -378,6 +380,14 @@ protected:
                std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
+
+
+   // For random paths
+   void get_phix(diterator &diter, mxd &phix);
+   void predict_vec_rpath(dinfo* dipred, finfo* fipred);
+   void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
+   virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix);
+   virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix);
 
 };
 

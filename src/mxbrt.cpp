@@ -405,15 +405,6 @@ void mxbrt::l2norm(mxd fhat){
 
 
 //--------------------------------------------------
-// Predict beta -- get prior mean weights
-//void mxbrt::predictbeta(dinfo* dipred, mxd* wts){}
-
-
-//--------------------------------------------------
-// Predict interpolation -- prediction using the prior mean weights
-//void mxbrt::predict_interp(dinfo* dipred, finfo* fipred){}
-
-//--------------------------------------------------
 // MPI virtualized part for sending/receiving left,right suffs
 void mxbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir){
 #ifdef _OPENMPI
