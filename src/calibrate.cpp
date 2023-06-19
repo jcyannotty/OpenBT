@@ -21,6 +21,8 @@
 #include "mcbrt.h"
 #include "amcbrt.h"
 #include "parameters.h"
+#include "mbrt.h"
+#include "ambrt.h"
 
 
 using std::cout;
@@ -29,6 +31,7 @@ using std::endl;
 #define MODEL_OSBART 1
 #define MODEL_ORTHBART 2
 #define MODEL_MODBART 3
+#define MODEL_OSBARTXT 4
 
 int main(int argc, char* argv[])
 {
@@ -77,9 +80,10 @@ int main(int argc, char* argv[])
     conf >> ycmean;
 
     //number of trees
-    size_t m, mh;
+    size_t m, mh, me;
     conf >> m;
     conf >> mh;
+    conf >> me;
 
     //nd and burn
     size_t nd, burn, nadapt, adaptevery;
@@ -474,6 +478,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     
     acb.setci(mu1,mu2,tau1,tau2,sig);
     acb.setuvars(ucols); // set calibration vector
+    acb.setetatreeinfo(me); // set eta only trees
 
     if(modeltype == MODEL_ORTHBART){acb.set_orthogonal_delta(true);}else{acb.set_orthogonal_delta(false);}
     if(modeltype == MODEL_MODBART){acb.set_modularization(true);}else{acb.set_modularization(false);}
@@ -529,7 +534,6 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
     psbmf.setmi(pbdh,pbh,minnumboth,doperth,stepwperth,probchvh,&chgv);
     psbmf.setci(nuf,lambdaf);
 
-    cout << "lamf = " << lambdaf << endl; 
 
     //--------------------------------------------------
     // Product variance model for the error in the model runs

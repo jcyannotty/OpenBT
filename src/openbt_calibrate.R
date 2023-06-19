@@ -48,7 +48,7 @@ openbtcal = function(
   ucols = c(),
   mu1 = NULL, mu2 = NULL, 
   k1 = 1.0, k2 = 1.0,
-  ntree = NULL, ntreeh=NULL,
+  ntree = NULL, ntreeh=NULL,ntreesim=0,
   ndpost=1000, nskip=100,
   nadapt=1000, adaptevery=100,
   power=2.0, base=.95, tc=2,
@@ -164,6 +164,7 @@ openbtcal = function(
   burn = nskip
   m = ntree
   mh = ntreeh
+  me = ntreesim
   
   # Data info
   nf = length(yf_train)
@@ -198,8 +199,8 @@ openbtcal = function(
   rgyc = range(yc_train)
   disc = 2*abs(yf_mean - yc_mean) 
   tau1 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k1)
-  tau2 =  disc/(sqrt(m)*k2)
-  #tau2 =  disc/(2*sqrt(m)*k2)
+  #tau2 =  disc/(sqrt(m)*k2)
+  tau2 =  disc/(2*sqrt(m-me)*k2)
   
   # Variance prior
   overalllambdaf = overallsdf^2
@@ -321,7 +322,7 @@ openbtcal = function(
   
   # Write config lines -- figure out
   writeLines(c(paste(modeltype),xroot,yroot,sroot,chgvroot,hroot,
-               paste(yf_mean),paste(yc_mean),paste(m),paste(mh),
+               paste(yf_mean),paste(yc_mean),paste(m),paste(mh),paste(me),
                paste(nd),paste(burn),paste(nadapt),paste(adaptevery),
                paste(mu1),paste(tau1),paste(mu2),paste(tau2),
                paste(overalllambdaf),paste(overalllambdac),paste(overallnuf),paste(overallnuc),
@@ -400,7 +401,7 @@ openbtcal = function(
   res$nf = nf; res$nc = nc;res$px = px; res$pu = pu;
   res$yc_mean = yc_mean; res$yf_mean = yf_mean
   res$prior_list = prior_list; res$xcols = xcols; res$ucols = ucols;
-  res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
+  res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh;res$me=me; res$nd=nd; res$burn=burn
   res$nadapt=nadapt; res$adaptevery=adaptevery;res$mu1=mu1;res$mu2=mu2;res$tau1=tau1;res$tau2=tau2;
   res$overalllambdaf=overalllambdaf; res$overallnuf=overallnuf;
   res$overalllambdaf=overalllambdac; res$overallnuf=overallnuc;

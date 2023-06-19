@@ -86,7 +86,7 @@ void mcbrt::drawthetavec(rn& gen)
     allsuff(bnv,siv);
 
     // Find the subtrees -- Get roots of the subtree(s) in t
-    t.getsubtreeroots(uroots, uvec);
+    if(uvec.size()>0) t.getsubtreeroots(uroots, uvec);
     
     // Check is the node in bnv is in a subtree
     for(size_t i=0;i<bnv.size();i++){
@@ -114,65 +114,74 @@ void mcbrt::drawthetavec(rn& gen)
     mpi_resetrn(gen);
 #endif
     // Draw theta1 and theta2 from non subtree nodes
-    for(size_t i=0;i<xnodes.size();i++) {
-        // add modularization condition here....
-        if(modular){
-            bnv[xnodes[i]]->setthetavec(drawnodethetavec_modular(*(siv[xnodes[i]]),gen));
-        }else{
-            bnv[xnodes[i]]->setthetavec(drawnodethetavec(*(siv[xnodes[i]]),gen));
+    if(uvec.size()>0){
+        // Enter for joint tree -- eta & delta
+        for(size_t i=0;i<xnodes.size();i++) {
+            if(modular){
+                bnv[xnodes[i]]->setthetavec(drawnodethetavec_modular(*(siv[xnodes[i]]),gen));
+            }else{
+                bnv[xnodes[i]]->setthetavec(drawnodethetavec(*(siv[xnodes[i]]),gen));
+            }
         }
-    }
-
-    // add second modularization step for subtree here....
-    // Loop through subtrees (the ids stored in uroots) and draw thetas
-    // Get all bot nodes in the subtree
-    if(modular){
-        // Modularization 
-        for(size_t i=0;i<uroots.size();i++){
-            // Get all bot nodes in the subtree
-            unodestats.clear();
-            theta1_modvec.clear();
-            for(size_t j=0;j<unmap[uroots[i]].size();j++){
-                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
-                unodestats.push_back(siv[ind]);
+        // Loop through subtrees (the ids stored in uroots) and draw thetas
+        // Get all bot nodes in the subtree
+        if(modular){
+            // Modularization 
+            for(size_t i=0;i<uroots.size();i++){
+                // Get all bot nodes in the subtree
+                unodestats.clear();
+                theta1_modvec.clear();
+                for(size_t j=0;j<unmap[uroots[i]].size();j++){
+                    ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                    unodestats.push_back(siv[ind]);
+                }
+                // Draw theta1 for the each node in subtree
+                for(size_t j=0;j<unodestats.size();j++){
+                    ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                    theta1 = drawtheta1_modular(*(siv[ind]),gen);
+                    theta1_modvec.push_back(theta1);
+                }
+                // Draw theta2
+                theta2 = drawtheta2_modular(unodestats,theta1_modvec,gen);
+                // Set thetavec with individual theta1 and common theta2
+                for(size_t j=0;j<unodestats.size();j++){
+                    ind = unmap[uroots[i]][j];
+                    thetavec(0) = theta1_modvec[j];
+                    thetavec(1) =  theta2;
+                    bnv[ind]->setthetavec(thetavec);
+                }
             }
-            // Draw theta1 for the each node in subtree
-            for(size_t j=0;j<unodestats.size();j++){
-                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
-                theta1 = drawtheta1_modular(*(siv[ind]),gen);
-                theta1_modvec.push_back(theta1);
-            }
-            // Draw theta2
-            theta2 = drawtheta2_modular(unodestats,theta1_modvec,gen);
-            // Set thetavec with individual theta1 and common theta2
-            for(size_t j=0;j<unodestats.size();j++){
-                ind = unmap[uroots[i]][j];
-                thetavec(0) = theta1_modvec[j];
-                thetavec(1) =  theta2;
-                bnv[ind]->setthetavec(thetavec);
+        }else{
+            // Regular Sampler
+            for(size_t i=0;i<uroots.size();i++){
+                // Get all bot nodes in the subtree
+                unodestats.clear();
+                for(size_t j=0;j<unmap[uroots[i]].size();j++){
+                    ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                    unodestats.push_back(siv[ind]);
+                } 
+                // Draw theta2 for the subtrees
+                theta2 = drawtheta2(unodestats,gen);
+                
+                // Draw theta1 per node conditional on theta2
+                for(size_t j=0;j<unodestats.size();j++){
+                    ind = unmap[uroots[i]][j]; // bottom node/suff stat index
+                    theta1 = drawtheta1(*(siv[ind]),gen,theta2);
+                    thetavec << theta1, theta2; // create the eigen thetavec
+                    bnv[ind]->setthetavec(thetavec); // Set thetavec
+                }
             }
         }
     }else{
-        // Regular Sampler
-        for(size_t i=0;i<uroots.size();i++){
-            // Get all bot nodes in the subtree
-            unodestats.clear();
-            for(size_t j=0;j<unmap[uroots[i]].size();j++){
-                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
-                unodestats.push_back(siv[ind]);
-            } 
-            // Draw theta2 for the subtrees
-            theta2 = drawtheta2(unodestats,gen);
-            
-            // Draw theta1 per node conditional on theta2
-            for(size_t j=0;j<unodestats.size();j++){
-                ind = unmap[uroots[i]][j]; // bottom node/suff stat index
-                theta1 = drawtheta1(*(siv[ind]),gen,theta2);
-                thetavec << theta1, theta2; // create the eigen thetavec
-                bnv[ind]->setthetavec(thetavec); // Set thetavec
-            }
+        // Enter if only an eta tree
+        theta2 = 0;
+        for(size_t i=0;i<bnv.size();i++) {
+            theta1 = drawtheta1(*(siv[i]),gen,theta2);
+            thetavec << theta1, theta2; // create the eigen thetavec
+            bnv[i]->setthetavec(thetavec); // Set thetavec
         }
     }
+    
 
     delete &siv;  //and then delete the vector of pointers.
 }
@@ -437,18 +446,23 @@ double mcbrt::lm(sinfo& si)
     mcinfo& mci=static_cast<mcinfo&>(si); // cast si into mcinfo
     double lmstree = 0.0, lmn = 0.0;
     
-    // Get subtree lm if node contains subtree info        
-    if(mci.subtree_info){
-        lmstree = lmsubtree(mci);
-        //cout << "subtree lm " << lmn << "-----" << rank << endl;
-    }
-    // Add individual node contribution -- checking subtree condition
-    if(mci.subtree_node){
-        lmn = lmsubtreenode(mci);
-        //cout << "subtree node lmn1 " << lmn << "-----" << rank << endl;
+    // Get subtree lm if node contains subtree info
+    // *** add condition here for emulator tree type        
+    if(uvec.size()>0){
+        if(mci.subtree_info){
+            lmstree = lmsubtree(mci);
+            //cout << "subtree lm " << lmn << "-----" << rank << endl;
+        }
+        // Add individual node contribution -- checking subtree condition
+        if(mci.subtree_node){
+            lmn = lmsubtreenode(mci);
+            //cout << "subtree node lmn1 " << lmn << "-----" << rank << endl;
+        }else{
+            lmn = lmnode(mci); // lm for nodes outside of subtree, used when no subtree is involved
+            //cout << "subtree node lmn2 " << lmn << "-----" << rank << endl;
+        }
     }else{
-        lmn = lmnode(mci); // lm for nodes outside of subtree, used when no subtree is involved
-        //cout << "subtree node lmn2 " << lmn << "-----" << rank << endl;
+        lmn = lmnode(mci);
     }
     return lmstree + lmn;
 }
@@ -509,6 +523,24 @@ double mcbrt::lmnode(mcinfo &mci){
 
     return lmout;
 }
+
+//--------------------------------------------------
+// likelihood for a node in the eta-only trees
+double mcbrt::lmetatreenode(mcinfo &mci){
+    double tau1_sqr = ci.tau1*ci.tau1;
+    double v, q; 
+    double lmout = 0.0;
+
+    // The distinction bw field data and simulator runs does not matter here -- so add their suff stats
+    v = tau1_sqr*(mci.sumwc+mci.sumwf) + 1;
+    q = (mci.sumzw + mci.sumyw + ci.mu1*ci.mu1/tau1_sqr);
+    lmout = -0.5*(ci.mu1*ci.mu1/tau1_sqr); // prior mean term
+    lmout += 0.5*tau1_sqr*q*q/v; // mean term
+    lmout += -0.5*log(v); //variance term 
+
+    return lmout;   
+}
+
 
 //--------------------------------------------------
 // integrated likelihood for a mcinfo instance which is storing the joint information across the nodes
@@ -580,7 +612,6 @@ double mcbrt::lmsubtree(mcinfo &mci){
     lmstree = -0.5*(B*log(2*M_PI) - sum_logw + log(tau2_sqr*sum_w +1)); // Variance terms  **changed second term to - instead of +    
     lmstree += -0.5*(ci.mu2*ci.mu2/tau2_sqr + sum_meansqrw); // mean terms
     lmstree += 0.5*tau2_sqr*(sum_meanw + ci.mu2/tau2_sqr)*(sum_meanw + ci.mu2/tau2_sqr)/(tau2_sqr*sum_w + 1);
-    
     return lmstree;
 }
 
@@ -629,7 +660,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c,
     mcinfo& mcl=static_cast<mcinfo&>(sil);
 
     // Get roots of the subtree(s) in t
-    t.getsubtreeroots(uroots, uvec);
+    if(uvec.size()>0) t.getsubtreeroots(uroots, uvec);
     // Check is the node nx in a subtree
     nx->nodeinsubtree(uroots,subtree);
     
@@ -794,7 +825,7 @@ void mcbrt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinf
     mcinfo& mcl=static_cast<mcinfo&>(sil);
 
     // Get roots of the subtree(s) in t
-    t.getsubtreeroots(uroots, uvec);
+    if(uvec.size()>0) t.getsubtreeroots(uroots, uvec);
     
     // Check is the the parent in a subtree
     (l->p)->nodeinsubtree(uroots,subtree);
@@ -981,7 +1012,7 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
         mcinfo& mcr=static_cast<mcinfo&>(sir);
         mcinfo& mcl=static_cast<mcinfo&>(sil);
         // Get roots of the subtree(s) in t
-        t.getsubtreeroots(uroots, uvec);
+        if(uvec.size()>0) t.getsubtreeroots(uroots, uvec);
         // Check is the node nx in a subtree
         n->nodeinsubtree(uroots,subtree);
         // Now check to see if p is the root of the subtree, if so we can just set subtree to 0. 
@@ -1052,7 +1083,7 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
         // Get its bottom nodes
         toproot->getbots(obnv);
         // Get subtree information
-        toproot->getsubtreeroots(ouroots, uvec);
+        if(uvec.size()>0) toproot->getsubtreeroots(ouroots, uvec);
         // Get the orthogonal discrepancy scales
         get_orthogonal_scales_rot(obnv, ouroots, area, area_by_node);
         // Now map each siv element to an area_by_node
@@ -1067,7 +1098,7 @@ void mcbrt::subsuff(tree::tree_p nx, tree::npv& bnv, std::vector<sinfo*>& siv)
 //local_subsuff_setroot
 void mcbrt::local_subsuff_setroot(tree::tree_p nx,tree::tree_p &subtree,tree::tree_p &troot,tree::npv &uroots){
     // Get calibration subtree information
-    t.getsubtreeroots(uroots, uvec);
+    if(uvec.size()>0) t.getsubtreeroots(uroots, uvec);
     //cout << "uroots size = " << uroots.size() << endl;
     if(uroots.size()>0){
         // Check is the node nx in a subtree
@@ -1182,7 +1213,7 @@ void mcbrt::local_subsuff_nodecases(tree::tree_p nx, tree::tree_p subtree, tree:
     // if nx isn't in a calibration subtree or starts one, then check to see if it contains one (or many)
     if(!subtree){
         // Get subtree roots below nx
-        nx->getsubtreeroots(nxuroots,uvec); 
+        if(uvec.size()>0) nx->getsubtreeroots(nxuroots,uvec); 
     }
     // Now check conditions for how to pool the information across nodes in a common subtree
     if(!subtree && nxuroots.size()>0){

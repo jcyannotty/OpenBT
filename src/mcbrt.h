@@ -355,6 +355,7 @@ public:
     void drawvec(rn& gen);
     void drawvec_mpislave(rn& gen);
     void setci(double mu1,double mu2, double tau1, double tau2, double* sigma) {ci.mu1=mu1; ci.tau1=tau1; ci.mu2=mu2; ci.tau2=tau2; ci.sigma=sigma; }
+    void setetatree(bool isetatree){etatree = isetatree; if(isetatree) uvec.clear();} // This is only an eta tree, no need to consider delta or calibration subtrees
     void drawthetavec(rn& gen);
     double eta(size_t i) { return etahat[i]; }
     virtual double drawtheta2(std::vector<sinfo*> sivec, rn& gen);
@@ -382,6 +383,7 @@ public:
     
     // Methods which are nested within the above methods. Used to deal with various cases and keep code concise
     double lmnode(mcinfo &mci); // Node outside of subtree -- Used when doing proposals outside of a subtree
+    double lmetatreenode(mcinfo &mci); // Node in one of the eta only trees
     double lmsubtree(mcinfo& mci); // Used to pool information together across nodes within a subtree
     double lmsubtreenode(mcinfo &mci); // Individual node in subtree -- applied to a node that is in a subtree but does not have the subtree info stored 
 
@@ -412,6 +414,7 @@ public:
     std::vector<double> etahat;
     bool orth_delta;
     bool modular;
+    bool etatree;
     
     //--------------------
     //data

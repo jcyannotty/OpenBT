@@ -40,6 +40,7 @@ public:
    void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> nsprior = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
    void setdata_vec(dinfo *di); 
    void setuvars(std::vector<size_t> u) {this->uvec = u;for(size_t j=0;j<m;j++) mb[j].setuvars(u);}
+   void setetatreeinfo(size_t meta){this->meta = meta;for(size_t j=m-meta;j<m;j++) mb[j].setetatree(true);}
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }
    tree::tree_p gettree(size_t i) { return &mb[i].t; }
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
@@ -71,6 +72,7 @@ protected:
     //model information
     size_t m;  //number of trees in sum representation
     std::vector<mcbrt> mb;  // the vector of individual mu trees for sum representation
+    size_t meta; // the number of eta only trees
     //--------------------
     //data
     std::vector<std::vector<double> > notjmus;

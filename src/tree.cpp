@@ -384,7 +384,7 @@ void tree::getsubtreeroots(npv& uroots, std::vector<size_t> uvec)
    if(l){
       // check to see if the splitting variable v is in the uvec list
       if(std::find(uvec.begin(), uvec.end(), v) != uvec.end()){
-         // We found a subtree root. So store its pointed in the uroots vector and exit exit this process
+         // We found a subtree root. So store its pointer in the uroots vector and exit exit this process
          uroots.push_back(this); 
       }else{
          // This node doesn't split on a v in u. So we are not at a subtree yet. Check the children now
