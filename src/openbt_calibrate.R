@@ -55,7 +55,7 @@ openbtcal = function(
   prior_list = NULL,
   proposal_type = "default",
   grad_stepsize = NULL,
-  sigmav=rep(1,length(y_train)),
+  sigmav=NULL,
   overallsdf = NULL, overallnuf= NULL,
   overallsdc = NULL, overallnuc= NULL,
   chv = cor(xc_train,method="spearman"),
@@ -92,6 +92,7 @@ openbtcal = function(
     if(is.null(overallsdc)) overallsdc=sd(yc_train)
     if(is.null(overallnuf)) overallnuf=10
     if(is.null(overallnuc)) overallnuc=10
+    if(is.null(sigmav)) sigmav=rep(0.1,length(yc_train)+length(yf_train))
     pbd=c(pbd,0.0)
   }
   
@@ -105,6 +106,7 @@ openbtcal = function(
     if(is.null(overallsdc)) overallsdc=sd(yc_train)
     if(is.null(overallnuf)) overallnuf=10
     if(is.null(overallnuc)) overallnuc=10
+    if(is.null(sigmav)) sigmav=rep(0.1,length(yc_train)+length(yf_train))
     pbd=c(pbd,0.0)
   }
 
@@ -118,6 +120,7 @@ openbtcal = function(
     if(is.null(overallsdc)) overallsdc=sd(yc_train)
     if(is.null(overallnuf)) overallnuf=10
     if(is.null(overallnuc)) overallnuc=10
+    if(is.null(sigmav)) sigmav=rep(0.1,length(yc_train)+length(yf_train))
     pbd=c(pbd,0.0)
   }
 

@@ -359,6 +359,7 @@ int main(int argc, char* argv[])
         while(sf >> stemp)
             sigmav.push_back(stemp);
         nsig=sigmav.size();
+        cout << "stemp = " << stemp << endl;
 #ifndef SILENT
         cout << "node " << mpirank << " loaded " << nsig << " from " << sfs <<endl;
 #endif
