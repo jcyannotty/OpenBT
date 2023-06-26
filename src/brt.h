@@ -59,6 +59,9 @@
 #   define MPI_TAG_ROTATE 60
 #   define MPI_TAG_ROTATE_ACCEPT 61
 #   define MPI_TAG_ROTATE_REJECT 62
+#   define MPI_TAG_RPATHGAMMA 70
+#   define MPI_TAG_RPATHGAMMA_ACCEPT 71
+#   define MPI_TAG_RPATHGAMMA_REJECT 72
 #endif
 
 class sinfo { //sufficient statistics (will depend on end node model)
@@ -135,26 +138,12 @@ public:
    // random path info class
    class rpinfo{
       public:
-         rpinfo(): gamma(0.5), q(2.0) {}
+         rpinfo(): gamma(0.5),q(2.0),shp1(1.0),shp2(1.0),accept(0),reject(0),propwidth(0.25){}
          double gamma;
          double q;
+         double shp1, shp2; // Shape parameters for beta prior
          mxd phix;
-
-         double psix(double x, double c, double L, double U){
-            double psi = 0.0;
-            double a, b, d1, d2;   
-            a = c - (c-L)*gamma;
-            b = c + (U-c)*gamma;
-            d1 = (c-x)/(c-a);
-            d2 = (x-c)/(b-c);
-            
-            if(x<c){
-               psi = 0.5*std::pow(std::max(1-d1,0.0),q);
-            }else{
-               psi = 1-0.5*std::pow(std::max(1-d2,0.0),q);
-            }
-            return(psi);
-         }
+         double accept, reject, propwidth;
 
    };
    //--------------------
@@ -184,7 +173,7 @@ public:
    void resetstats() { mi.tavgd=0.0; mi.tmaxd=0; mi.tmind=0; for(size_t i=0;i<xi->size();i++) mi.varcount[i]=0; }
    void setci() {}
    void sethpi(size_t sz) {this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);} // set random hyperparameter info
-   void setrpi(double gam, double q, size_t n){randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n);} // set random path information
+   void setrpi(double gam, double q,double shp1, double shp2,size_t n){randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2);} // set random path information
    void draw(rn& gen);
    void draw_mpislave(rn& gen);
    void mpislave_bd(rn& gen);
@@ -347,7 +336,7 @@ protected:
    void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.getptr(t.nid());}};
 
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
-   virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen); // General method for ampling hyperparameters in a hierarchical model
+   virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen); // General method for sampling hyperparameters in a hierarchical model
    virtual void local_setf_vec(diterator& diter);
    virtual void local_setr_vec(diterator& diter);
    virtual void local_predict_vec(diterator& diter, finfo& fipred);
@@ -383,11 +372,20 @@ protected:
 
 
    // For random paths
-   void get_phix(diterator &diter, mxd &phix);
+   void get_phix_matrix(diterator &diter, mxd &phix);
    void predict_vec_rpath(dinfo* dipred, finfo* fipred);
    void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
    virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix);
    virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix);
+
+   double psix(double gamma, double x, double c, double L, double U){}
+
+   void rpath_adapt();
+   void drawgamma(rn &gen);
+   void drawgamma_mpi(rn &gen); 
+   void set_gamma_prior(double s1, double s2){rpi.shp1 = s1; rpi.shp2 = s2;}
+   double sumlogphix(double gam);
+   void rpath_mhstep(double old_sumlogphix, double new_sumlogphix, double newgam, rn &gen);
 
 };
 

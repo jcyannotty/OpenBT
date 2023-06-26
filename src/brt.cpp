@@ -2024,10 +2024,11 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 
 
 //--------------------------------------------------
-// Random Path Functions
+// Random Path Functions -- Move Elsewhere eventually
 //--------------------------------------------------
 // predict_vec_rpath
-void brt::get_phix(diterator &diter, mxd &phix){
+// ----- need path to root and loop through the root per bnv
+void brt::get_phix_matrix(diterator &diter, mxd &phix){
    tree::npv bnv; 
    int L,U, v0, c0;
    double lb, ub, psi0;
@@ -2057,10 +2058,10 @@ void brt::get_phix(diterator &diter, mxd &phix){
          // Get cutpoint
          c0 = (*xi)[v0][bnv[j]->p->c];
 
-         // fix this loop...compute phix using the 
+         // fix this loop...compute phix using log 
          for(;diter<diter.until();diter++){
             double *xx = diter.getxp();
-            psi0 = rpi.psix(xx[v0],c0,lb,ub);
+            psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
             phix(*diter,j)=phix(*diter,j)*psi0; // might want to use logs and then exp later
          }
       }
@@ -2072,7 +2073,7 @@ void brt::get_phix(diterator &diter, mxd &phix){
 void brt::predict_vec_rpath(dinfo* dipred, finfo* fipred){
    mxd phix;
    diterator diter(dipred);
-   get_phix(diter,phix);
+   get_phix_matrix(diter,phix);
    local_predict_vec_rpath(diter, *fipred, phix);        
 }
 
@@ -2093,7 +2094,7 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix){
 void brt::predict_thetavec_rpath(dinfo* dipred, mxd* wts){
    mxd phix;
    diterator diter(dipred);
-   get_phix(diter,phix);
+   get_phix_matrix(diter,phix);
    local_predict_thetavec_rpath(diter,*wts, phix);          
 }
 
@@ -2109,6 +2110,227 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix){
       }
       wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
    }
+}
+
+
+//--------------------------------------------------
+// Random Path Class Methods - Move elsewhere eventually
+//--------------------------------------------------
+// Draw gamma -- base
+void brt::drawgamma(rn &gen){
+   // Get new proposal for gamma
+   double newgam = 0;
+   double old_sumlogphix, new_sumlogphix;
+   newgam = rpi.gamma + (gen.uniform()-0.5)*rpi.propwidth;
+
+   // Pass the unew vector (as an array) if using mpi  
+#ifdef _OPENMPI
+   if(rank==0){ //should always be true when using mpi
+      char buffer[SIZE_UINT3];
+      int position=0;
+      MPI_Request *request=new MPI_Request[tc];
+      const int tag=MPI_TAG_RPATHGAMMA;
+   
+      // Pack and send info to the slaves
+      MPI_Pack(&newgam,1,MPI_DOUBLE,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         MPI_Isend(buffer,SIZE_UINT3,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+      }
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+
+      delete[] request;
+   }
+#endif
+
+   // With the old gammma, get the sumlogphix
+   old_sumlogphix = sumlogphix(rpi.gamma);
+
+   // With the new gammma, get the sumlogphix 
+   new_sumlogphix = sumlogphix(newgam);
+
+   // Send the sum log term back
+
+
+   // Get MH message
+}
+
+
+// Draw gamma -- mpi version
+void brt::drawgamma_mpi(rn &gen){
+   double newgam;
+   double sumlogphix = 0;
+#ifdef _OPENMPI
+   int buffer_size = SIZE_UINT3;
+   char buffer[buffer_size];
+   int position=0;
+   MPI_Status status;
+
+   // MPI receive the new gamma and unpack it
+   MPI_Recv(buffer,buffer_size,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+   MPI_Unpack(buffer,buffer_size,&position,newgam,1,MPI_DOUBLE,MPI_COMM_WORLD);
+
+#endif
+}
+
+// Adapt
+void brt::rpath_adapt(){
+   double accrate;
+   accrate=((double)rpi.accept)/((double)(rpi.accept+rpi.reject));
+   if(accrate>0.29 || accrate<0.19) rpi.propwidth*=accrate/0.24;
+   rpi.accept = 0;
+   rpi.reject = 0;
+}
+
+
+// Get sum log(phix) for each obs on the processor
+double brt::sumlogphix(double gam){
+   double sumlogphix = 0;
+   double psi0 = 0;
+   int v0, c0, U, L;
+   double lb,ub;
+   tree::tree_p p0;
+   diterator diter(di);
+   tree::npv bnv;
+   tree::npv path;
+   std::map<tree::tree_p,double> lbmap;
+   std::map<tree::tree_p,double> ubmap;
+   std::map<tree::tree_p,tree::npv> pathmap;
+
+   t.getbots(bnv);
+
+   // Get the rectangles at each internal node
+   for(size_t i=0;i<bnv.size();i++){   
+      path.clear();
+      bnv[i]->getpathtoroot(path);
+      pathmap[bnv[i]] = path;
+      for(size_t j=0;j<path.size();j++){
+         p0 = path[j]->p;
+         v0 = p0->v;
+         // Add new p0 to map if not already included (CHECK SECOND CONDITION)
+         if(lbmap.find(p0) == lbmap.end() && p0 != 0){
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            p0->rgi(v0,&L,&U);
+            
+            // Now we have the interval endpoints, put corresponding values in a,b matrices.
+            if(L!=std::numeric_limits<int>::min()){ 
+                  lb=(*xi)[v0][L];
+            }else{
+                  lb=(*xi)[v0][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                  ub=(*xi)[v0][U];
+            }else{
+                  ub=(*xi)[v0][(*xi)[v0].size()-1];
+            }
+            // Store in the maps
+            lbmap[p0] = lb;
+            ubmap[p0] = ub;
+         }
+      }
+      
+   } 
+   
+
+   for(;diter<diter.until();diter++){
+      double *xx = diter.getxp();
+      for(size_t j=0;j<pathmap[randz[*diter]].size();j++){
+         // Get cutpoint
+         if(randz[*diter][j].p != 0){
+            c0 = (*xi)[v0][(randz[*diter][j].p)->c];
+            v0 = (randz[*diter][j].p)->v;
+            lb = lbmap[p0];
+            ub = ubmap[p0];
+            psi0 = psix(gam,xx[v0],c0,lb,ub);
+            sumlogphix=sumlogphix+log(psi0); 
+         }
+      }
+   }
+   return(sumlogphix);
+}
+
+
+
+double brt::psix(double gamma, double x, double c, double L, double U){
+   double psi = 0.0;
+   double a, b, d1, d2;   
+   a = c - (c-L)*gamma;
+   b = c + (U-c)*gamma;
+   d1 = (c-x)/(c-a);
+   d2 = (x-c)/(b-c);
+   
+   if(x<c){
+      psi = 0.5*std::pow(std::max(1-d1,0.0),rpi.q);
+   }else{
+      psi = 1-0.5*std::pow(std::max(1-d2,0.0),rpi.q);
+   }
+   return(psi);
+}
+
+
+// MH step for updating gamma
+void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
+#ifdef _OPENMPI
+    if(rank>0){
+        // Sum the suff stats then get accept/reject status
+        MPI_Status status;
+        MPI_Reduce(&osum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+        MPI_Reduce(&nsum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+        MPI_Recv(NULL,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+        // Carry out the accept/reject step
+        if(status.MPI_TAG==MPI_TAG_RPATHGAMMA_ACCEPT) {
+            rpi.accept+=1;
+            rpi.gamma = newgam;
+        }else{
+            rpi.reject+=1;
+        }
+    }           
+
+    if(rank==0){
+        // Reduce the suff stats
+        MPI_Request *request = new MPI_Request[tc];
+        MPI_Reduce(MPI_IN_PLACE,&osum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+        MPI_Reduce(MPI_IN_PLACE,&nsum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+
+        // Do mhstep
+        double lmout = lm(csumw,nsumw);
+        double alpha = gen.uniform();
+        //cout << "log alpha = " << log(alpha) << endl;
+        //cout << "lmout = " << lmout << endl;
+        if(log(alpha)<lmout){
+            // accept
+            rpi.gamma = newgam;
+            for(size_t j=0;j<p;j++) rpi.accept+=1;
+            const int tag=MPI_TAG_RPATHGAMMA_ACCEPT;
+            for(size_t k=1; k<=(size_t)tc; k++){
+                MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
+            }
+        }else{ 
+            // reject
+            const int tag=MPI_TAG_RPATHGAMMA_REJECT;
+            //cout << "reject here" << endl;
+            for(size_t k=1; k<=(size_t)tc; k++) {
+                MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
+            }
+            rpi.reject+=1;
+        }
+        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+        delete[] request;
+    }
+#else
+    // Do mhstep
+   double lmout = osum-nsum;
+   double alpha=gen.uniform();
+   if(newgam >1 || newgam < 0){alpha = 0;}
+   if(log(alpha)<lmout){
+      // accept
+      rpi.gamma = newgam;
+      rpi.accept+=1;
+   }else{ 
+      // reject
+      rpi.reject+=1;
+   }
+#endif
+
 }
 
 
