@@ -330,6 +330,7 @@ protected:
    // Random path information
    bool randpath; // Are we using a random path
    tree::npv randz; // random path assignments, vector of node pointers
+   std::vector<size_t> randz_bdp; // used for birth & death proposal...0 for not involved, 1 for left and 2 for right
    rpinfo rpi;
 
    // Set randz pointer...tyis should be initialized as the root
@@ -370,16 +371,22 @@ protected:
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
 
-
+   //------------------------------------------------
    // For random paths
+   //------------------------------------------------
    void get_phix_matrix(diterator &diter, mxd &phix);
    void predict_vec_rpath(dinfo* dipred, finfo* fipred);
    void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
    virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix);
    virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix);
 
+   // Compute psi(x)
    double psix(double gamma, double x, double c, double L, double U){}
 
+   // Birth and death, propose new z
+   void randz_proposal(tree::tree_p nx, size_t v, size_t c, rn &gen){}
+
+   // Updating gamma
    void rpath_adapt();
    void drawgamma(rn &gen);
    void drawgamma_mpi(rn &gen); 

@@ -325,31 +325,59 @@ double brt::lm(sinfo& si)
 void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir)    
 {
    double *xx;//current x
+   tree::tree_p xbn;
    sil.n=0; sir.n=0;
 
-   for(;diter<diter.until();diter++)
-   {
-      xx = diter.getxp();
-      if(nx==t.bn(diter.getxp(),*xi)) { //does the bottom node = xx's bottom node
-         if(xx[v] < (*xi)[v][c]) {
-               //sil.n +=1;
+   // Soft BART Version ----
+   if(randpath){
+      // Random Path BART update
+      for(;diter<diter.until();diter++){
+         xx = diter.getxp();
+         if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
+            if(randz_bdp[*diter] == 1) {
+               // Left move
                add_observation_to_suff(diter,sil);
-          } else {
-               //sir.n +=1;
+            }else if(randz_bdp[*diter] == 2){
+               // Right move (using else if rather than else as a precaution)
                add_observation_to_suff(diter,sir);
-          }
+            }
+         }
+      }
+   }else{
+   // Deterministic BART Version ----
+      for(;diter<diter.until();diter++)
+      {
+         xx = diter.getxp();
+         if(nx==t.bn(diter.getxp(),*xi)) { //does the bottom node = xx's bottom node
+            if(xx[v] < (*xi)[v][c]) {
+                  //sil.n +=1;
+                  add_observation_to_suff(diter,sil);
+            } else {
+                  //sir.n +=1;
+                  add_observation_to_suff(diter,sir);
+            }
+         }
       }
    }
 }
+
 //--------------------------------------------------
 //getsuff used for death
 void brt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo& sil, sinfo& sir)
 {
+   tree::tree_cp bn;
    sil.n=0; sir.n=0;
 
    for(;diter<diter.until();diter++)
    {
-      tree::tree_cp bn = t.bn(diter.getxp(),*xi);
+      // Soft vs deterministic BART
+      if(randpath){
+         bn = randz[*diter];
+      }else{
+         bn = t.bn(diter.getxp(),*xi);   
+      }
+      
+      // Suff stat step
       if(bn==l) {
          //sil.n +=1;
          add_observation_to_suff(diter,sil);
@@ -713,7 +741,7 @@ void brt::local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& si
    for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
 
    for(;diter<diter.until();diter++) {
-      tbn = t.bn(diter.getxp(),*xi);
+      if(!randpath){tbn = t.bn(diter.getxp(),*xi);}else{tbn = randz[*diter];}      
       ni = bnmap[tbn];
       //siv[ni].n +=1; 
       add_observation_to_suff(diter, *(siv[ni]));
@@ -1511,6 +1539,8 @@ void brt::bd_vec(rn& gen)
       double pr; //part of metropolis ratio from proposal and prior
       bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);
       
+      if(randpath){randz_proposal(nx,v,c,gen);}
+
       //--------------------------------------------------
       //compute sufficient statistics
       sinfo& sil = *newsinfo();
@@ -1551,6 +1581,7 @@ void brt::bd_vec(rn& gen)
          thetavecr = Eigen::VectorXd:: Zero(k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
+         //****update z here -- birth move
 #ifdef _OPENMPI
 //        cout << "accept birth " << lalpha << endl;
          const int tag=MPI_TAG_BD_BIRTH_VC_ACCEPT;
@@ -1666,12 +1697,13 @@ void brt::local_ompsetf_vec(dinfo di)
    local_setf_vec(diter);
 #endif
 }
+
 void brt::local_setf_vec(diterator& diter)
 {
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
    for(;diter<diter.until();diter++) {
-      bn = t.bn(diter.getxp(),*xi);
+      if(!randpath){bn = t.bn(diter.getxp(),*xi);}else{bn = randz[*diter];}
       thetavec_temp = bn->getthetavec(); 
       yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
    }
@@ -1707,13 +1739,22 @@ void brt::local_setr_vec(diterator& diter)
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
 
-   for(;diter<diter.until();diter++) {
-      bn = t.bn(diter.getxp(),*xi);
-      //bn = t.bn(diter.getxp(),*xi);
-      thetavec_temp = bn->getthetavec();
-      resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
+   // Set residual for random or deterministic path models
+   if(randpath){
+      for(;diter<diter.until();diter++) {
+         bn = randz[*diter];
+         thetavec_temp = bn->getthetavec();
+         resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
+      }
+   }else{
+      for(;diter<diter.until();diter++) {
+         bn = t.bn(diter.getxp(),*xi);
+         thetavec_temp = bn->getthetavec();
+         resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
+      }
    }
 }
+
 //--------------------------------------------------
 //predict the response at the (npred x p) input matrix *x
 //Note: the result appears in *dipred.y.
@@ -2029,40 +2070,52 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 // predict_vec_rpath
 // ----- need path to root and loop through the root per bnv
 void brt::get_phix_matrix(diterator &diter, mxd &phix){
-   tree::npv bnv; 
+   tree::npv bnv,path; 
+   tree::tree_p p0;
    int L,U, v0, c0;
    double lb, ub, psi0;
+   mxd logphix;
    // Get bottom nodes and initialize phix
    t.getbots(bnv);
    phix = mxd::Zero(di->n, 1);
+   logphix = mxd::Zero(di->n, 1);
    if(bnv.size()>1){
       // Get the upper and lower bounds for each path
       for(size_t j=0;j<bnv.size();j++){
-         // Reset L and U to min and max & then update
-         L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
-         v0 = bnv[j]->p->v;
-         bnv[j]->rgi(v0,&L,&U);
-         
-         // Now we have the interval endpoints, put corresponding values in a,b matrices.
-         if(L!=std::numeric_limits<int>::min()){ 
-               lb=(*xi)[v0][L];
-         }else{
-               lb=(*xi)[v0][0];
-         }
-         if(U!=std::numeric_limits<int>::max()) {
-               ub=(*xi)[v0][U];
-         }else{
-               ub=(*xi)[v0][(*xi)[v0].size()-1];
-         }
+         path.clear();
+         bnv[j]->getpathtoroot(path);
+         for(size_t l=0;l<path.size()-1;l++){
+            // Reset L and U to min and max & then update
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            p0 = path[l]->p; // get the parent of the current node on the path
+            v0 = p0->v; // get its split var
+            p0->rgi(v0,&L,&U); // Get its recatangle indices
+            // Now we have the interval endpoints
+            if(L!=std::numeric_limits<int>::min()){ 
+                  lb=(*xi)[v0][L];
+            }else{
+                  lb=(*xi)[v0][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                  ub=(*xi)[v0][U];
+            }else{
+                  ub=(*xi)[v0][(*xi)[v0].size()-1];
+            }
 
-         // Get cutpoint
-         c0 = (*xi)[v0][bnv[j]->p->c];
-
-         // fix this loop...compute phix using log 
+            // Update phi for this node in the path (note the path.size()-1 in the loop)
+            // May not need the conditional here
+            if(!p0){
+               c0 = (*xi)[v0][p0->c];
+               for(;diter<diter.until();diter++){
+                  double *xx = diter.getxp();
+                  psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
+                  logphix(*diter,j)=logphix(*diter,j)+log(psi0); // might want to use logs and then exp later
+               }
+            }     
+         }
+         // Convert back to regular scale
          for(;diter<diter.until();diter++){
-            double *xx = diter.getxp();
-            psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
-            phix(*diter,j)=phix(*diter,j)*psi0; // might want to use logs and then exp later
+            phix(*diter,j)=exp(logphix(*diter,j)); // might want to use logs and then exp later
          }
       }
    }else{
@@ -2070,12 +2123,14 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix){
    }   
 }
 
+//--------------------------------------------------
 void brt::predict_vec_rpath(dinfo* dipred, finfo* fipred){
    mxd phix;
    diterator diter(dipred);
    get_phix_matrix(diter,phix);
    local_predict_vec_rpath(diter, *fipred, phix);        
 }
+
 
 void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix){
    tree::npv bnv;
@@ -2123,7 +2178,7 @@ void brt::drawgamma(rn &gen){
    double old_sumlogphix, new_sumlogphix;
    newgam = rpi.gamma + (gen.uniform()-0.5)*rpi.propwidth;
 
-   // Pass the unew vector (as an array) if using mpi  
+   // Pass the new gamma using mpi  
 #ifdef _OPENMPI
    if(rank==0){ //should always be true when using mpi
       char buffer[SIZE_UINT3];
@@ -2140,25 +2195,23 @@ void brt::drawgamma(rn &gen){
 
       delete[] request;
    }
-#endif
-
+#else
    // With the old gammma, get the sumlogphix
    old_sumlogphix = sumlogphix(rpi.gamma);
 
    // With the new gammma, get the sumlogphix 
    new_sumlogphix = sumlogphix(newgam);
-
-   // Send the sum log term back
-
-
-   // Get MH message
+#endif
+   
+   // Send the sum log term back (mpi is handled in this function)
+   rpath_mhstep(old_sumlogphix,new_sumlogphix,newgam,gen);
 }
 
 
 // Draw gamma -- mpi version
 void brt::drawgamma_mpi(rn &gen){
    double newgam;
-   double sumlogphix = 0;
+   double old_sumlogphix = 0, new_sumlogphix = 0;
 #ifdef _OPENMPI
    int buffer_size = SIZE_UINT3;
    char buffer[buffer_size];
@@ -2169,10 +2222,18 @@ void brt::drawgamma_mpi(rn &gen){
    MPI_Recv(buffer,buffer_size,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
    MPI_Unpack(buffer,buffer_size,&position,newgam,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
+   // Compute the log sum terms
+   old_sumlogphix = sumlogphix(rpi.gamma);
+   new_sumlogphix = sumlogphix(newgam);
 #endif
+
+   // Send the sum log term back (mpi is handled in this function)
+   rpath_mhstep(old_sumlogphix,new_sumlogphix,newgam,gen);
+
 }
 
-// Adapt
+
+// Adapt for rpath
 void brt::rpath_adapt(){
    double accrate;
    accrate=((double)rpi.accept)/((double)(rpi.accept+rpi.reject));
@@ -2331,6 +2392,51 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
    }
 #endif
 
+}
+
+// Proposal distribution for random path assignments
+void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen){
+   diterator diter(di);
+   double *xx; 
+   double psi0;
+   double ub, lb;
+   int L, U;
+   
+   // Get upper and lower bounds...make this into a function
+   L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+   nx->rgi(v,&L,&U);
+   
+   // Now we have the interval endpoints, put corresponding values in a,b matrices.
+   if(L!=std::numeric_limits<int>::min()){ 
+         lb=(*xi)[v][L];
+   }else{
+         lb=(*xi)[v][0];
+   }
+   if(U!=std::numeric_limits<int>::max()) {
+         ub=(*xi)[v][U];
+   }else{
+         ub=(*xi)[v][(*xi)[v].size()-1];
+   }
+   
+   // Assign the z's for the right and left node
+   randz_bdp.clear();
+   for(;diter<diter.until();diter++){
+      if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
+         // compute psi(x), the prob of moving right
+         xx = diter.getxp();      
+         psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
+         if(psi0 < gen.uniform()){
+            // Right
+            randz_bdp.push_back(2);      
+         } else {
+            // Left
+            randz_bdp.push_back(1);
+         }
+      }else{
+         // Not involved
+         randz_bdp.push_back(0);
+      }
+   }   
 }
 
 
