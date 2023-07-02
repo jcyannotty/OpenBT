@@ -47,7 +47,7 @@ openbtcal = function(
   yc_train, xc_train,
   ucols = c(),
   mu1 = NULL, mu2 = NULL, 
-  k1 = 1.0, k2 = 1.0,
+  k1 = 1.0, k2 = 1.0, rho = 0.99,
   ntree = NULL, ntreeh=NULL,ntreesim=0,
   ndpost=1000, nskip=100,
   nadapt=1000, adaptevery=100,
@@ -76,6 +76,8 @@ openbtcal = function(
   MODEL_OSBART=1 # On-site BART Calibration
   MODEL_ORTHBART=2 # Orthogonal On-site BART Calibration
   MODEL_MODBART=3 # On-site modularization 
+  
+  # TODO: Clean this up
   if(is.null(model)){ 
     cat("Model type not specified.\n")
     cat("Available options are:\n")
@@ -201,7 +203,7 @@ openbtcal = function(
   rgyf = range(yf_train)
   rgyc = range(yc_train)
   disc = 2*abs(yf_mean - yc_mean) 
-  tau1 =  (rgyf[2] - rgyf[1])/(2*sqrt(m)*k1)
+  tau1 =  rho*(rgyc[2] - rgyc[1])/(2*sqrt(m)*k1) # switched from yf range ot yc range
   #tau2 =  disc/(sqrt(m)*k2)
   tau2 =  disc/(2*sqrt(m-me)*k2)
   
@@ -220,6 +222,10 @@ openbtcal = function(
     baseh=base[2]
     base=base[1]
   }
+  
+  # sigma_c
+  sig_c = (1-rho)*(rgyc[2]-rgyc[1])/(2*k1)
+  sigmav=rep(sig_c,length(yc_train)+length(yf_train))
   
   #--------------------------------------------------
   # Tree control arguments
@@ -407,7 +413,7 @@ openbtcal = function(
   res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh;res$me=me; res$nd=nd; res$burn=burn
   res$nadapt=nadapt; res$adaptevery=adaptevery;res$mu1=mu1;res$mu2=mu2;res$tau1=tau1;res$tau2=tau2;
   res$overalllambdaf=overalllambdaf; res$overallnuf=overallnuf;
-  res$overalllambdaf=overalllambdac; res$overallnuf=overallnuc;
+  res$overalllambdaf=overalllambdac; res$overallnuf=overallnuc;res$rho = rho;
   res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
   res$proposal_type = proposal_type; res$gradstep = grad_stepsize;
   res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;

@@ -683,7 +683,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Update varaince trees
 #ifdef _OPENMPI
         if(mpirank==0) psbmf.draw(gen); else psbmf.draw_mpislave(gen);
-        if(mpirank==0) psbmc.draw(gen); else psbmc.draw_mpislave(gen);
+        //if(mpirank==0) psbmc.draw(gen); else psbmc.draw_mpislave(gen);
 #else
         psbmf.draw(gen);
         psbmc.draw(gen);
@@ -694,8 +694,9 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             //cout << "sig[j] = " << sig[j] << endl;    
         }
         for(size_t j=0;j<nc;j++){
-            sig[nf+j] = psbmc.f(j);
-            //cout << "sig[nf+j] = " << sig[nf+j] << endl;    
+            sig[nf+j] = sigmav[nf+j]; //psbmc.f(j);
+            //cout << "sig[nf+j] = " << sig[nf+j] << endl;
+            //cout << "sigmav[nf+j] = " << sigmav[nf+j] << endl;    
         }
         if((i+1)%adaptevery==0 && mpirank==0) psbmf.adapt();
         if((i+1)%adaptevery==0 && mpirank==0) psbmc.adapt();
@@ -817,7 +818,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Update varaince trees
 #ifdef _OPENMPI
         if(mpirank==0) psbmf.draw(gen); else psbmf.draw_mpislave(gen);
-        if(mpirank==0) psbmc.draw(gen); else psbmc.draw_mpislave(gen);
+        //if(mpirank==0) psbmc.draw(gen); else psbmc.draw_mpislave(gen);
 #else
         psbmf.draw(gen);
         psbmc.draw(gen);
@@ -827,7 +828,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             sig[j] = psbmf.f(j);    
         }
         for(size_t j=0;j<nc;j++){
-            sig[nf+j] = psbmc.f(j);    
+            sig[nf+j] = sigmav[nf+j]; //psbmc.f(j);    
         }
         
         // Update calibration parameters
@@ -944,7 +945,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
         // Update varaince trees
 #ifdef _OPENMPI
         if(mpirank==0) psbmf.draw(gen); else psbmf.draw_mpislave(gen);
-        if(mpirank==0) psbmc.draw(gen); else psbmc.draw_mpislave(gen);
+        //if(mpirank==0) psbmc.draw(gen); else psbmc.draw_mpislave(gen);
 #else
         psbmf.draw(gen);
         psbmc.draw(gen);
@@ -955,7 +956,7 @@ cout << "mpirank=" << mpirank << ": change of variable rank correlation matrix l
             //cout << "sigf[j] = " << sig[j] << endl;   
         }
         for(size_t j=0;j<nc;j++){
-            sig[nf+j] = psbmc.f(j); 
+            sig[nf+j] = sigmav[nf+j]; //psbmc.f(j); 
             //cout << "sigc[j] = " << sig[nf+j] << endl;   
         }
         
