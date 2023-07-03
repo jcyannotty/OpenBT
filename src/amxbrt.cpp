@@ -259,3 +259,70 @@ void amxbrt::collapseensemble()
    }
 
 }
+
+
+//--------------------------------------------------
+// rpath related methods
+//--------------------------------------------------
+void amxbrt::rpath_adapt(){
+  for(size_t j=0;j<m;j++) {
+    mb[j].rpath_adapt();
+  }
+}
+
+void amxbrt::drawgamma(rn &gen){
+    for(size_t j=0;j<m;j++) {
+        //Draw parameter vector in the jth tree
+        mb[j].drawgamma(gen);
+    }
+} 
+
+
+void amxbrt::drawgamma_mpi(rn &gen){
+    for(size_t j=0;j<m;j++) {
+        //Draw parameter vector in the jth tree
+        mb[j].drawgamma_mpi(gen);
+    }
+}
+
+void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix){
+    tree::npv bnv;
+    vxd thetavec_temp(k); 
+    for(;diter<diter.until();diter++) {
+        thetavec_temp = vxd::Zero(k);
+        for(size_t j=0;j<m;j++){
+            bnv.clear();
+            t.getbots(bnv);
+            for(size_t i=0;i<bnv.size();i++){
+                thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(*diter,i);
+            }
+        }
+        diter.sety(fipred.row(*diter)*thetavec_temp);
+    }
+}
+
+
+void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix){
+    tree::npv bnv;
+    vxd thetavec_temp(k); 
+    for(;diter<diter.until();diter++) {
+        thetavec_temp = vxd::Zero(k);
+        for(size_t j=0;j<m;j++){
+            bnv.clear();
+            t.getbots(bnv);
+            for(size_t i=0;i<bnv.size();i++){
+                thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(*diter,i);
+            }
+        }
+        wts.col(*diter) = thetavec_temp;
+    }
+}
+
+
+std::vector<double> amxbrt::getgamma(){
+    std::vector<double> outgamma;
+    for(size_t j=0;j<m;j++){
+        outgamma.push_back(mb[j].rpi.gamma);
+    }
+    return(outgamma);
+}

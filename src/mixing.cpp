@@ -24,7 +24,6 @@
 #include "mxbrt.h"
 #include "amxbrt.h"
 #include "parameters.h"
-//#include "calibratefuns.cpp"
 
 using std::cout;
 using std::endl;

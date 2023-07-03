@@ -103,6 +103,14 @@
     //thread count
     int tc;
     conf >> tc;
+
+    // random path
+    std::string rpath_str, rpg;
+    bool rpath = false;
+    conf >> rpath_str;
+    conf >> rpg; // gamma root
+    if(rpath_str == "True" || rpath_str == "TRUE"){rpath = true;}
+
     conf.close();
 
     //MPI initialization
@@ -242,6 +250,16 @@
 
     imf.close();
 
+    //----------------------------------------------
+    // Random Path, read in gamma
+    //----------------------------------------------
+    std::ifstream igf(folder + modelname + ".rpg");
+    std::vector<double> e_gamma(nd*m);std::ifstream igf(folder + modelname + ".rpg");
+        std::vector<double> e_gamma(nd*m);
+    if(rpath){
+        for(size_t i=0;i<e_gamma.size();i++) igf >> std::scientific >> e_gamma.at(i);
+    }
+
     //Create dinfo for predictions. The fp is just a place holder and is not needed in this script
     double *fp = new double[np];
     dinfo dip;
@@ -306,7 +324,17 @@
 
         //Get the current posterior draw of the weights
         wts_iter = mxd::Zero(k,np);
-        axb.predict_thetavec(&dip, &wts_iter);
+        if(!rpath){
+            axb.predict_thetavec(&dip, &wts_iter);
+        }else{
+            // Get and set gamma, then get predictions and clear the temp vec
+            std::vector<double> tempgam;
+            for(size_t j=0;j<m;j++){tempgam.push_back(e_gamma[i*m+j]);}        
+            axb.setgamma(tempgam);
+            axb.predict_thetavec_rpath(&dip, &wts_iter);
+            tempgam.clear();
+        }
+        
         
         //Get terminal node parameters for the 1st pt on the node -- remove later
         //theta_iter = mxd::Zero(k,m);

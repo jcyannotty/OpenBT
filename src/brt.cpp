@@ -374,6 +374,7 @@ void brt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo&
       if(randpath){
          bn = randz[*diter];
       }else{
+         // Regular Deterministic step
          bn = t.bn(diter.getxp(),*xi);   
       }
       
@@ -1326,6 +1327,12 @@ void brt::drawvec(rn& gen)
    if(mi.dopert)
       pertcv(gen);
 
+
+   // Gamma proposal for randpath model
+   if(randpath){
+      drawgamma(gen);
+   }
+
    // Gibbs Step
     drawthetavec(gen);
 
@@ -1539,7 +1546,7 @@ void brt::bd_vec(rn& gen)
       double pr; //part of metropolis ratio from proposal and prior
       bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);
       
-      if(randpath){randz_proposal(nx,v,c,gen);}
+      if(randpath){randz_proposal(nx,v,c,gen,true);}
 
       //--------------------------------------------------
       //compute sufficient statistics
@@ -1562,6 +1569,7 @@ void brt::bd_vec(rn& gen)
          lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
          hardreject=false;
          lalpha = log(pr) + (lml+lmr-lmt);
+         if(randpath){lalpha = lalpha-rpi.logproppr;}
          //std::cout << "lml" << lml << std::endl;
          //std::cout << "lmr" << lmr << std::endl;
          //std::cout << "lmt" << lmt << std::endl;
@@ -1581,7 +1589,7 @@ void brt::bd_vec(rn& gen)
          thetavecr = Eigen::VectorXd:: Zero(k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
-         //****update z here -- birth move
+         if(randpath){update_randz_bd(nx, true);}
 #ifdef _OPENMPI
 //        cout << "accept birth " << lalpha << endl;
          const int tag=MPI_TAG_BD_BIRTH_VC_ACCEPT;
@@ -1614,7 +1622,9 @@ void brt::bd_vec(rn& gen)
       double pr;  //part of metropolis ratio from proposal and prior
       tree::tree_p nx; //nog node to death at
       dprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,pr,gen);
-
+      
+      if(randpath){randz_proposal(nx,nx->v,nx->c,gen,false);} // random path death step
+      
       //--------------------------------------------------
       //compute sufficient statistics
       //sinfo sil,sir,sit;
@@ -1631,6 +1641,7 @@ void brt::bd_vec(rn& gen)
       double lml, lmr, lmt;  // lm is the log marginal left,right,total
       lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
       double lalpha = log(pr) + (lmt - lml - lmr);
+      if(randpath){lalpha = lalpha+rpi.logproppr;}
       lalpha = std::min(0.0,lalpha);
 
       //--------------------------------------------------
@@ -1643,6 +1654,7 @@ void brt::bd_vec(rn& gen)
          thetavec = Eigen::VectorXd::Zero(k); 
          t.deathp(nx,thetavec);
          mi.daccept++;
+         if(randpath){update_randz_bd(nx, false);}
 #ifdef _OPENMPI
 //        cout << "accept death " << lalpha << endl;
          const int tag=MPI_TAG_BD_DEATH_LR_ACCEPT;
@@ -2331,55 +2343,63 @@ double brt::psix(double gamma, double x, double c, double L, double U){
 // MH step for updating gamma
 void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
 #ifdef _OPENMPI
-    if(rank>0){
-        // Sum the suff stats then get accept/reject status
-        MPI_Status status;
-        MPI_Reduce(&osum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-        MPI_Reduce(&nsum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-        MPI_Recv(NULL,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-        // Carry out the accept/reject step
-        if(status.MPI_TAG==MPI_TAG_RPATHGAMMA_ACCEPT) {
-            rpi.accept+=1;
-            rpi.gamma = newgam;
-        }else{
-            rpi.reject+=1;
-        }
-    }           
+      if(rank>0){
+         // Sum the suff stats then get accept/reject status
+         MPI_Status status;
+         MPI_Reduce(&osum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+         MPI_Reduce(&nsum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+         MPI_Recv(NULL,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+         // Carry out the accept/reject step
+         if(status.MPI_TAG==MPI_TAG_RPATHGAMMA_ACCEPT) {
+               rpi.accept+=1;
+               rpi.gamma = newgam;
+         }else{
+               rpi.reject+=1;
+         }
+      }           
 
-    if(rank==0){
-        // Reduce the suff stats
-        MPI_Request *request = new MPI_Request[tc];
-        MPI_Reduce(MPI_IN_PLACE,&osum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-        MPI_Reduce(MPI_IN_PLACE,&nsum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+      if(rank==0){
+         // Reduce the suff stats
+         MPI_Request *request = new MPI_Request[tc];
+         MPI_Reduce(MPI_IN_PLACE,&osum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+         MPI_Reduce(MPI_IN_PLACE,&nsum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
 
-        // Do mhstep
-        double lmout = lm(csumw,nsumw);
-        double alpha = gen.uniform();
-        //cout << "log alpha = " << log(alpha) << endl;
-        //cout << "lmout = " << lmout << endl;
-        if(log(alpha)<lmout){
+         // Do mhstep
+         double lnprior, loprior;
+         lnprior = (rpi.shp1-1)*log(newgam) + (rpi.shp2-1)*log(1-newgam);
+         loprior = (rpi.shp1-1)*log(rpi.gamma) + (rpi.shp2-1)*log(1-rpi.gamma);
+
+         double lmout = nsum+lnprior-osum-loprior;
+         double alpha = gen.uniform();
+         //cout << "log alpha = " << log(alpha) << endl;
+         //cout << "lmout = " << lmout << endl;
+         if(log(alpha)<lmout){
             // accept
             rpi.gamma = newgam;
-            for(size_t j=0;j<p;j++) rpi.accept+=1;
+            rpi.accept+=1;
             const int tag=MPI_TAG_RPATHGAMMA_ACCEPT;
-            for(size_t k=1; k<=(size_t)tc; k++){
-                MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
+            for(size_t l=1; l<=(size_t)tc; l++){
+               MPI_Isend(NULL,0,MPI_PACKED,l,tag,MPI_COMM_WORLD,&request[l-1]);
             }
-        }else{ 
+         }else{ 
             // reject
             const int tag=MPI_TAG_RPATHGAMMA_REJECT;
             //cout << "reject here" << endl;
-            for(size_t k=1; k<=(size_t)tc; k++) {
-                MPI_Isend(NULL,0,MPI_PACKED,k,tag,MPI_COMM_WORLD,&request[k-1]);
+            for(size_t l=1; l<=(size_t)tc; l++) {
+               MPI_Isend(NULL,0,MPI_PACKED,l,tag,MPI_COMM_WORLD,&request[l-1]);
             }
             rpi.reject+=1;
-        }
-        MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
-        delete[] request;
-    }
+         }
+         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+         delete[] request;
+      }
 #else
     // Do mhstep
-   double lmout = osum-nsum;
+   double lnprior, loprior;
+   lnprior = (rpi.shp1-1)*log(newgam) + (rpi.shp2-1)*log(1-newgam);
+   loprior = (rpi.shp1-1)*log(rpi.gamma) + (rpi.shp2-1)*log(1-rpi.gamma);
+
+   double lmout = nsum+lnprior-osum-loprior;
    double alpha=gen.uniform();
    if(newgam >1 || newgam < 0){alpha = 0;}
    if(log(alpha)<lmout){
@@ -2394,8 +2414,8 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
 
 }
 
-// Proposal distribution for random path assignments
-void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen){
+// Proposal distribution for random path assignments (birth)
+void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birth){
    diterator diter(di);
    double *xx; 
    double psi0;
@@ -2417,28 +2437,103 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen){
    }else{
          ub=(*xi)[v][(*xi)[v].size()-1];
    }
-   
+   // Reset rpi proposal probability
+   rpi.logproppr = 0; 
    // Assign the z's for the right and left node
    randz_bdp.clear();
-   for(;diter<diter.until();diter++){
-      if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
-         // compute psi(x), the prob of moving right
-         xx = diter.getxp();      
-         psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
-         if(psi0 < gen.uniform()){
-            // Right
-            randz_bdp.push_back(2);      
-         } else {
-            // Left
-            randz_bdp.push_back(1);
+   if(birth){
+      for(;diter<diter.until();diter++){
+         if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
+            // compute psi(x), the prob of moving right
+            xx = diter.getxp();      
+            psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
+            if(psi0 < gen.uniform()){
+               // Rightrandz_p
+               randz_bdp.push_back(2);
+               rpi.logproppr+=psi0;      
+            } else {
+               // Left
+               randz_bdp.push_back(1);
+               rpi.logproppr+=(1-psi0);
+            }
+         }else{
+            // Not involved
+            randz_bdp.push_back(0);
          }
-      }else{
-         // Not involved
-         randz_bdp.push_back(0);
       }
-   }   
+   }else{
+      // No need to modify the randz vector, just compute the log proposal probs
+      for(;diter<diter.until();diter++){
+         if((nx->r)==randz[*diter]){
+            // compute psi(x), the prob of moving right
+            xx = diter.getxp();      
+            psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
+            rpi.logproppr+=psi0;      
+            randz_bdp.push_back(2);
+         }else if((nx->l)==randz[*diter]){
+            // compute 1-psi(x), the prob of moving left
+            xx = diter.getxp();      
+            psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
+            rpi.logproppr+=(1-psi0);
+            randz_bdp.push_back(1);
+         }else{
+            randz_bdp.push_back(0);
+         }
+      }
+   }
+   
+   // Pass the proposal probability
+   mpi_randz_proposal();
 }
 
+
+void brt::mpi_randz_proposal(){
+   #ifdef _OPENMPI
+      if(rank>0){
+         // Sum the suff stats then get accept/reject status
+         MPI_Status status;
+         MPI_Reduce(&rpi.logproppr,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+         MPI_Recv(&rpi.logproppr,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+      }           
+
+      if(rank==0){
+         // Reduce the suff stats
+         MPI_Request *request = new MPI_Request[tc];
+         MPI_Reduce(MPI_IN_PLACE,&rpi.logproppr,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+         const int tag=MPI_TAG_RPATH_BD_PROPOSAL
+         for(size_t l=1; l<=(size_t)tc; l++){
+            MPI_Isend(&rpi.logproppr,0,MPI_PACKED,l,tag,MPI_COMM_WORLD,&request[l-1]);
+         }
+         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+         delete[] request;
+      }
+#endif
+
+}
+
+
+void brt::update_randz_bd(tree::tree_p nx, bool birth){
+   diterator diter(di);
+   if(birth){
+      for(;diter.until();diter++){
+         if(randz_bdp[*diter]==2){
+            // Right move accepted
+            randz[*diter] = randz[*diter]->r;
+         }else if(randz_bdp[*diter]==1){
+            // Left move accepted
+            randz[*diter] = randz[*diter]->l;
+         }
+      }
+   }else{
+      for(;diter.until();diter++){
+         // Was a left or right child
+         if(randz_bdp[*diter] > 0){
+            randz[*diter] = nx;
+         }
+      }
+   }
+   randz_bdp.clear();
+}
 
 
 /*

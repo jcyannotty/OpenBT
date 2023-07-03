@@ -122,6 +122,14 @@ int main(int argc, char* argv[])
    //mean offset
    double fmean;
    conf >> fmean;
+
+   // random path
+   std::string rpath_str, rpg;
+   bool rpath = false;
+   conf >> rpath_str;
+   conf >> rpg; // gamma root
+   if(rpath_str == "True" || rpath_str == "TRUE"){rpath = true;} 
+
    conf.close();
    
    //MPI initialization
@@ -562,6 +570,17 @@ if(modeltype!=MODEL_MIXBART){
 
    imf.close();
 
+   //----------------------------------------------
+   // Random Path, read in gamma
+   //----------------------------------------------
+   std::ifstream igf(folder + modelname + ".rpg");
+   std::vector<double> e_gamma(nd*m);std::ifstream igf(folder + modelname + ".rpg");
+      std::vector<double> e_gamma(nd*m);
+   if(rpath){
+      for(size_t i=0;i<e_gamma.size();i++) igf >> std::scientific >> e_gamma.at(i);
+   }
+   
+
    //objects where we'll store the realizations
    std::vector<std::vector<double> > tedraw(nd,std::vector<double>(np));
    std::vector<std::vector<double> > tedrawh(nd,std::vector<double>(np));
@@ -616,19 +635,21 @@ if(modeltype!=MODEL_MIXBART){
       cumdx+=curdx;
 
       axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
-      // draw realization
-      /*
-      if(fdiscrepancy){
-         axb.predict_mix_fd(&dip, &fi_test, &fdeltamean, &fdeltasd, gen);
+      
+      if(!rpath){
+         axb.predict_vec(&dip, &fi_test);
       }else{
-         axb.predict_mix(&dip, &fi_test);
+         // Get and set gamma, then get predictions and clear the temp vec
+         std::vector<double> tempgam;
+         for(size_t j=0;j<m;j++){tempgam.push_back(e_gamma[i*m+j]);}        
+         axb.setgamma(tempgam);
+         axb.predict_vec_rpath(&dip, &fi_test); // Move to public in brt
+         tempgam.clear();
       }
-      */
-      axb.predict_vec(&dip, &fi_test);
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
    }
 
-      // Variance trees second
+   // Variance trees second
    if(mpirank==0) cout << "Drawing sd response from posterior predictive" << endl;
    cumdx=0;
    curdx=0;

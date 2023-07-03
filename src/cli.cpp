@@ -168,6 +168,18 @@ int main(int argc, char* argv[])
    conf >> selectp_str;
    if(selectp_str == "TRUE" || selectp_str == "True"){ selectp = true; }
 
+   // Random path arguments
+   std::string randpath_str;
+   double gam, q, sh1, sh2;
+   bool randpath = false;
+   conf >> randpath_str;
+   conf >> gam;
+   conf >> q;
+   conf >> sh1;
+   conf >> sh2;
+   if(randpath_str == "TRUE" || randpath_str == "True"){ randpath = true; }
+
+
    //Model Mixing wts Prior Mean and sd root and true/false denoting if the priors are the same for each wt model
    std::string wprcore; // name of the textfile containing the prior for the weights
    std::string wprior_str; // str -- T/F did the user provide a prior mean vec and covariance for the weights via text file
@@ -1001,6 +1013,9 @@ return 0;
       loss = Eigen::MatrixXd::Ones(n,k); // init loss
       axb.setloss(loss);
    }
+   if(randpath){
+      axb.setrpi(gam,q,sh1,sh2,n);
+   }
    /*
    //Set prior information
    if(mpirank==0){
@@ -1077,6 +1092,7 @@ return 0;
    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
    std::vector<std::vector<double> > obeta(nd*m, std::vector<double>(1));
+   std::vector<double> ogam(nd*m, 1);
    //std::vector<double> osig(nd,1);
 
    std::vector<int> snn(nd*mh,1);
@@ -1100,14 +1116,17 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
+      if(randpath){ if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}}
 #else
       axb.drawvec(gen);
+      if(randpath) axb.drawgamma(gen);
 #endif
 
       // Update the which are fed into resiudals the variance model
       dips = di;
       dips -= faxb;
       if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
+      if((i+1)%adaptevery==0 && mpirank==0 && randpath) axb.rpath_adapt();
       if(selectp){axb.l2norm(fi);}
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
@@ -1131,8 +1150,10 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Burn iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){ axb.drawvec(gen);}else {axb.drawvec_mpislave(gen);}
+      if(randpath){ if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}}
 #else
       axb.drawvec(gen);
+      if(randpath) axb.drawgamma(gen);
 #endif
       // Update the which are fed into resiudals the variance model
       dips = di;
@@ -1161,8 +1182,11 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Draw iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen); }else{ axb.drawvec_mpislave(gen);}
+      if(randpath){ if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}}
+      
 #else
       axb.drawvec(gen);
+      if(randpath) axb.drawgamma(gen);
 #endif
       dips = di;
       dips -= faxb;
@@ -1192,6 +1216,11 @@ return 0;
       }else{
          axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
          psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
+      }
+      if(randpath){
+         std::vector<double> tempgam(m,0);
+         tempgam = axb.getgamma();
+         for(size_t j=0;j<m;j++){ogam.at(i*m+j) = tempgam[j];}
       }   
    }
 
@@ -1303,6 +1332,11 @@ return 0;
 
       }
 
+      std::ofstream ogf(folder + modelname + ".rpg"); // random path gamma
+      if(randpath){
+         for(size_t i=0;i<nd;i++) ogf << ogam.at(i) << endl;
+         ogf.close();
+      }
       //Write standard deviation -- sigma -- files
       /*
       std::ofstream osf(folder + modelname + ".sdraws");

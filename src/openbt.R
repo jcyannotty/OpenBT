@@ -45,6 +45,8 @@ sigmav=rep(1,length(y.train)),
 f.sd.train = NULL, # rename
 wts.prior.info = NULL, # keep/rename
 selectp = FALSE,
+rpath = FALSE,
+gam = NULL, q = 2.0, rshp1 = 2, rshp2 = 2
 fmean=mean(y.train),
 overallsd = NULL,
 overallnu= NULL,
@@ -261,6 +263,10 @@ if(modeltype==MODEL_MIXBART & (selectp)){
   beta0 = 1/m
 }  
 
+if(rpath){
+  if(is.null(gam)){gam = rshp1/(rshp1 + rshp2) }
+}
+
 #--------------------------------------------------
 overalllambda = overallsd^2
 #--------------------------------------------------
@@ -361,7 +367,7 @@ writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd)
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
             paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(nsprior),
-            paste(selectp),paste(wproot),paste(wtsprior), 
+            paste(selectp),paste(rpath),paste(q),paste(rshp1),paste(rshp2),paste(wproot),paste(wtsprior), 
             paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
             paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
@@ -453,7 +459,7 @@ res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
 res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
 res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
 res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fsdroot=fsdroot; 
-res$nsprior = nsprior;res$selectp = selectp;res$pbd=pbd; res$pb=pb
+res$nsprior = nsprior;res$selectp = selectp;res$rpath = rpath;res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
 res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
 res$printevery=printevery; res$xiroot=xiroot; #res$minx=minx; res$maxx=maxx;
@@ -512,6 +518,8 @@ xproot="xp"
 fproot="fp"
 #fpdmroot="fpdm"
 #fpdsroot="fpds"
+rpath = fit$rpath
+gammaroot = "rpg"
 
 if(fit$modeltype==MODEL_MIXBART){
   if(is.null(f.test)){stop("No function output specified for model mixing!\n")}
@@ -537,7 +545,7 @@ fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
 writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,
             paste(fit$nd),paste(fit$m),
             paste(fit$mh),paste(p),paste(k),paste(tc),
-            fmean.out), fout)
+            fmean.out, paste(rpath), gammaroot), fout)
 close(fout)
 
 #--------------------------------------------------
@@ -1596,6 +1604,8 @@ mixingwts.openbt = function(
   n=nrow(x.test)
   xwroot="xw"
   fitroot=".fit"
+  rpath = fit$rpath
+  gammaroot = "rpg"
   if(fit$model == "mixbart"){m = fit$m; mh = fit$mh}else{m = fit$mix_model_args$ntree; mh = fit$mix_model_args$ntreeh}
   if(fit$model != "mixbart"){fitroot = ".fitmix"}
   #--------------------------------------------------
@@ -1603,7 +1613,8 @@ mixingwts.openbt = function(
   fout=file(paste(fit$folder,"/config.mxwts",sep=""),"w")
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xwroot,
                fitroot,paste(fit$nd),paste(m),
-               paste(mh),paste(p),paste(numwts),paste(tc)), fout)
+               paste(mh),paste(p),paste(numwts),paste(tc)
+               paste(rpath), gammaroot), fout)
   close(fout)
  
   #--------------------------------------------------

@@ -39,6 +39,10 @@ public:
       ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma,ci.diffpriors = true; for(size_t j=0;j<m;j++) mb[j].setci(invtau2_matrix,beta_vec,sigma);} //Set when using prior's that differ by function
    void sethpi(size_t sz){this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);for(size_t j=0;j<m;j++) mb[j].sethpi(sz);}
    void setbi(size_t ik){ci.randbeta=true; ci.beta_vec = ci.beta0*vxd::Ones(ik); this->betaset = mxd::Identity(ik,ik);for(size_t j=0;j<m;j++) mb[j].setbi(ik);}
+   void setrpi(double gam, double q,double shp1, double shp2,size_t n){
+      this->randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2);
+      for(size_t j=0;j<m;j++){mb[j].setrpi(gam,q,shp1,shp2,n);}
+   }
    void setloss(mxd iloss){this->loss.resize(iloss.rows(),iloss.cols()); this->loss = iloss; for(size_t j=0;j<m;j++) mb[j].setloss(iloss);}
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
@@ -71,30 +75,43 @@ public:
     //stuff that maybe should be protected
     tree st;
 
+   //--------------------------------------------------
+   // Random path public methods
+   // For random path
+   void rpath_adapt();
+   void drawgamma(rn &gen);
+   void drawgamma_mpi(rn &gen);
+   void setgamma(std::vector<double> gam){for(size_t j=0;j<m;j++) mb[j].rpi.gamma = gam[j];}
+   std::vector<double> getgamma();
+
 protected:
-    //--------------------
-    //model information
-    size_t m;  //number of trees in sum representation
-    std::vector<mxbrt> mb;  // the vector of individual mu trees for sum representation
-    //--------------------
-    //data
-    std::vector<std::vector<double> > notjmus;
-    std::vector<dinfo*> divec;
-    //--------------------
-    //mcmc info
-    //--------------------
-    //methods
-    virtual void local_setf_vec(diterator& diter);  //set the vector of predicted values
-    virtual void local_setr_vec(diterator& diter);  //set the vector of residuals
-    virtual void local_predict_vec(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
-    virtual void local_predict_thetavec(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
-    virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
-    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                    std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   //--------------------
+   //model information
+   size_t m;  //number of trees in sum representation
+   std::vector<mxbrt> mb;  // the vector of individual mu trees for sum representation
+   //--------------------
+   //data
+   std::vector<std::vector<double> > notjmus;
+   std::vector<dinfo*> divec;
+   //--------------------
+   //mcmc info
+   //--------------------
+   //methods
+   virtual void local_setf_vec(diterator& diter);  //set the vector of predicted values
+   virtual void local_setr_vec(diterator& diter);  //set the vector of residuals
+   virtual void local_predict_vec(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
+   virtual void local_predict_thetavec(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
+   virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                    std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
-    virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
-                    std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+   virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta, std::vector<std::vector<double> >& hyper);
+   virtual void local_loadtree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
+                  std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
+
+   // For random path
+   virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix);
+   virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix); 
 
 };
 
