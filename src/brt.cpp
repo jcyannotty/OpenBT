@@ -1328,7 +1328,6 @@ void brt::drawvec(rn& gen)
    if(mi.dopert)
       pertcv(gen);
 
-   cout << "TIME TO DRAW...." << rank << endl;
 
    // Gibbs Step
     drawthetavec(gen);
@@ -1415,7 +1414,7 @@ void brt::drawvec_mpislave(rn& gen)
       MPI_Unpack(bufferrp,SIZE_UINT3,&position,&vrp,1,MPI_UNSIGNED,MPI_COMM_WORLD);
       MPI_Unpack(bufferrp,SIZE_UINT3,&position,&crp,1,MPI_UNSIGNED,MPI_COMM_WORLD);
       nxrp=t.getptr((size_t)nxidrp);
-      cout << "nxrp = " << nxrp << "-- rank " << rank << endl;
+      //cout << "nxrp = " << nxrp << "-- rank " << rank << endl;
       if(statusrp.MPI_TAG==MPI_TAG_RPATH_BIRTH_PROPOSAL)
       {
          randz_proposal(nxrp,vrp,crp,gen,true);
@@ -1447,7 +1446,7 @@ void brt::drawvec_mpislave(rn& gen)
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
       if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,theta0,theta0); //accept birth
       if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT & randpath){
-         cout << "ACCEPT AND UPDATE -- " << rank << endl;
+         //cout << "ACCEPT AND UPDATE -- " << rank << endl;
          update_randz_bd(nx, true);
       }
       //else reject, for which we do nothing.
@@ -1546,7 +1545,6 @@ void brt::drawvec_mpislave(rn& gen)
          delete &sivnew;
       }
    }
-   cout << "TIME TO DRAW...." << rank << endl;
 
    // Gibbs Step
    drawthetavec(gen);
@@ -1602,11 +1600,10 @@ void brt::bd_vec(rn& gen)
          //std::cout << "lml" << lml << std::endl;
          //std::cout << "lmr" << lmr << std::endl;
          //std::cout << "lmt" << lmt << std::endl;
-         std::cout << "lalpha = " << lalpha << std::endl;
+         //std::cout << "lalpha = " << lalpha << std::endl;
          lalpha = std::min(0.0,lalpha);
-      }else{
-         cout << "min node size issues" << endl;
       }
+
       //--------------------------------------------------
       //try metrop
       Eigen::VectorXd thetavecl,thetavecr; //parameters for new bottom nodes, left and right
@@ -1620,7 +1617,7 @@ void brt::bd_vec(rn& gen)
          thetavecr = Eigen::VectorXd:: Zero(k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
-         cout << "ACCEPT & Update" << endl;
+         //cout << "ACCEPT & Update" << endl;
          if(randpath){update_randz_bd(nx, true);}
 #ifdef _OPENMPI
 //        cout << "accept birth " << lalpha << endl;
@@ -2113,74 +2110,106 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 //--------------------------------------------------
 // predict_vec_rpath
 // ----- need path to root and loop through the root per bnv
-void brt::get_phix_matrix(diterator &diter, mxd &phix){
-   cout << "Enter getphimatrix" << endl;
-   tree::npv bnv,path; 
-   tree::tree_p p0;
+void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np){
+   tree::npv path; 
+   tree::tree_p p0, n0;
+   mxd logphix;
+   std::map<tree::tree_p,double> lbmap;
+   std::map<tree::tree_p,double> ubmap;
+   std::map<tree::tree_p,tree::npv> pathmap;
    int L,U, v0, c0;
    double lb, ub, psi0;
-   mxd logphix;
-   // Get bottom nodes and initialize phix
-   t.getbots(bnv);
-   phix = mxd::Zero(di->n, 1);
-   logphix = mxd::Zero(di->n, 1);
+
+   phix = mxd::Ones(np, bnv.size());
+   logphix = mxd::Zero(np, bnv.size());
    if(bnv.size()>1){
+      cout << "bnv.size() > 1...." << endl;
       // Get the upper and lower bounds for each path
       for(size_t j=0;j<bnv.size();j++){
          path.clear();
          bnv[j]->getpathtoroot(path);
-         for(size_t l=0;l<path.size()-1;l++){
+         pathmap[bnv[j]] = path;
+         for(size_t l=0;l<(path.size()-1);l++){
             // Reset L and U to min and max & then update
             L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            n0 = path[l];
             p0 = path[l]->p; // get the parent of the current node on the path
             v0 = p0->v; // get its split var
-            p0->rgi(v0,&L,&U); // Get its recatangle indices
-            // Now we have the interval endpoints
-            if(L!=std::numeric_limits<int>::min()){ 
-                  lb=(*xi)[v0][L];
-            }else{
-                  lb=(*xi)[v0][0];
+            if(lbmap.find(p0) == lbmap.end()){
+               L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+               p0->rgi(v0,&L,&U);
+               
+               // Now we have the interval endpoints, put corresponding values in a,b matrices.
+               if(L!=std::numeric_limits<int>::min()){ 
+                     lb=(*xi)[v0][L];
+               }else{
+                     lb=(*xi)[v0][0];
+               }
+               if(U!=std::numeric_limits<int>::max()) {
+                     ub=(*xi)[v0][U];
+               }else{
+                     ub=(*xi)[v0][(*xi)[v0].size()-1];
+               }
+               // Store in the maps
+               lbmap[p0] = lb;
+               ubmap[p0] = ub;
             }
-            if(U!=std::numeric_limits<int>::max()) {
-                  ub=(*xi)[v0][U];
-            }else{
-                  ub=(*xi)[v0][(*xi)[v0].size()-1];
-            }
-
             // Update phi for this node in the path (note the path.size()-1 in the loop)
             // May not need the conditional here
-            if(!p0){
-               c0 = (*xi)[v0][p0->c];
-               for(;diter<diter.until();diter++){
-                  double *xx = diter.getxp();
-                  psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
-                  logphix(*diter,j)=logphix(*diter,j)+log(psi0); // might want to use logs and then exp later
-               }
-            }     
-         }
-         // Convert back to regular scale
-         for(;diter<diter.until();diter++){
-            phix(*diter,j)=exp(logphix(*diter,j)); // might want to use logs and then exp later
+            
          }
       }
-   }else{
-      phix = mxd::Zero(di->n, 1);
+
+
+      for(;diter<diter.until();diter++){
+         double *xx = diter.getxp();
+         for(size_t j = 0;j<bnv.size();j++){
+            for(size_t l=0;l<(pathmap[bnv[j]].size()-1);l++){
+               n0 = pathmap[bnv[j]][l];
+               p0 = n0->p;
+               v0 = p0->v;
+               c0 = (*xi)[v0][p0->c];
+               ub = ubmap[p0];
+               lb = lbmap[p0];
+               psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
+
+               cout << "psi = " << psi0 << endl;
+               if((n0->nid())%2 == 0){
+                  // Left move prob
+                  logphix(*diter,j)=logphix(*diter,j)+log(1-psi0);
+               }else{
+                  // Right move prob
+                  logphix(*diter,j)=logphix(*diter,j)+log(psi0);
+               }
+            }
+            // Convert back to phix scale
+            phix(*diter,j)=exp(logphix(*diter,j));
+            cout << "phix(i,j) = " << phix(*diter,j) << endl;
+         }
+      }
+      
+      
+      for(int i = 0;i<phix.rows();i++){
+         cout << "phix.row(i).sum() = " << phix.row(i).sum() << endl;
+      }
    }   
 }
 
 //--------------------------------------------------
 void brt::predict_vec_rpath(dinfo* dipred, finfo* fipred){
-   mxd phix;
    diterator diter(dipred);
-   get_phix_matrix(diter,phix);
-   local_predict_vec_rpath(diter, *fipred, phix);        
+   diterator diterphix(dipred);
+   local_predict_vec_rpath(diterphix, diter,*fipred);        
 }
 
 
-void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix){
+void brt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred){
    tree::npv bnv;
+   mxd phix;
    vxd thetavec_temp(k); 
    t.getbots(bnv);
+   get_phix_matrix(diter,phix,bnv,fipred.rows());
+   // Fix by removing diter below...
    for(;diter<diter.until();diter++) {
       thetavec_temp = vxd::Zero(k);
       for(size_t i=0;i<bnv.size();i++){
@@ -2192,17 +2221,17 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred, mxd& phix){
 
 
 void brt::predict_thetavec_rpath(dinfo* dipred, mxd* wts){
-   mxd phix;
    diterator diter(dipred);
-   get_phix_matrix(diter,phix);
-   local_predict_thetavec_rpath(diter,*wts, phix);          
+   local_predict_thetavec_rpath(diter,*wts);          
 }
 
 
-void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix){
+void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
    tree::npv bnv;
    vxd thetavec_temp(k); 
+   mxd phix;
    t.getbots(bnv);
+   get_phix_matrix(diter,phix,bnv,wts.cols());
    for(;diter<diter.until();diter++) {
       thetavec_temp = vxd::Zero(k);
       for(size_t i=0;i<bnv.size();i++){
@@ -2352,6 +2381,7 @@ double brt::sumlogphix(double gam){
          psi0 = psix(gam,xx[v0],c0,lb,ub);
          if((n0->nid()%2) == 0){
             // node derived from left move
+            /*
             cout << "v = " << v0 << endl;
             cout << "c = " << c0 << endl;
             cout << "ub = " << ub << endl;
@@ -2359,6 +2389,7 @@ double brt::sumlogphix(double gam){
             cout << "x = " << xx[v0] << endl;
             cout << "n0->nid() = " << n0->nid() << endl;
             cout << "psi0 = " << psi0 << endl;
+            */
             sumlogphix=sumlogphix+log(1-psi0); 
          }else{
             // node derived from right move
@@ -2426,15 +2457,15 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
          
          loprior = (rpi.shp1-1)*log(rpi.gamma) + (rpi.shp2-1)*log(1-rpi.gamma);
          
-         cout << "lnprior = " << lnprior << endl;
-         cout << "loprior = " << loprior << endl;
-         cout << "nsum = " << nsum << endl;
-         cout << "osum = " << osum << endl;
+         //cout << "lnprior = " << lnprior << endl;
+         //cout << "loprior = " << loprior << endl;
+         //cout << "nsum = " << nsum << endl;
+         //cout << "osum = " << osum << endl;
 
          double lmout = nsum+lnprior-osum-loprior;
          double alpha = gen.uniform();
          //cout << "log alpha = " << log(alpha) << endl;
-         cout << "lmout = " << lmout << endl;
+         //cout << "lmout = " << lmout << endl;
          if(log(alpha)<lmout){
             // accept
             rpi.gamma = newgam;
@@ -2522,7 +2553,6 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
                rpi.logproppr+=psi0;      
             } else {
                // Left
-               cout << "left move, psi0 = " << psi0 << endl;
                randz_bdp.push_back(1);
                rpi.logproppr+=(1-psi0);
             }
