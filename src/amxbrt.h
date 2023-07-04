@@ -81,7 +81,7 @@ public:
    void rpath_adapt();
    void drawgamma(rn &gen);
    void drawgamma_mpi(rn &gen);
-   void setgamma(std::vector<double> gam){for(size_t j=0;j<m;j++) mb[j].rpi.gamma = gam[j];}
+   void setgamma(std::vector<double> gam){for(size_t j=0;j<m;j++) mb[j].setgamma(gam[j]);}
    std::vector<double> getgamma();
 
 protected:

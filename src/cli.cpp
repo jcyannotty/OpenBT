@@ -179,7 +179,6 @@ int main(int argc, char* argv[])
    conf >> sh2;
    if(randpath_str == "TRUE" || randpath_str == "True"){ randpath = true; }
 
-
    //Model Mixing wts Prior Mean and sd root and true/false denoting if the priors are the same for each wt model
    std::string wprcore; // name of the textfile containing the prior for the weights
    std::string wprior_str; // str -- T/F did the user provide a prior mean vec and covariance for the weights via text file
@@ -1116,7 +1115,9 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-      if(randpath){ if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}}
+      if(randpath){ 
+         if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}
+      }
 #else
       axb.drawvec(gen);
       if(randpath) axb.drawgamma(gen);

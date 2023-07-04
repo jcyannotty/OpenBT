@@ -46,7 +46,7 @@ f.sd.train = NULL, # rename
 wts.prior.info = NULL, # keep/rename
 selectp = FALSE,
 rpath = FALSE,
-gam = NULL, q = 2.0, rshp1 = 2, rshp2 = 2
+gam = NULL, q = 2.0, rshp1 = 2, rshp2 = 2,
 fmean=mean(y.train),
 overallsd = NULL,
 overallnu= NULL,
@@ -265,8 +265,11 @@ if(modeltype==MODEL_MIXBART & (selectp)){
 
 if(rpath){
   if(is.null(gam)){gam = rshp1/(rshp1 + rshp2) }
+}else{
+  gam = 1
 }
 
+print(gam)
 #--------------------------------------------------
 overalllambda = overallsd^2
 #--------------------------------------------------
@@ -367,7 +370,7 @@ writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd)
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
             paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
             paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(nsprior),
-            paste(selectp),paste(rpath),paste(q),paste(rshp1),paste(rshp2),paste(wproot),paste(wtsprior), 
+            paste(selectp),paste(rpath),paste(gam),paste(q),paste(rshp1),paste(rshp2),paste(wproot),paste(wtsprior), 
             paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
             paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
             paste(printevery),paste(xiroot),paste(modelname),paste(summarystats)),fout)
@@ -1613,7 +1616,7 @@ mixingwts.openbt = function(
   fout=file(paste(fit$folder,"/config.mxwts",sep=""),"w")
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xwroot,
                fitroot,paste(fit$nd),paste(m),
-               paste(mh),paste(p),paste(numwts),paste(tc)
+               paste(mh),paste(p),paste(numwts),paste(tc),
                paste(rpath), gammaroot), fout)
   close(fout)
  

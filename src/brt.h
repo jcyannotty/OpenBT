@@ -62,7 +62,8 @@
 #   define MPI_TAG_RPATHGAMMA 70
 #   define MPI_TAG_RPATHGAMMA_ACCEPT 71
 #   define MPI_TAG_RPATHGAMMA_REJECT 72
-#   define MPI_TAG_RPATH_BD_PROPOSAL 73
+#   define MPI_TAG_RPATH_BIRTH_PROPOSAL 73
+#   define MPI_TAG_RPATH_DEATH_PROPOSAL 74
 #endif
 
 class sinfo { //sufficient statistics (will depend on end node model)
@@ -249,12 +250,12 @@ public:
 
 
    // public rpath functions
-   rpinfo rpi;
    void rpath_adapt();
    void drawgamma(rn &gen);
    void drawgamma_mpi(rn &gen);
    
    void get_phix_matrix(diterator &diter, mxd &phix);
+   double get_gamma(){return rpi.gamma;}
    void predict_vec_rpath(dinfo* dipred, finfo* fipred); 
    void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
    void setgamma(double gam){rpi.gamma = gam;} 
@@ -279,6 +280,8 @@ protected:
    //slave rank for MPI
    int rank;
    bool randhp;
+   rpinfo rpi;
+   bool randpath; // Are we using a random path
    //vectors of length #slave nodes (tc) describing which variables each node handles when
    //updating mi.corv during an MPI change-of-variable proposal.
    int* chv_lwr;
@@ -342,12 +345,11 @@ protected:
    size_t kp; // vector size for hyperparameters
 
    // Random path information
-   bool randpath; // Are we using a random path
    tree::npv randz; // random path assignments, vector of node pointers
    std::vector<size_t> randz_bdp; // used for birth & death proposal...0 for not involved, 1 for left and 2 for right
 
-   // Set randz pointer...tyis should be initialized as the root
-   void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.getptr(t.nid());}}; //****
+   // Set randz pointer...this should be initialized as the root
+   void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.getptr(t.nid());}};
 
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
    virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen); // General method for sampling hyperparameters in a hierarchical model
@@ -391,12 +393,12 @@ protected:
    virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix);
 
    // Compute psi(x)
-   double psix(double gamma, double x, double c, double L, double U){}
+   double psix(double gamma, double x, double c, double L, double U);
 
    // Birth and death, propose new z
-   void randz_proposal(tree::tree_p nx, size_t v, size_t c, rn &gen, bool birth){}
-   void mpi_randz_proposal();
-   void update_randz_bd(tree::tree_p nx, bool birth){};
+   void randz_proposal(tree::tree_p nx, size_t v, size_t c, rn &gen, bool birth);
+   void mpi_randz_proposal(double &logproppr,tree::tree_p nx, size_t v, size_t c, bool birth);
+   void update_randz_bd(tree::tree_p nx, bool birth);
 
    // Updating gamma
    void set_gamma_prior(double s1, double s2){rpi.shp1 = s1; rpi.shp2 = s2;}

@@ -325,14 +325,14 @@ double brt::lm(sinfo& si)
 void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir)    
 {
    double *xx;//current x
-   tree::tree_p xbn;
    sil.n=0; sir.n=0;
-
    // Soft BART Version ----
+   //cout << "nx = " << nx << " --- rank -- " << rank << endl;
+   //cout << "nx nid = " << nx->nid() << " --- rank -- " << rank << endl;
    if(randpath){
       // Random Path BART update
       for(;diter<diter.until();diter++){
-         xx = diter.getxp();
+         //cout << "randz[*diter] nid = " << randz[*diter]->nid() << " --- rank " << rank << endl;
          if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
             if(randz_bdp[*diter] == 1) {
                // Left move
@@ -359,6 +359,7 @@ void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, s
          }
       }
    }
+
 }
 
 //--------------------------------------------------
@@ -407,7 +408,7 @@ void brt::getsuff(tree::tree_p nx, size_t v, size_t c, sinfo& sil, sinfo& sir)
    #ifdef _OPENMP
 #     pragma omp parallel num_threads(tc)
       local_ompgetsuff(nx,v,c,*di,sil,sir); //faster if pass dinfo by value.
-   #elif _OPENMPI
+   #elif _OPENMPI 
       local_mpigetsuff(nx,v,c,*di,sil,sir);
    #else
       diterator diter(di);
@@ -1327,11 +1328,7 @@ void brt::drawvec(rn& gen)
    if(mi.dopert)
       pertcv(gen);
 
-
-   // Gamma proposal for randpath model
-   if(randpath){
-      drawgamma(gen);
-   }
+   cout << "TIME TO DRAW...." << rank << endl;
 
    // Gibbs Step
     drawthetavec(gen);
@@ -1403,11 +1400,33 @@ std::vector<double> brt::drawnodehypervec(sinfo& si, rn& gen){
 void brt::drawvec_mpislave(rn& gen)
 {
    #ifdef _OPENMPI
-   char buffer[SIZE_UINT3];
+   char buffer[SIZE_UINT3], bufferrp[SIZE_UINT3];
    int position=0;
    MPI_Status status;
+   MPI_Status statusrp;
    typedef tree::npv::size_type bvsz;
 
+   // Check random path proposal if using rpath
+   if(randpath){ 
+      unsigned int nxidrp,vrp,crp;      
+      tree::tree_p nxrp;
+      MPI_Recv(bufferrp,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&statusrp);
+      MPI_Unpack(bufferrp,SIZE_UINT3,&position,&nxidrp,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      MPI_Unpack(bufferrp,SIZE_UINT3,&position,&vrp,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      MPI_Unpack(bufferrp,SIZE_UINT3,&position,&crp,1,MPI_UNSIGNED,MPI_COMM_WORLD);
+      nxrp=t.getptr((size_t)nxidrp);
+      cout << "nxrp = " << nxrp << "-- rank " << rank << endl;
+      if(statusrp.MPI_TAG==MPI_TAG_RPATH_BIRTH_PROPOSAL)
+      {
+         randz_proposal(nxrp,vrp,crp,gen,true);
+      }else if(statusrp.MPI_TAG==MPI_TAG_RPATH_DEATH_PROPOSAL)
+      {
+         randz_proposal(nxrp,vrp,crp,gen,false);
+      }
+      // reset position
+      position = 0;
+   }
+   
    // Structural/topological proposal(s)
    // MPI receive the topological proposal type and nlid and nrid if applicable.
    MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
@@ -1415,6 +1434,7 @@ void brt::drawvec_mpislave(rn& gen)
    sinfo& tsir = *newsinfo();
    vxd theta0(k);
    theta0 = vxd::Zero(k);
+
    if(status.MPI_TAG==MPI_TAG_BD_BIRTH_VC) {
       unsigned int nxid,v,c;
       tree::tree_p nx;
@@ -1426,6 +1446,10 @@ void brt::drawvec_mpislave(rn& gen)
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
       if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,theta0,theta0); //accept birth
+      if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT & randpath){
+         cout << "ACCEPT AND UPDATE -- " << rank << endl;
+         update_randz_bd(nx, true);
+      }
       //else reject, for which we do nothing.
    }
    else if(status.MPI_TAG==MPI_TAG_BD_DEATH_LR) {
@@ -1435,10 +1459,13 @@ void brt::drawvec_mpislave(rn& gen)
       MPI_Unpack(buffer,SIZE_UINT3,&position,&nrid,1,MPI_UNSIGNED,MPI_COMM_WORLD);
       nl=t.getptr((size_t)nlid);
       nr=t.getptr((size_t)nrid);
+      //if(randpath){randz_proposal(nl->p,(nl->p)->v,(nl->p)->c,gen,false);}
       getsuff(nl,nr,tsil,tsir);
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
+      if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT & randpath){update_randz_bd(nl->p, false);} // random path move for death
       if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) t.deathp(nl->getp(),theta0); //accept death
+      
       //else reject, for which we do nothing.
    }
    else if(status.MPI_TAG==MPI_TAG_ROTATE) {
@@ -1448,6 +1475,7 @@ void brt::drawvec_mpislave(rn& gen)
       rot(tnew,t,gen);
       delete tnew;
    }
+   
    delete &tsil;
    delete &tsir;
 
@@ -1518,6 +1546,7 @@ void brt::drawvec_mpislave(rn& gen)
          delete &sivnew;
       }
    }
+   cout << "TIME TO DRAW...." << rank << endl;
 
    // Gibbs Step
    drawthetavec(gen);
@@ -1573,8 +1602,10 @@ void brt::bd_vec(rn& gen)
          //std::cout << "lml" << lml << std::endl;
          //std::cout << "lmr" << lmr << std::endl;
          //std::cout << "lmt" << lmt << std::endl;
-         //std::cout << "lalpha" << lalpha << std::endl;
+         std::cout << "lalpha = " << lalpha << std::endl;
          lalpha = std::min(0.0,lalpha);
+      }else{
+         cout << "min node size issues" << endl;
       }
       //--------------------------------------------------
       //try metrop
@@ -1589,6 +1620,7 @@ void brt::bd_vec(rn& gen)
          thetavecr = Eigen::VectorXd:: Zero(k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
+         cout << "ACCEPT & Update" << endl;
          if(randpath){update_randz_bd(nx, true);}
 #ifdef _OPENMPI
 //        cout << "accept birth " << lalpha << endl;
@@ -2082,6 +2114,7 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 // predict_vec_rpath
 // ----- need path to root and loop through the root per bnv
 void brt::get_phix_matrix(diterator &diter, mxd &phix){
+   cout << "Enter getphimatrix" << endl;
    tree::npv bnv,path; 
    tree::tree_p p0;
    int L,U, v0, c0;
@@ -2187,9 +2220,9 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix){
 void brt::drawgamma(rn &gen){
    // Get new proposal for gamma
    double newgam = 0;
-   double old_sumlogphix, new_sumlogphix;
+   double old_sumlogphix = 0.0, new_sumlogphix = 0.0;
    newgam = rpi.gamma + (gen.uniform()-0.5)*rpi.propwidth;
-
+   cout << "newgamma = " << newgam << endl;
    // Pass the new gamma using mpi  
 #ifdef _OPENMPI
    if(rank==0){ //should always be true when using mpi
@@ -2232,7 +2265,7 @@ void brt::drawgamma_mpi(rn &gen){
 
    // MPI receive the new gamma and unpack it
    MPI_Recv(buffer,buffer_size,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-   MPI_Unpack(buffer,buffer_size,&position,newgam,1,MPI_DOUBLE,MPI_COMM_WORLD);
+   MPI_Unpack(buffer,buffer_size,&position,&newgam,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
    // Compute the log sum terms
    old_sumlogphix = sumlogphix(rpi.gamma);
@@ -2259,9 +2292,9 @@ void brt::rpath_adapt(){
 double brt::sumlogphix(double gam){
    double sumlogphix = 0;
    double psi0 = 0;
-   int v0, c0, U, L;
-   double lb,ub;
-   tree::tree_p p0;
+   int v0, U, L;
+   double lb,ub, c0;
+   tree::tree_p p0, n0;
    diterator diter(di);
    tree::npv bnv;
    tree::npv path;
@@ -2270,13 +2303,13 @@ double brt::sumlogphix(double gam){
    std::map<tree::tree_p,tree::npv> pathmap;
 
    t.getbots(bnv);
-
+   // cout << "bnv.size = " << bnv.size() << endl;
    // Get the rectangles at each internal node
    for(size_t i=0;i<bnv.size();i++){   
       path.clear();
       bnv[i]->getpathtoroot(path);
       pathmap[bnv[i]] = path;
-      for(size_t j=0;j<path.size();j++){
+      for(size_t j=0;j<(path.size()-1);j++){
          p0 = path[j]->p;
          v0 = p0->v;
          // Add new p0 to map if not already included (CHECK SECOND CONDITION)
@@ -2301,21 +2334,40 @@ double brt::sumlogphix(double gam){
          }
       }
       
-   } 
-   
+   }
 
    for(;diter<diter.until();diter++){
       double *xx = diter.getxp();
-      for(size_t j=0;j<pathmap[randz[*diter]].size();j++){
+      for(size_t j=0;j<(pathmap[randz[*diter]].size()-1);j++){
          // Get cutpoint
-         if(randz[*diter][j].p != 0){
-            c0 = (*xi)[v0][(randz[*diter][j].p)->c];
-            v0 = (randz[*diter][j].p)->v;
-            lb = lbmap[p0];
-            ub = ubmap[p0];
-            psi0 = psix(gam,xx[v0],c0,lb,ub);
+         //if(randz[*diter][j].p != 0){
+         n0 = pathmap[randz[*diter]][j];
+         p0 = n0->p; // randz[*diter][j].p;
+         v0 = p0->v; // (randz[*diter][j].p)->v;
+         c0 = (*xi)[v0][p0->c]; // (*xi)[v0][(randz[*diter][j].p)->c];
+         lb = lbmap[p0];
+         ub = ubmap[p0];
+
+         // Need to account for left vs right move here
+         psi0 = psix(gam,xx[v0],c0,lb,ub);
+         if((n0->nid()%2) == 0){
+            // node derived from left move
+            cout << "v = " << v0 << endl;
+            cout << "c = " << c0 << endl;
+            cout << "ub = " << ub << endl;
+            cout << "lb = " << lb << endl;
+            cout << "x = " << xx[v0] << endl;
+            cout << "n0->nid() = " << n0->nid() << endl;
+            cout << "psi0 = " << psi0 << endl;
+            sumlogphix=sumlogphix+log(1-psi0); 
+         }else{
+            // node derived from right move
             sumlogphix=sumlogphix+log(psi0); 
          }
+         //}else{
+            // psi0 = 1, log(psi0)  = 0
+            // No update to sumlogphix
+         //}
       }
    }
    return(sumlogphix);
@@ -2366,13 +2418,23 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
 
          // Do mhstep
          double lnprior, loprior;
-         lnprior = (rpi.shp1-1)*log(newgam) + (rpi.shp2-1)*log(1-newgam);
+         if(newgam > 1 || newgam < 0){
+            lnprior = -std::numeric_limits<double>::infinity();
+         }else{
+            lnprior = (rpi.shp1-1)*log(newgam) + (rpi.shp2-1)*log(1-newgam);
+         }
+         
          loprior = (rpi.shp1-1)*log(rpi.gamma) + (rpi.shp2-1)*log(1-rpi.gamma);
+         
+         cout << "lnprior = " << lnprior << endl;
+         cout << "loprior = " << loprior << endl;
+         cout << "nsum = " << nsum << endl;
+         cout << "osum = " << osum << endl;
 
          double lmout = nsum+lnprior-osum-loprior;
          double alpha = gen.uniform();
          //cout << "log alpha = " << log(alpha) << endl;
-         //cout << "lmout = " << lmout << endl;
+         cout << "lmout = " << lmout << endl;
          if(log(alpha)<lmout){
             // accept
             rpi.gamma = newgam;
@@ -2396,12 +2458,15 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
 #else
     // Do mhstep
    double lnprior, loprior;
-   lnprior = (rpi.shp1-1)*log(newgam) + (rpi.shp2-1)*log(1-newgam);
+   if(newgam > 1 || newgam < 0){
+      lnprior = -std::numeric_limits<double>::infinity();
+   }else{
+      lnprior = (rpi.shp1-1)*log(newgam) + (rpi.shp2-1)*log(1-newgam);
+   }
    loprior = (rpi.shp1-1)*log(rpi.gamma) + (rpi.shp2-1)*log(1-rpi.gamma);
 
    double lmout = nsum+lnprior-osum-loprior;
    double alpha=gen.uniform();
-   if(newgam >1 || newgam < 0){alpha = 0;}
    if(log(alpha)<lmout){
       // accept
       rpi.gamma = newgam;
@@ -2416,16 +2481,19 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
 
 // Proposal distribution for random path assignments (birth)
 void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birth){
+   //cout << "Enter randz proposal..." << endl;
    diterator diter(di);
    double *xx; 
    double psi0;
    double ub, lb;
+   double logproppr = 0.0;
    int L, U;
-   
+   double cx;
+
    // Get upper and lower bounds...make this into a function
    L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
    nx->rgi(v,&L,&U);
-   
+   cx = (*xi)[v][c];
    // Now we have the interval endpoints, put corresponding values in a,b matrices.
    if(L!=std::numeric_limits<int>::min()){ 
          lb=(*xi)[v][L];
@@ -2445,14 +2513,16 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
       for(;diter<diter.until();diter++){
          if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
             // compute psi(x), the prob of moving right
+            //cout << "nx in randz = " << nx << endl;
             xx = diter.getxp();      
-            psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
-            if(psi0 < gen.uniform()){
+            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
+            if(gen.uniform()<psi0){
                // Rightrandz_p
                randz_bdp.push_back(2);
                rpi.logproppr+=psi0;      
             } else {
                // Left
+               cout << "left move, psi0 = " << psi0 << endl;
                randz_bdp.push_back(1);
                rpi.logproppr+=(1-psi0);
             }
@@ -2467,13 +2537,13 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
          if((nx->r)==randz[*diter]){
             // compute psi(x), the prob of moving right
             xx = diter.getxp();      
-            psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
+            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
             rpi.logproppr+=psi0;      
             randz_bdp.push_back(2);
          }else if((nx->l)==randz[*diter]){
             // compute 1-psi(x), the prob of moving left
             xx = diter.getxp();      
-            psi0 = psix(rpi.gamma,xx[v],c,lb,ub);   
+            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
             rpi.logproppr+=(1-psi0);
             randz_bdp.push_back(1);
          }else{
@@ -2483,30 +2553,58 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
    }
    
    // Pass the proposal probability
-   mpi_randz_proposal();
+   mpi_randz_proposal(rpi.logproppr,nx,v,c,birth);
 }
 
 
-void brt::mpi_randz_proposal(){
-   #ifdef _OPENMPI
-      if(rank>0){
-         // Sum the suff stats then get accept/reject status
-         MPI_Status status;
-         MPI_Reduce(&rpi.logproppr,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-         MPI_Recv(&rpi.logproppr,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
-      }           
-
-      if(rank==0){
-         // Reduce the suff stats
-         MPI_Request *request = new MPI_Request[tc];
-         MPI_Reduce(MPI_IN_PLACE,&rpi.logproppr,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
-         const int tag=MPI_TAG_RPATH_BD_PROPOSAL
-         for(size_t l=1; l<=(size_t)tc; l++){
-            MPI_Isend(&rpi.logproppr,0,MPI_PACKED,l,tag,MPI_COMM_WORLD,&request[l-1]);
-         }
-         MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
-         delete[] request;
+void brt::mpi_randz_proposal(double &logproppr, tree::tree_p nx, size_t v, size_t c, bool birth){
+#ifdef _OPENMPI
+   if(rank==0) {
+      MPI_Status status;
+      char buffer[SIZE_UINT3], buffer2[SIZE_UINT2];
+      int position=0;
+      MPI_Request *request=new MPI_Request[tc];
+      double tlpp;
+      unsigned int vv,cc,nxid;
+      int tag;
+      if(birth){
+         tag=MPI_TAG_RPATH_BIRTH_PROPOSAL;
+      }else{
+         tag=MPI_TAG_RPATH_DEATH_PROPOSAL;
       }
+
+      vv=(unsigned int)v;
+      cc=(unsigned int)c;
+      nxid=(unsigned int)nx->nid();
+
+      //**** This is terribly inefficient *****
+
+      // Pack and send info to the slaves
+      MPI_Pack(&nxid,1,MPI_UNSIGNED,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      MPI_Pack(&vv,1,MPI_UNSIGNED,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      MPI_Pack(&cc,1,MPI_UNSIGNED,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         MPI_Isend(buffer,SIZE_UINT3,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+      }
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+      
+      // Now receive the values from each processor
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         position=0;
+         MPI_Recv(buffer2,SIZE_UINT2,MPI_PACKED,MPI_ANY_SOURCE,0,MPI_COMM_WORLD,&status);
+         MPI_Unpack(buffer2,SIZE_UINT2,&position,&tlpp,1,MPI_DOUBLE,MPI_COMM_WORLD);
+         logproppr+=tlpp;
+      }
+      delete[] request;
+   }
+   else
+   {
+      // Send the log prop probability from tall nodes to root
+      char buffer[SIZE_UINT2];
+      int position=0;  
+      MPI_Pack(&logproppr,1,MPI_DOUBLE,buffer,SIZE_UINT2,&position,MPI_COMM_WORLD);
+      MPI_Send(buffer,SIZE_UINT2,MPI_PACKED,0,0,MPI_COMM_WORLD);
+   }   
 #endif
 
 }
@@ -2515,7 +2613,7 @@ void brt::mpi_randz_proposal(){
 void brt::update_randz_bd(tree::tree_p nx, bool birth){
    diterator diter(di);
    if(birth){
-      for(;diter.until();diter++){
+      for(;diter<diter.until();diter++){
          if(randz_bdp[*diter]==2){
             // Right move accepted
             randz[*diter] = randz[*diter]->r;
@@ -2525,7 +2623,7 @@ void brt::update_randz_bd(tree::tree_p nx, bool birth){
          }
       }
    }else{
-      for(;diter.until();diter++){
+      for(;diter<diter.until();diter++){
          // Was a left or right child
          if(randz_bdp[*diter] > 0){
             randz[*diter] = nx;

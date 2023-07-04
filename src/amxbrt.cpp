@@ -322,7 +322,7 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts, mxd& phix)
 std::vector<double> amxbrt::getgamma(){
     std::vector<double> outgamma;
     for(size_t j=0;j<m;j++){
-        outgamma.push_back(mb[j].rpi.gamma);
+        outgamma.push_back(mb[j].get_gamma());
     }
     return(outgamma);
 }

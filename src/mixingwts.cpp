@@ -254,8 +254,7 @@
     // Random Path, read in gamma
     //----------------------------------------------
     std::ifstream igf(folder + modelname + ".rpg");
-    std::vector<double> e_gamma(nd*m);std::ifstream igf(folder + modelname + ".rpg");
-        std::vector<double> e_gamma(nd*m);
+    std::vector<double> e_gamma(nd*m);
     if(rpath){
         for(size_t i=0;i<e_gamma.size();i++) igf >> std::scientific >> e_gamma.at(i);
     }
