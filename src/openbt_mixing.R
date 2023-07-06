@@ -189,3 +189,18 @@ treeresid.openbtmixing = function(tree_list0, tree_list1,y){
   }
   return(tree_resid)
 }
+
+
+
+# Get gamma posteriors from rpath model
+gammapost.openbtmixing = function(fit){
+  if(is.null(fit)) stop("No fitted model specified!\n")
+  m = fit$m
+  
+  # Read in results
+  res = list()
+  fnames=list.files(fit$folder,pattern=paste(fit$modelname,".rpg*",sep=""),full.names=TRUE)
+  
+  res$gdraws=do.call(cbind,sapply(fnames,data.table::fread))  
+  res$gdraws = matrix(res$gdraws, ncol = m, byrow = TRUE) 
+}

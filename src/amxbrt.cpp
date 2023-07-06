@@ -301,15 +301,13 @@ void amxbrt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, fin
     
     //for(size_t i=0;i<fipred.rows();i++){  
     for(;diter<diter.until();diter++){
-        cout << "diter = " << *diter << endl;
-    //for(;diter<diter.until();diter++){
+        thetavec_temp = vxd::Zero(k);   
         for(size_t j=0;j<m;j++){
-            thetavec_temp = vxd::Zero(k);
             bnv.clear();
             mb[j].t.getbots(bnv);
-            cout << "bnv j size = " << bnv.size() << endl;
             for(size_t l=0;l<bnv.size();l++){
                 double tempphix = phixlist[j](*diter,l);
+                //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*tempphix;
             }
         }
@@ -319,7 +317,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, fin
 
 
 // TODO: Inefficient with the bnv
-void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
+void amxbrt::local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts){
     tree::npv bnv;
     vxd thetavec_temp(k); 
     std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
@@ -327,20 +325,21 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
     for(size_t j=0;j<m;j++){
         bnv.clear();
         mb[j].t.getbots(bnv);
-        get_phix_matrix(diter,phixlist[j],bnv,wts.cols());
+        get_phix_matrix(diterphix,phixlist[j],bnv,wts.cols());
     }
     
     for(;diter<diter.until();diter++) {
         thetavec_temp = vxd::Zero(k);
         for(size_t j=0;j<m;j++){
             bnv.clear();
-            t.getbots(bnv);
+            mb[j].t.getbots(bnv);
             for(size_t i=0;i<bnv.size();i++){
                 thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phixlist[j](*diter,i);
             }
         }
         wts.col(*diter) = thetavec_temp;
     }
+
 }
 
 

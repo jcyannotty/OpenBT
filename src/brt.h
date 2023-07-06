@@ -390,7 +390,7 @@ protected:
    // For random paths
    //------------------------------------------------
    virtual void local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred);
-   virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts);
+   virtual void local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts);
 
    // Compute psi(x)
    double psix(double gamma, double x, double c, double L, double U);

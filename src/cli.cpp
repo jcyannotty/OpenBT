@@ -1335,7 +1335,9 @@ return 0;
 
       std::ofstream ogf(folder + modelname + ".rpg"); // random path gamma
       if(randpath){
-         for(size_t i=0;i<nd;i++) ogf << ogam.at(i) << endl;
+         for(size_t i=0;i<nd;i++){
+            for(size_t j=0;j<m;j++) {ogf << ogam.at(i*m+j) << endl;}
+         } 
          ogf.close();
       }
       //Write standard deviation -- sigma -- files
