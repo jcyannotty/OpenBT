@@ -462,7 +462,8 @@ res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
 res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
 res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
 res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fsdroot=fsdroot; 
-res$nsprior = nsprior;res$selectp = selectp;res$rpath = rpath;res$pbd=pbd; res$pb=pb
+res$nsprior = nsprior;res$selectp = selectp;res$rpath = rpath; res$rshp1 = rshp1; res$rshp2 = rshp2;
+res$pbd=pbd; res$pb=pb
 res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
 res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
 res$printevery=printevery; res$xiroot=xiroot; #res$minx=minx; res$maxx=maxx;

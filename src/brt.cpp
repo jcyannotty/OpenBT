@@ -2194,14 +2194,130 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
    }   
 }
 
+
 //--------------------------------------------------
-void brt::predict_vec_rpath(dinfo* dipred, finfo* fipred){
-   diterator diter(dipred);
-   diterator diterphix(dipred);
-   local_predict_vec_rpath(diterphix, diter,*fipred);        
+// Get phi(x) bounds
+void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
+                        std::map<tree::tree_p,tree::npv> &pathmap) 
+{ 
+   tree::npv path; 
+   tree::tree_p p0, n0;
+   std::vector<double> ubvectemp, lbvectemp;
+   int L,U, v0, c0;
+   double lb, ub;
+   // Get the upper and lower bounds for each path
+   for(size_t j=0;j<bnv.size();j++){
+      path.clear();
+      bnv[j]->getpathtoroot(path);
+      pathmap[bnv[j]] = path;
+      for(size_t l=0;l<(path.size()-1);l++){
+         // Reset L and U to min and max & then update
+         L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+         n0 = path[l];
+         p0 = path[l]->p; // get the parent of the current node on the path
+         v0 = p0->v; // get its split var
+         if(lbmap.find(p0) == lbmap.end()){
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            p0->rgi(v0,&L,&U);
+            
+            // Now we have the interval endpoints, put corresponding values in a,b matrices.
+            if(L!=std::numeric_limits<int>::min()){ 
+                  lb=(*xi)[v0][L];
+            }else{
+                  lb=(*xi)[v0][0];
+            }
+            if(U!=std::numeric_limits<int>::max()) {
+                  ub=(*xi)[v0][U];
+            }else{
+                  ub=(*xi)[v0][(*xi)[v0].size()-1];
+            }
+            // Store in the maps
+            lbmap[p0] = lb;
+            ubmap[p0] = ub;
+         }            
+      }
+   }
 }
 
 
+void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
+                        std::map<tree::tree_p,tree::npv> &pathmap){
+   vxd logphix;
+   tree::tree_p n0,p0;
+   size_t v0;
+   double c0, ub, lb, psi0;
+   logphix = vxd::Zero(bnv.size());
+
+   if(bnv.size()>1){
+      for(size_t j = 0;j<bnv.size();j++){
+         for(size_t l=0;l<(pathmap[bnv[j]].size()-1);l++){
+            n0 = pathmap[bnv[j]][l];
+            p0 = n0->p;
+            v0 = p0->v;
+            c0 = (*xi)[v0][p0->c];
+            ub = ubmap[p0];
+            lb = lbmap[p0];
+            psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
+            if((n0->nid())%2 == 0){
+               // Left move prob
+               logphix(j)=logphix(j)+log(1-psi0);
+            }else{
+               // Right move prob
+               logphix(j)=logphix(j)+log(psi0);
+            }
+            if(std::isnan(logphix(j))){
+               cout << "logphi(x) nan ... " << endl;
+               cout << "psi0 = " << psi0 << endl;
+               cout << "rpi.gamma = " << rpi.gamma << endl;
+               cout << "c0 = " << c0 << endl;
+               cout << "v0 = " << v0 << endl;
+               cout << "ub = " << ub << endl;
+               cout << "lb = " << lb << endl;
+            }
+         }
+         // Convert back to phix scale
+         phixvec(j)=exp(logphix(j));
+      }
+   }else{
+      phixvec = vxd::Ones(1);
+   }
+}
+
+
+//--------------------------------------------------
+void brt::predict_vec_rpath(dinfo* dipred, finfo* fipred){
+   diterator diter(dipred);
+   //diterator diterphix(dipred);
+   local_predict_vec_rpath(diter,*fipred);        
+}
+
+
+void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
+   tree::npv bnv;
+   vxd phix;
+   vxd thetavec_temp(k); 
+   std::map<tree::tree_p,double> lbmap;
+   std::map<tree::tree_p,double> ubmap;
+   std::map<tree::tree_p,tree::npv> pathmap;
+
+   // Get bots and then get the path and bounds
+   t.getbots(bnv);
+   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+
+   // Fix by removing diter below...
+   for(;diter<diter.until();diter++) {
+      thetavec_temp = vxd::Zero(k);
+      phix = vxd::Ones(bnv.size());
+      double *xx = diter.getxp(); 
+      get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+      for(size_t i=0;i<bnv.size();i++){
+         thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
+      }
+      diter.sety(fipred.row(*diter)*thetavec_temp);
+   }   
+}
+
+/*
 void brt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred){
    tree::npv bnv;
    mxd phix;
@@ -2217,15 +2333,44 @@ void brt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo&
       diter.sety(fipred.row(*diter)*thetavec_temp);
    }   
 }
+*/
 
 
 void brt::predict_thetavec_rpath(dinfo* dipred, mxd* wts){
    diterator diter(dipred);
-   diterator diterphix(dipred);
-   local_predict_thetavec_rpath(diterphix,diter,*wts);          
+   //diterator diterphix(dipred);
+   local_predict_thetavec_rpath(diter,*wts);          
 }
 
 
+void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
+   tree::npv bnv;
+   vxd phix;
+   vxd thetavec_temp(k); 
+   std::vector<std::vector<double>> lbvec;
+   std::vector<std::vector<double>> ubvec;
+   std::map<tree::tree_p,double> lbmap;
+   std::map<tree::tree_p,double> ubmap;
+   std::map<tree::tree_p,tree::npv> pathmap;
+
+   // Get bots and then get the path and bounds
+   t.getbots(bnv);
+   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+
+   // Fix by removing diter below...
+   for(;diter<diter.until();diter++){
+      thetavec_temp = vxd::Zero(k);
+      phix = vxd::Ones(bnv.size());
+      double *xx = diter.getxp(); 
+      get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+      for(size_t i=0;i<bnv.size();i++){
+         thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
+      }
+      wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
+   }   
+}
+
+/*
 void brt::local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts){
    tree::npv bnv;
    vxd thetavec_temp(k); 
@@ -2240,6 +2385,7 @@ void brt::local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, m
       wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
    }
 }
+*/
 
 //--------------------------------------------------
 // Random Path Class Methods - Move elsewhere eventually

@@ -28,6 +28,7 @@
 #include "tree.h"
 #include "treefuns.h"
 #include "dinfo.h"
+#include <map>
 
 #ifdef _OPENMP
 #   include <omp.h>
@@ -255,6 +256,12 @@ public:
    void drawgamma_mpi(rn &gen);
    
    void get_phix_matrix(diterator &diter, mxd &phix,tree::npv bnv, size_t np);
+   //void get_phix_bounds(tree::npv bnv, std::vector<std::vector<double>> &lbvec, std::vector<std::vector<double>> &ubvec);
+   void get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
+                        std::map<tree::tree_p,tree::npv> &pathmap);
+ 
+   void get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
+                        std::map<tree::tree_p,tree::npv> &pathmap);
    double get_gamma(){return rpi.gamma;}
    void predict_vec_rpath(dinfo* dipred, finfo* fipred); 
    void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
@@ -389,8 +396,8 @@ protected:
    //------------------------------------------------
    // For random paths
    //------------------------------------------------
-   virtual void local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred);
-   virtual void local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts);
+   virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred);
+   virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts);
 
    // Compute psi(x)
    double psix(double gamma, double x, double c, double L, double U);

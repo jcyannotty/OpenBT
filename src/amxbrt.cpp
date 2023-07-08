@@ -287,28 +287,35 @@ void amxbrt::drawgamma_mpi(rn &gen){
 
 
 // TODO: Inefficient with the bnv
-void amxbrt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred){
+void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
     tree::npv bnv;
     vxd thetavec_temp(k); 
-    std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
-    
+    vxd phix;
+    //std::vector<mxd, Eigen::aligned_allocator<vxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
+    std::map<tree::tree_p,double> lbmap;
+    std::map<tree::tree_p,double> ubmap;
+    std::map<tree::tree_p,tree::npv> pathmap;
+
+    // Get bots and then get the path and bounds
     for(size_t j=0;j<m;j++){
         bnv.clear();
         mb[j].t.getbots(bnv);
-        get_phix_matrix(diterphix,phixlist[j],bnv,fipred.rows());
-        //cout << "phixlist[j] = " << phixlist[j] << endl;
+        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
     }
-    
-    //for(size_t i=0;i<fipred.rows();i++){  
+      
     for(;diter<diter.until();diter++){
         thetavec_temp = vxd::Zero(k);   
+        double *xx = diter.getxp(); 
         for(size_t j=0;j<m;j++){
+            // Get bots
             bnv.clear();
             mb[j].t.getbots(bnv);
+            // Reset phix
+            phix = vxd::Ones(bnv.size());
+            get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
             for(size_t l=0;l<bnv.size();l++){
-                double tempphix = phixlist[j](*diter,l);
                 //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
-                thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*tempphix;
+                thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
             }
         }
         diter.sety(fipred.row(*diter)*thetavec_temp);
@@ -317,29 +324,39 @@ void amxbrt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, fin
 
 
 // TODO: Inefficient with the bnv
-void amxbrt::local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts){
+void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
     tree::npv bnv;
     vxd thetavec_temp(k); 
-    std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
-    
+    vxd phix;
+    //std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
+    std::map<tree::tree_p,double> lbmap;
+    std::map<tree::tree_p,double> ubmap;
+    std::map<tree::tree_p,tree::npv> pathmap;
+
+    // Get bots and then get the path and bounds
     for(size_t j=0;j<m;j++){
         bnv.clear();
         mb[j].t.getbots(bnv);
-        get_phix_matrix(diterphix,phixlist[j],bnv,wts.cols());
+        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
     }
-    
-    for(;diter<diter.until();diter++) {
-        thetavec_temp = vxd::Zero(k);
+      
+    for(;diter<diter.until();diter++){
+        thetavec_temp = vxd::Zero(k);   
+        double *xx = diter.getxp(); 
         for(size_t j=0;j<m;j++){
+            // Get bots
             bnv.clear();
             mb[j].t.getbots(bnv);
-            for(size_t i=0;i<bnv.size();i++){
-                thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phixlist[j](*diter,i);
+            // Reset phix
+            phix = vxd::Ones(bnv.size());
+            get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+            for(size_t l=0;l<bnv.size();l++){
+                //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
+                thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
             }
         }
         wts.col(*diter) = thetavec_temp;
     }
-
 }
 
 

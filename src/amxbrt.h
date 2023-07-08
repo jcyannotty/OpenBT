@@ -110,8 +110,8 @@ protected:
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
 
    // For random path
-   virtual void local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred);
-   virtual void local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts); 
+   virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred);
+   virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts); 
 
 };
 
