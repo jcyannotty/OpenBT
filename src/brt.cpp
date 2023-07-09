@@ -456,16 +456,30 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
    std::map<tree::tree_cp,size_t> bnmap;
    for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
 
-   for(;diter<diter.until();diter++) {
-      index=path.size()-1;
-      x=diter.getxp();
-      if(root->xonpath(path,index,x,*xi)) { //x is on the subtree, 
-         tbn = nx->bn(x,*xi);              //so get the right bn below interior node n.
-         ni = bnmap[tbn];
-         //siv[ni].n +=1;
-         add_observation_to_suff(diter, *(siv[ni]));
+   if(!randpath){
+      // Determinisitc version
+      for(;diter<diter.until();diter++) {
+         index=path.size()-1;
+         x=diter.getxp();
+         if(root->xonpath(path,index,x,*xi)) { //x is on the subtree, 
+            tbn = nx->bn(x,*xi);              //so get the right bn below interior node n.
+            ni = bnmap[tbn];
+            //siv[ni].n +=1;
+            add_observation_to_suff(diter, *(siv[ni]));
+         }
+         //else this x doesn't map to the subtree so it's not added into suff stats.
       }
-      //else this x doesn't map to the subtree so it's not added into suff stats.
+   }else{
+      // Random path version
+      for(;diter<diter.until();diter++) {
+         // If randz pointer is in the bnmap, then add some suff stats
+         if(bnmap.find(randz[*diter]) != bnmap.end()) {
+            tbn = randz[*diter];          
+            ni = bnmap[tbn];
+            add_observation_to_suff(diter, *(siv[ni]));
+         }
+         //else this x doesn't map to the subtree so it's not added into suff stats.
+      }
    }
 }
 //-------------------------------------------------- 
@@ -2135,6 +2149,7 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
             n0 = path[l];
             p0 = path[l]->p; // get the parent of the current node on the path
             v0 = p0->v; // get its split var
+            // If p0 is not a key already then add it
             if(lbmap.find(p0) == lbmap.end()){
                L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
                p0->rgi(v0,&L,&U);
