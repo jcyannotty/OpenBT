@@ -46,6 +46,9 @@
 !Examples/Data/2d_x_test.txt
 !Examples/Data/2d_x_train.txt
 !Examples/Data/2d_y_train.txt
+!Examples/Data/honda_x_test.txt
+!Examples/Data/honda_x_train.txt
+!Examples/Data/honda_y_train.txt
 
 # Rhistory
 .Rhistory
