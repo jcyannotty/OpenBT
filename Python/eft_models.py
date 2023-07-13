@@ -20,7 +20,7 @@ def fsg(g,ns):
     for k in klist:
         if k%2==0:
             c = np.sqrt(2)*gamma(k + 1/2)*(-4)**(k/2)/factorial(k/2)
-            sk[:,int(k)] = c*g**k
+            sk[:,int(k)] = (c*g**k)[:,0]
     #Get the expansion
     f = np.sum(sk,axis=1)
     return f
@@ -33,8 +33,8 @@ def flg(g,nl):
     lk = np.zeros((g.shape[0],nl+1))
     for k in klist:
         #Get the coefficients
-        c = gamma(k/2 + 0.25)*(-0.5)^k/(2*factorial(k))
-        lk[:,int(k)] = c*g**(-k)/np.sqrt(g)
+        c = gamma(k/2 + 0.25)*(-0.5)**k/(2*factorial(k))
+        lk[:,int(k)] = (c*g**(-k)/np.sqrt(g))[:,0]
     
     #Get the expansion
     f = np.sum(lk,axis=1)
@@ -101,9 +101,5 @@ def dlg(g,nl,dbar = None):
     return s
 
 
-
-
-
-f_dagger(np.array([0.1,0.2]))
-g = 0.33
-g = np.array([0.1,0.2])**2
+#y_train = np.loadtxt("/home/johnyannotty/Documents/openbt/Examples/Data/honda_y_train.txt").reshape(20,1)
+#x_train = np.loadtxt("/home/johnyannotty/Documents/openbt/Examples/Data/honda_x_train.txt").reshape(20,1)
