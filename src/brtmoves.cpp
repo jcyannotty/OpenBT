@@ -153,23 +153,29 @@ void brt::pertcv(rn& gen)
       std::vector<sinfo*>& sivold = newsinfovec();
       std::vector<sinfo*>& sivnew = newsinfovec();
       tree::npv bnv;
-      getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
-
       typedef tree::npv::size_type bvsz;
       double lmold,lmnew;
       bool hardreject=false;
       lmold=0.0;
-      for(bvsz j=0;j!=sivold.size();j++) {
-         if(sivold[j]->n < mi.minperbot)
-            cout << "Error: old tree has some bottom nodes with <minperbot observations!" << endl;
-         lmold += lm(*(sivold[j]));
-      }
+      //double osuml = 0.0, nsuml = 0.0;
 
-      lmnew=0.0;
-      for(bvsz j=0;j!=sivnew.size();j++) {
-         if(sivnew[j]->n < mi.minperbot)
-            hardreject=true;
-         lmnew += lm(*(sivnew[j]));
+      if(!randpath){
+         getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
+   
+         for(bvsz j=0;j!=sivold.size();j++) {
+            if(sivold[j]->n < mi.minperbot)
+               cout << "Error: old tree has some bottom nodes with <minperbot observations!" << endl;
+            lmold += lm(*(sivold[j]));
+         }
+
+         lmnew=0.0;
+         for(bvsz j=0;j!=sivnew.size();j++) {
+            if(sivnew[j]->n < mi.minperbot)
+               hardreject=true;
+            lmnew += lm(*(sivnew[j]));
+         }
+      }else{
+         getchgvsuff_rpath(pertnode,bnv,oldc,oldv,didswap,lmold,lmnew);
       }
       double alpha1 = ((double)(Uo-Lo+1.0))/((double)(Un-Ln+1.0)); //from prior for cutpoints
       double alpha2=alpha0*alpha1*exp(lmnew-lmold);
@@ -247,22 +253,26 @@ void brt::pertcv(rn& gen)
       MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
       delete[] request;
 #endif
-      getpertsuff(pertnode,bnv,oldc,sivold,sivnew);
-
       typedef tree::npv::size_type bvsz;
       double lmold,lmnew;
-      lmold=0.0;
-      for(bvsz j=0;j!=sivold.size();j++) {
-         if(sivold[j]->n < mi.minperbot)
-            cout << "Error: old tree has some bottom nodes with <minperbot observations!" << endl;
-         lmold += lm(*(sivold[j]));
-      }
+      if(!randpath){
+         getpertsuff(pertnode,bnv,oldc,sivold,sivnew);
 
-      lmnew=0.0;
-      for(bvsz j=0;j!=sivnew.size();j++) {
-         if(sivnew[j]->n < mi.minperbot)
-            hardreject=true;
-         lmnew += lm(*(sivnew[j]));
+         lmold=0.0;
+         for(bvsz j=0;j!=sivold.size();j++) {
+            if(sivold[j]->n < mi.minperbot)
+               cout << "Error: old tree has some bottom nodes with <minperbot observations!" << endl;
+            lmold += lm(*(sivold[j]));
+         }
+
+         lmnew=0.0;
+         for(bvsz j=0;j!=sivnew.size();j++) {
+            if(sivnew[j]->n < mi.minperbot)
+               hardreject=true;
+            lmnew += lm(*(sivnew[j]));
+         }
+      }else{
+         getpertsuff_rpath(pertnode,bnv,oldc,lmold,lmnew);
       }
       double alpha1 = ((double)(bi-ai+1.0))/((double)(oldbi-oldai+1.0)); //anything from the prior?
       double alpha2=alpha1*exp(lmnew-lmold);

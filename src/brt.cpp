@@ -1343,6 +1343,13 @@ void brt::drawvec(rn& gen)
       pertcv(gen);
 
 
+   // Shuffle step
+   if(randpath){
+      if(t.treesize()>1){
+         shuffle_randz(gen);
+      }
+   }
+
    // Gibbs Step
     drawthetavec(gen);
 
@@ -1459,7 +1466,7 @@ void brt::drawvec_mpislave(rn& gen)
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
       if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,theta0,theta0); //accept birth
-      if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT & randpath){
+      if((status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) & randpath){
          //cout << "ACCEPT AND UPDATE -- " << rank << endl;
          update_randz_bd(nx, true);
       }
@@ -1476,7 +1483,7 @@ void brt::drawvec_mpislave(rn& gen)
       getsuff(nl,nr,tsil,tsir);
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
-      if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT & randpath){update_randz_bd(nl->p, false);} // random path move for death
+      if((status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) & randpath){update_randz_bd(nl->p, false);} // random path move for death
       if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) t.deathp(nl->getp(),theta0); //accept death
       
       //else reject, for which we do nothing.
@@ -1503,6 +1510,7 @@ void brt::drawvec_mpislave(rn& gen)
       {
          std::vector<sinfo*>& sivold = newsinfovec();
          std::vector<sinfo*>& sivnew = newsinfovec();
+         double oldsumlog, newsumlog;
          pertnode = intnodes[pertdx];
          MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
          if(status.MPI_TAG==MPI_TAG_PERTCV)
@@ -1514,7 +1522,7 @@ void brt::drawvec_mpislave(rn& gen)
             size_t propc=(size_t)propcint;
             pertnode->setc(propc);
             tree::npv bnv;
-            getpertsuff(pertnode,bnv,oldc,sivold,sivnew);
+            if(!randpath){getpertsuff(pertnode,bnv,oldc,sivold,sivnew);}else{getpertsuff_rpath(pertnode,bnv,oldc,oldsumlog,newsumlog);}
             MPI_Status status2;
             MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
             if(status2.MPI_TAG==MPI_TAG_PERTCV_ACCEPT) pertnode->setc(propc); //accept new cutpoint
@@ -1541,7 +1549,11 @@ void brt::drawvec_mpislave(rn& gen)
                pertnode->swaplr();
             mpi_update_norm_cormat(rank,tc,pertnode,*xi,(*mi.corv)[propv],chv_lwr,chv_upr);
             tree::npv bnv;
-            getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
+            if(!randpath){
+               getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
+            }else{
+               getchgvsuff_rpath(pertnode,bnv,oldc,oldv,didswap,oldsumlog,newsumlog);
+            }
             MPI_Status status2;
             MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
             if(status2.MPI_TAG==MPI_TAG_PERTCHGV_ACCEPT) { //accept change var and pert
@@ -1558,6 +1570,72 @@ void brt::drawvec_mpislave(rn& gen)
          delete &sivold;
          delete &sivnew;
       }
+   }
+
+   // Shuffle proposal for rpath
+   if(randpath & t.treesize()>1){
+      tree::npv rbnv;
+      tree::tree_p root;
+      vxd phix;
+      vxd thetavec_temp(k); 
+      std::map<tree::tree_p,double> lbmap;
+      std::map<tree::tree_p,double> ubmap;
+      std::map<tree::tree_p,tree::npv> pathmap;
+      std::vector<sinfo*>& sivold = newsinfovec();
+      std::vector<sinfo*>& sivnew = newsinfovec();
+
+      diterator diter(di);
+      root = t.getptr(t.nid());
+
+      // Get bounds
+      t.getbots(rbnv);
+      get_phix_bounds(rbnv, lbmap, ubmap, pathmap);
+
+      // Apply subsuff to the current assignments
+      subsuff(root,rbnv,sivold);
+
+      // Store current randz in the randz_shuffle, then clear randz
+      randz_shuffle.clear();
+      for(size_t i=0;i<randz.size();i++){randz_shuffle.push_back(randz[i]);}
+      randz.clear();
+
+      // Get proposed randz
+      for(;diter<diter.until();diter++) {
+         thetavec_temp = vxd::Zero(k);
+         phix = vxd::Ones(rbnv.size());
+         double *xx = diter.getxp(); 
+         double u0 = gen.uniform();
+         double prob = 0.0;
+         get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap);
+         //if(phix.sum() != 1){cout << "sum to 1 error..." << phix.sum()<< endl;}
+         for(size_t i=0;i<rbnv.size();i++){
+            prob += phix(i);
+            if((u0<prob)){
+               randz.push_back(rbnv[i]); 
+               break;  
+            }   
+         }
+      }
+      // Checker
+      if(randz.size() != randz_shuffle.size()){
+         cout << "ERROR: randz.size() != randz_shuffle.size()..." << randz_shuffle.size() << "---" << randz.size() << endl;
+      }
+
+      // Apply subsuff to the updated assignments
+      subsuff(root,rbnv,sivnew);
+
+      // Accept/reject proposal
+      MPI_Status status3;
+      MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status3);
+      if(status3.MPI_TAG==MPI_TAG_SHUFFLE_REJECT) { 
+         // Reject the move, so sub in the original assingments
+         randz.clear();
+         for(size_t i=0;i<randz_shuffle.size();i++){randz.push_back(randz_shuffle[i]);}
+         randz_shuffle.clear();
+      }else{
+         randz_shuffle.clear();
+      }
+
    }
 
    // Gibbs Step
@@ -1738,6 +1816,7 @@ void brt::setf_vec() {
          local_setf_vec(diter);
    #endif
 }
+
 void brt::local_ompsetf_vec(dinfo di)
 {
 #ifdef _OPENMP
@@ -2218,7 +2297,7 @@ void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, s
    tree::npv path; 
    tree::tree_p p0, n0;
    std::vector<double> ubvectemp, lbvectemp;
-   int L,U, v0, c0;
+   int L,U, v0;
    double lb, ub;
    // Get the upper and lower bounds for each path
    for(size_t j=0;j<bnv.size();j++){
@@ -2319,7 +2398,6 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
    t.getbots(bnv);
    get_phix_bounds(bnv, lbmap, ubmap, pathmap);
 
-   // Fix by removing diter below...
    for(;diter<diter.until();diter++) {
       thetavec_temp = vxd::Zero(k);
       phix = vxd::Ones(bnv.size());
@@ -2430,13 +2508,13 @@ void brt::drawgamma(rn &gen){
    }
 #else
    // With the old gammma, get the sumlogphix
-   old_sumlogphix = sumlogphix(rpi.gamma);
+   old_sumlogphix = sumlogphix(rpi.gamma,t.getptr(t.nid()));
 
    // With the new gammma, get the sumlogphix 
    if(newgam < 0 || newgam > 1){
       new_sumlogphix = -std::numeric_limits<double>::infinity();
    }else{
-      new_sumlogphix = sumlogphix(newgam);
+      new_sumlogphix = sumlogphix(newgam,t.getptr(t.nid()));
    }
    
 #endif
@@ -2461,11 +2539,11 @@ void brt::drawgamma_mpi(rn &gen){
    MPI_Unpack(buffer,buffer_size,&position,&newgam,1,MPI_DOUBLE,MPI_COMM_WORLD);
 
    // Compute the log sum terms
-   old_sumlogphix = sumlogphix(rpi.gamma);
+   old_sumlogphix = sumlogphix(rpi.gamma,t.getptr(t.nid()));
    if(newgam < 0 || newgam > 1){
       new_sumlogphix = -std::numeric_limits<double>::infinity();
    }else{
-      new_sumlogphix = sumlogphix(newgam);
+      new_sumlogphix = sumlogphix(newgam, t.getptr(t.nid()));
    }
 #endif
 
@@ -2486,7 +2564,8 @@ void brt::rpath_adapt(){
 
 
 // Get sum log(phix) for each obs on the processor
-double brt::sumlogphix(double gam){
+// This can be used for the entire tree or a subset of the tree starting at node nx
+double brt::sumlogphix(double gam, tree::tree_p nx){
    double sumlogphix = 0;
    double psi0 = 0;
    int v0, U, L;
@@ -2499,8 +2578,8 @@ double brt::sumlogphix(double gam){
    std::map<tree::tree_p,double> ubmap;
    std::map<tree::tree_p,tree::npv> pathmap;
 
-   t.getbots(bnv);
-   // cout << "bnv.size = " << bnv.size() << endl;
+   //t.getbots(bnv);
+   nx->getbots(bnv);
    // Get the rectangles at each internal node
    for(size_t i=0;i<bnv.size();i++){   
       path.clear();
@@ -2530,43 +2609,46 @@ double brt::sumlogphix(double gam){
             ubmap[p0] = ub;
          }
       }
-      
    }
 
+   //if(rank == 1) cout << "randz.size() = " << randz.size() << " ---- " << rank << endl;
    for(;diter<diter.until();diter++){
       double *xx = diter.getxp();
-      for(size_t j=0;j<(pathmap[randz[*diter]].size()-1);j++){
-         // Get cutpoint
-         //if(randz[*diter][j].p != 0){
-         n0 = pathmap[randz[*diter]][j];
-         p0 = n0->p; // randz[*diter][j].p;
-         v0 = p0->v; // (randz[*diter][j].p)->v;
-         c0 = (*xi)[v0][p0->c]; // (*xi)[v0][(randz[*diter][j].p)->c];
-         lb = lbmap[p0];
-         ub = ubmap[p0];
+      if(pathmap.find(randz[*diter]) != pathmap.end()){
+         for(size_t j=0;j<(pathmap[randz[*diter]].size()-1);j++){
+            // Get cutpoint
+            //if(randz[*diter][j].p != 0){
+            n0 = pathmap[randz[*diter]][j];
+            p0 = n0->p; // randz[*diter][j].p;
+            v0 = p0->v; // (randz[*diter][j].p)->v;
+            c0 = (*xi)[v0][p0->c]; // (*xi)[v0][(randz[*diter][j].p)->c];
+            lb = lbmap[p0];
+            ub = ubmap[p0];
 
-         // Need to account for left vs right move here
-         psi0 = psix(gam,xx[v0],c0,lb,ub);
-         if((n0->nid()%2) == 0){
-            // node derived from left move
-            /*
-            cout << "v = " << v0 << endl;
-            cout << "c = " << c0 << endl;
-            cout << "ub = " << ub << endl;
-            cout << "lb = " << lb << endl;
-            cout << "x = " << xx[v0] << endl;
-            cout << "n0->nid() = " << n0->nid() << endl;
-            cout << "psi0 = " << psi0 << endl;
-            */
-            sumlogphix=sumlogphix+log(1-psi0); 
-         }else{
-            // node derived from right move
-            sumlogphix=sumlogphix+log(psi0); 
+            // Need to account for left vs right move here
+            psi0 = psix(gam,xx[v0],c0,lb,ub);
+            if((n0->nid()%2) == 0){
+               // node derived from left move
+               /*
+               cout << "v = " << v0 << endl;
+               cout << "c = " << c0 << endl;
+               cout << "ub = " << ub << endl;
+               cout << "lb = " << lb << endl;
+               cout << "x = " << xx[v0] << endl;
+               cout << "n0->nid() = " << n0->nid() << endl;
+               cout << "psi0 = " << psi0 << endl;
+               */
+               sumlogphix=sumlogphix+log(1-psi0); 
+            }else{
+               // node derived from right move
+               sumlogphix=sumlogphix+log(psi0); 
+            }
+            //if(rank == 1) cout << "contributed to sum...." << endl; 
+            //}else{
+               // psi0 = 1, log(psi0)  = 0
+               // No update to sumlogphix
+            //}
          }
-         //}else{
-            // psi0 = 1, log(psi0)  = 0
-            // No update to sumlogphix
-         //}
       }
    }
    return(sumlogphix);
@@ -2654,7 +2736,7 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
          double alpha = gen.uniform();
          //cout << "log alpha = " << log(alpha) << endl;
          //cout << "lmout = " << lmout << endl;
-         if(log(alpha)<lmout & (newgam<1 || newgam>0)){
+         if((log(alpha)<lmout) & (newgam<1 || newgam>0)){
             // accept
             rpi.gamma = newgam;
             rpi.accept+=1;
@@ -2706,7 +2788,7 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
    double *xx; 
    double psi0;
    double ub, lb;
-   double logproppr = 0.0;
+   //drandouble logproppr = 0.0;
    int L, U;
    double cx;
 
@@ -2851,6 +2933,139 @@ void brt::update_randz_bd(tree::tree_p nx, bool birth){
    }
    randz_bdp.clear();
 }
+
+
+//--------------------------------------------------
+// For peturb and change of variables
+void brt::sumlogphix_mpi(double &osum, double &nsum){
+#ifdef _OPENMPI
+   char buffer[SIZE_UINT3];
+   int position=0;
+   const int tag = MPI_TAG_SHUFFLE;
+   MPI_Status status;
+
+   if(rank>0){    
+      // Sum the suff stats then get accept/reject status
+      MPI_Reduce(&osum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+      MPI_Reduce(&nsum,NULL,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+
+      // Receive the updated sums across all nodes
+      MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&osum,1,MPI_DOUBLE,MPI_COMM_WORLD);
+      MPI_Unpack(buffer,SIZE_UINT3,&position,&nsum,1,MPI_DOUBLE,MPI_COMM_WORLD);
+
+   }           
+
+   if(rank==0){
+      // Reduce the suff stats
+      MPI_Request *request = new MPI_Request[tc];
+      //cout << "reduce 0...." << endl;
+      MPI_Reduce(MPI_IN_PLACE,&osum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+      MPI_Reduce(MPI_IN_PLACE,&nsum,1,MPI_DOUBLE,MPI_SUM,0,MPI_COMM_WORLD);
+
+      //cout << "pack 0...." << endl;
+      // Pack and send info to the slaves
+      MPI_Pack(&osum,1,MPI_DOUBLE,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      MPI_Pack(&nsum,1,MPI_DOUBLE,buffer,SIZE_UINT3,&position,MPI_COMM_WORLD);
+      //cout << "send 0...." << endl;
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         MPI_Isend(buffer,SIZE_UINT3,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
+      }
+      MPI_Waitall(tc,request,MPI_STATUSES_IGNORE);
+      delete[] request;
+   }
+#else
+   // Add as needed
+#endif
+   
+}
+
+
+void brt::getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog){
+   // Compute values
+   nsumlog = sumlogphix(rpi.gamma,pertnode);
+   if(didswap) pertnode->swaplr();  //undo the swap so we can calculate the suff stats for the original variable, cutpoint.
+   pertnode->setv(oldv);
+   pertnode->setc(oldc);
+   osumlog = sumlogphix(rpi.gamma,pertnode);
+
+   // Pass the sums across the mpi
+   sumlogphix_mpi(osumlog,nsumlog);
+}
+
+
+void brt::getpertsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, double &osumlog, double &nsumlog){
+   // Compute values
+   nsumlog = sumlogphix(rpi.gamma,pertnode);
+   pertnode->setc(oldc);
+   osumlog = sumlogphix(rpi.gamma,pertnode);
+
+   // Pass the sums across the mpi
+   sumlogphix_mpi(osumlog,nsumlog);
+}
+
+
+//--------------------------------------------------
+// For joint randz proposal
+void brt::shuffle_randz(rn &gen){
+   std::vector<sinfo*>& sold = newsinfovec();
+   std::vector<sinfo*>& snew = newsinfovec();
+   tree::npv rbnv;
+   tree::tree_p root;
+   double lmold, lmnew;
+   bool hardreject = false;
+
+   root = t.getptr(t.nid());
+
+   // Get suff stats
+   subsuff(root,rbnv,sold);
+   subsuff(root,rbnv,snew);
+
+   // Get lm
+   for(size_t i=0;i<rbnv.size();i++)
+      lmold += lm(*(sold[i]));
+
+   for(size_t i=0;i<rbnv.size();i++) {
+      if((snew[i]->n) >= mi.minperbot)
+         lmnew += lm(*(snew[i]));
+      else 
+         hardreject=true;
+   }
+
+   // Delete suff stats
+   for(size_t i=0;i<sold.size();i++) delete sold[i];
+   for(size_t i=0;i<snew.size();i++) delete snew[i];
+   delete &sold;
+   delete &snew;
+
+   // MH step
+   double alpha1 = exp(lmnew-lmold);
+   double alpha = std::min(1.0,alpha1);
+
+   if(hardreject)
+      alpha=0.0;
+
+   // Send accept/reject
+#ifdef _OPENMPI
+   MPI_Request *request = new MPI_Request[tc];
+#endif
+
+   if(gen.uniform()<alpha) {
+#ifdef _OPENMPI
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         MPI_Isend(NULL,0,MPI_PACKED,i,MPI_TAG_SHUFFLE_ACCEPT,MPI_COMM_WORLD,&request[i-1]);
+      }
+   }
+   else { //transmit reject over MPI
+      for(size_t i=1; i<=(size_t)tc; i++) {
+         MPI_Isend(NULL,0,MPI_PACKED,i,MPI_TAG_SHUFFLE_REJECT,MPI_COMM_WORLD,&request[i-1]);
+      }
+   }
+#else
+   }
+#endif
+}
+
 
 
 /*

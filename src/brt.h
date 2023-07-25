@@ -65,6 +65,10 @@
 #   define MPI_TAG_RPATHGAMMA_REJECT 72
 #   define MPI_TAG_RPATH_BIRTH_PROPOSAL 73
 #   define MPI_TAG_RPATH_DEATH_PROPOSAL 74
+#   define MPI_TAG_SHUFFLE 80
+#   define MPI_TAG_SHUFFLE_ACCEPT 81
+#   define MPI_TAG_SHUFFLE_REJECT 82
+
 #endif
 
 class sinfo { //sufficient statistics (will depend on end node model)
@@ -354,6 +358,7 @@ protected:
    // Random path information
    tree::npv randz; // random path assignments, vector of node pointers
    std::vector<size_t> randz_bdp; // used for birth & death proposal...0 for not involved, 1 for left and 2 for right
+   tree::npv randz_shuffle; // used for shuffle step.... pushback the pointer
 
    // Set randz pointer...this should be initialized as the root
    void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.getptr(t.nid());}};
@@ -409,8 +414,16 @@ protected:
 
    // Updating gamma
    void set_gamma_prior(double s1, double s2){rpi.shp1 = s1; rpi.shp2 = s2;}
-   double sumlogphix(double gam);
+   double sumlogphix(double gam, tree::tree_p nx);
    void rpath_mhstep(double old_sumlogphix, double new_sumlogphix, double newgam, rn &gen);
+
+   // Peturb and change of variables
+   void sumlogphix_mpi(double &osum, double &nsum);
+   void getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog);
+   void getpertsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, double &osumlog, double &nsumlog);
+
+   // Shuffle move for rpath
+   void shuffle_randz(rn &gen);
 
 };
 
