@@ -2817,15 +2817,17 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             // compute psi(x), the prob of moving right
             //cout << "nx in randz = " << nx << endl;
             xx = diter.getxp();
-            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
+            //if(rank == 1) cout << "xx[v} = " << xx[v] << endl;
+            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);
+            //if(rank == 1) cout << "psi0 = " << psi0 << endl;   
             if(gen.uniform()<psi0){
                // Rightrandz_p
                randz_bdp.push_back(2);
-               rpi.logproppr+=psi0;      
+               rpi.logproppr+=log(psi0);      
             } else {
                // Left
                randz_bdp.push_back(1);
-               rpi.logproppr+=(1-psi0);
+               rpi.logproppr+=log((1-psi0));
             }
          }else{
             // Not involved
@@ -2839,13 +2841,13 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             // compute psi(x), the prob of moving right
             xx = diter.getxp();      
             psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
-            rpi.logproppr+=psi0;      
+            rpi.logproppr+=log(psi0);      
             randz_bdp.push_back(2);
          }else if((nx->l)==randz[*diter]){
             // compute 1-psi(x), the prob of moving left
             xx = diter.getxp();      
             psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
-            rpi.logproppr+=(1-psi0);
+            rpi.logproppr+=log((1-psi0));
             randz_bdp.push_back(1);
          }else{
             randz_bdp.push_back(0);
