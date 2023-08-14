@@ -563,3 +563,83 @@ mh_logstep_bart = function(pdc,pdn,qc,qn, current_val, new_val){
 }
 
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#Prior Variance Functions
+#Generate random inverse scaled chi2 rv's
+rinv_scaled_chi2 = function(n, nu, lam){
+  chi_sample = rchisq(n, nu)
+  out = nu*lam/chi_sample
+  return(out)
+}
+
+#Density of inverse scaled chi2 rv's
+dinv_scaled_chi2 = function(x, nu, lam){
+  den = (1/gamma(nu/2))*(nu*lam/2)^(nu/2)*x^(-1*(1 + nu/2))*exp(-0.5*nu*lam/x)
+  return(den)
+}
+
+#plot prior variance - sigma2
+plot_prior_sig2 = function(n, nu, lam, sig2_hat = NULL, x_lim = NULL, y_lim = NULL, title = NULL){
+  #Generate prior 
+  prior_sig2 = rinv_scaled_chi2(n,nu,lam)
+  p_ord = order(prior_sig2)
+  
+  #Prior mean, mode
+  pm = nu*lam/(nu-2)
+  pmode = round(nu*lam/(nu+2),4)
+  
+  #Get Density and order
+  #ds = density(prior_sig2)
+  ds = dinv_scaled_chi2(prior_sig2, nu, lam)
+  ds = ds[p_ord]
+  prior_sig2 = prior_sig2[p_ord]
+  
+  #Get limits and title
+  if(is.null(x_lim)){x_lim = c(min(prior_sig2), max(prior_sig2))}
+  if(is.null(title)){
+    lam = ifelse(round(lam, 4)==0, round(lam, 8), round(lam, 4))
+    pm = ifelse(round(pm, 4)==0, round(pm, 8), round(pm, 4))
+    title = paste0('Prior Distribution of Sigma2 \n (nu = ',nu, ', lam = ',lam,', mean = ', pm,')')  
+  }
+  if(is.null(y_lim)){y_lim = c(0, max(ds))}
+  
+  #Plot the prior
+  plot(prior_sig2, ds, xlab = 'Sigma2', ylab = 'density', main = title, panel.first = {grid(col = 'lightgrey')},
+       xlim = x_lim, ylim = y_lim, type = 'l')
+  abline(v = pm, col = 'red', lty = 'dashed')
+  if(!is.null(sig2_hat)){
+    abline(v = sig2_hat, col = 'blue', lty = 'dashed')
+  }
+  legend('topright',legend = c('Mean', 'Sig2_hat'), col = c('red', 'blue'), pch = 16, cex = 0.8)
+}
+
+#plot prior standard dev - sigma
+plot_prior_sig = function(n, nu, lam,sig_hat = NULL, x_lim = NULL, y_lim = NULL, title = NULL){
+  #Get prior and prior mean
+  prior_sig = sqrt(rinv_scaled_chi2(n,nu,lam))
+  pm = round(mean(prior_sig),4)
+
+  #Get plot limits and titles
+  if(is.null(x_lim)){x_lim = c(min(prior_sig), max(prior_sig))}
+  if(is.null(title)){
+    lam = ifelse(round(lam, 4)==0, round(lam, 8), round(lam, 4))
+    title = paste0('Prior Distribution of Sigma \n (nu = ',nu, ', lam = ',lam,', mean = ', pm,')')  
+  }
+  ds = density(prior_sig)
+  if(is.null(y_lim)){y_lim = c(0, max(ds$y)) }
+  
+  #Plot the prior  
+  plot(ds, xlab = 'Sigma', ylab = 'density', main = title, panel.first = {grid(col = 'lightgrey')},
+       xlim = x_lim, ylim = y_lim)
+  abline(v = pm, col = 'red', lty = 'dashed')
+  if(!is.null(sig_hat)){
+    abline(v = sig_hat, col = 'blue', lty = 'dashed')
+  }
+  legend('topright',legend = c('Mean', 'Sig_hat'), col = c('red', 'blue'), pch = 16, cex = 0.8)
+}
+
+#Coverage probability for the prior
+coverage_prob_sig2 = function(n, nu, lam, sig2_hat){
+  cp = mean(rinv_scaled_chi2(n,nu,lam)<sig2_hat)
+  return(cp)
+}
