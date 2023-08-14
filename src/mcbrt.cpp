@@ -1024,7 +1024,7 @@ void mcbrt::local_mpigetsuff_nodecases(tree::tree_p n, sinfo& sil, sinfo& sir, b
             // Set subtree_node = true for left and right children
             mcl.subtree_node = true;
             mcr.subtree_node = true;
-            //Set mcr as the subtree andn sibling info node
+            //Set mcr as the subtree and sibling info node, the resizing appears to not work?
             mcr.sibling_info = true;
             if(birthmove){mcr.resizesubtreeinfo(subbnv.size()-1);}else{mcr.resizesubtreeinfo(subbnv.size()-2);}
         }
@@ -1254,7 +1254,8 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
 #ifdef _OPENMPI
     mcinfo& msil=static_cast<mcinfo&>(sil);
     mcinfo& msir=static_cast<mcinfo&>(sir);
-    int buffer_size = SIZE_UINT6*10; 
+    int buffer_size = 360; 
+    int buffer_tc_start = buffer_size;
     if(rank==0) { // MPI receive all the answers from the slaves
         MPI_Status status;
         mcinfo& tsil = (mcinfo&) *newsinfo();
@@ -1265,11 +1266,14 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             // Pass subtree information if present
             // This should only apply to the right node
             size_t ns = 0;
-            ns = tsir.subtree_sumyw.size();
+            ns = msir.subtree_sumyw.size();
             double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
             double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
             unsigned int sbt_nf_array[ns];
             
+            // Update buffer size
+            buffer_size = buffer_tc_start + ns*38; // x38 just to add some extra resources just in case
+
             if(msir.subtree_info){
                 // Cast vectors to array
                 std::copy(tsir.subtree_sumyw.begin(),tsir.subtree_sumyw.end(),sbt_sumyw_array);
@@ -1301,12 +1305,13 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             MPI_Unpack(buffer,buffer_size,&position,&tsir.sumzw,1,MPI_DOUBLE,MPI_COMM_WORLD);
             // Now unpack the subtree information and cast back to std::vector 
             if(msir.subtree_info){
+                // 36 bits per additional tree node
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumyw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumzw_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwf_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_sumwc_array,ns,MPI_DOUBLE,MPI_COMM_WORLD);
                 MPI_Unpack(buffer,buffer_size,&position,&sbt_nf_array,ns,MPI_UNSIGNED,MPI_COMM_WORLD);
-
+                
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumyw.push_back(sbt_sumyw_array[j]);}
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumzw.push_back(sbt_sumzw_array[j]);}
                 for(size_t j=0;j<ns;j++){tsir.subtree_sumwf.push_back(sbt_sumwf_array[j]);}
@@ -1341,6 +1346,9 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
         double sbt_sumyw_array[ns], sbt_sumzw_array[ns];
         double sbt_sumwf_array[ns], sbt_sumwc_array[ns];
         unsigned int sbt_nf_array[ns];
+        
+        // Update buffer size
+        buffer_size = buffer_size + ns*38; // x38 just to add some extra resources just in case
         if(msir.subtree_info){
             // Cast vectors to array
             std::copy(msir.subtree_sumyw.begin(),msir.subtree_sumyw.end(),sbt_sumyw_array);
@@ -1349,7 +1357,7 @@ void mcbrt::local_mpi_sr_suffs(sinfo& sil, sinfo& sir)
             std::copy(msir.subtree_sumwc.begin(),msir.subtree_sumwc.end(),sbt_sumwc_array);
             std::copy(msir.subtree_nf.begin(),msir.subtree_nf.end(),sbt_nf_array); 
         }
-        
+
         char buffer[buffer_size];
         ln=(unsigned int)msil.n;
         rn=(unsigned int)msir.n;
