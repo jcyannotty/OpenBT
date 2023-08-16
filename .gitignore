@@ -55,6 +55,7 @@
 
 # Python cache
 __pycache__/*
+*.pyc
 
 # Other folders
 src/.deps/*
