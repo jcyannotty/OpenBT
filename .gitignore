@@ -71,3 +71,4 @@ config.guess
 config.log
 config.status
 config.sub
+.DS_Store
