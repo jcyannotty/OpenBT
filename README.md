@@ -4,11 +4,12 @@ Such extensions include Bayesian Model Mixing and Bayesian Calibration. The firs
 
 All of the Bayesian Tree code is written in C++. User interfaces constructed in R and Python allow one to easily run the software. The OpenBT project is also included in the Bayesian Model Mixing python package, *Taweret*, which is included in the Bayesian Analysis of Nuclear Dynamics sotware (see https://bandframework.github.io/). 
 
+
 # Installation
 
 The Trees module is a Python interface which calls and executes a Ubuntu package in order \
 to fit the mixing model and obtain the resulting predictions. This package is developed as a part of the \
-Open Bayesian Trees Project (OpenBT). See references [1] and [2] for details. To install the Ubuntu package, \
+Open Bayesian Trees Project (OpenBT). To install the Ubuntu package, \
 please follow the steps below based on the operating system of choice.
 
 
@@ -39,7 +40,7 @@ please follow the steps below based on the operating system of choice.
 ```    
 
 
-2. Download the OpenBT OSX binary package:
+2. Download the OpenBT OSX binary package: "OpenBT-Mixing-0.current.pkg".
 
 3. Install the OpenBT OSX package by double-clicking on the downloaded .pkg file and follow the on-screen instructions.
 
@@ -47,9 +48,9 @@ please follow the steps below based on the operating system of choice.
 **Windows:**
 
 OpenBT will run within the Windows 10 Windows Subsystem for Linux (WSL) environment. For instructions on installing WSL, \
-please see (https://ubuntu.com/wsl). We recommend installing the Ubuntu 20.04 WSL build. \
+please see [Ubuntu WSL](https://ubuntu.com/wsl). We recommend installing the Ubuntu 20.04 WSL build. \
 There are also instructions \
-(https://wiki.ubuntu.com/WSL?action=subscribe&_ga=2.237944261.411635877.1601405226-783048612.1601405226#Installing_Packages_on_Ubuntu) \
+[here](https://wiki.ubuntu.com/WSL?action=subscribe&_ga=2.237944261.411635877.1601405226-783048612.1601405226#Installing_Packages_on_Ubuntu) \
 on keeping your Ubuntu WSL up to date, or installing additional features like X support. Once you have \
 installed the WSL Ubuntu layer, start the WSL Ubuntu shell from the start menu and then install the package:
 
@@ -59,7 +60,12 @@ installed the WSL Ubuntu layer, start the WSL Ubuntu shell from the start menu a
 
 ```    
 
-**Examples**
+# Local Compilation
+
+Alternatively, one could also download the source files and compile the project locally. If compiling locally, please ensure you have installed the approriate dependencies for MPI (see Mac OS/X above) and the [Eigen Library](https://eigen.tuxfamily.org/index.php?title=Main_Page). 
+
+
+# Examples
 
 The examples from the article "Model Mixing Using Bayesian Additive Regression Tress" are reproduced in the jupyter noteboook BART_BMM_Technometrics.ipynb. This notebook can be run locally or in a virtual environment such as google colab.
 
