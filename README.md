@@ -49,8 +49,7 @@ please follow the steps below based on the operating system of choice.
 
 OpenBT will run within the Windows 10 Windows Subsystem for Linux (WSL) environment. For instructions on installing WSL, \
 please see [Ubuntu WSL](https://ubuntu.com/wsl). We recommend installing the Ubuntu 20.04 WSL build. \
-There are also instructions \
-[here](https://wiki.ubuntu.com/WSL?action=subscribe&_ga=2.237944261.411635877.1601405226-783048612.1601405226#Installing_Packages_on_Ubuntu) \
+There are also instructions [here](https://wiki.ubuntu.com/WSL?action=subscribe&_ga=2.237944261.411635877.1601405226-783048612.1601405226#Installing_Packages_on_Ubuntu) \
 on keeping your Ubuntu WSL up to date, or installing additional features like X support. Once you have \
 installed the WSL Ubuntu layer, start the WSL Ubuntu shell from the start menu and then install the package:
 
