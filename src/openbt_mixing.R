@@ -166,6 +166,7 @@ gettrees.openbtmixing = function(scan,N,j,x,f,xicuts){
   return(out)
 }
 
+
 # Get residuals each tree was regressed on
 # tree0 = last fit, tree1 = current fit
 treeresid.openbtmixing = function(tree_list0, tree_list1,y){
@@ -191,6 +192,43 @@ treeresid.openbtmixing = function(tree_list0, tree_list1,y){
 }
 
 
+## Find terminal nodes from scanned tree
+tnodes_from_scan.openbtmixing = function(tree_list){
+  vlist = tree_list$var
+  idlist = tree_list$id
+  tnodes = c()
+  tnodes_theta = matrix(0,nrow = 0, ncol = 2) 
+  
+  if(length(idlist)>1){
+    for(i in 1:(length(idlist)-1)){
+      if(idlist[i+1] != 2*idlist[i]){
+        tnodes = c(tnodes, idlist[i])
+        tnodes_theta = rbind(tnodes_theta,matrix(tree_list$theta[(2*(i-1)+1):(i*2)], 
+                                                 nrow = 1, ncol = 2))  
+      }
+    }
+  }
+  # Append the last node in the list to the terminal node info
+  sz = length(idlist)
+  tnodes = c(tnodes,idlist[sz])
+  tnodes_theta = rbind(tnodes_theta,matrix(tree_list$theta[(2*(sz-1)+1):(sz*2)], nrow = 1, ncol = 2))
+  
+  out = list(tnodes = tnodes, tnodes_theta = tnodes_theta)
+  return(out)
+}
+
+
+# Get the tree stats -- now limited to number of terminal nodes
+get_tree_stats.openbtmixing = function(scan){
+  N = length(scan)
+  m = length(scan[[1]])
+  tnode_count = matrix(0,ncol = m, nrow = N)
+  for(i in 1:N){
+    tnode_count[i,] = unlist(lapply(scan[[i]],function(x) length(tnodes_from_scan.openbtmixing(x)$tnodes)))
+  }
+  return(tnode_count)
+}
+
 
 # Get gamma posteriors from rpath model
 gammapost.openbtmixing = function(fit){
@@ -204,3 +242,89 @@ gammapost.openbtmixing = function(fit){
   res$gdraws=do.call(cbind,sapply(fnames,data.table::fread))  
   res$gdraws = matrix(res$gdraws, ncol = m, byrow = TRUE) 
 }
+
+
+# Variogram for random path mixing
+variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,ncut=100,modelname="model"){
+  # Data and null values
+  if(is.null(gam)){
+    const_gamma = FALSE
+    gam = a1/(a1+a2) # default value just used as a place holder to start 
+  }else{
+    const_gamma = TRUE
+  }
+  
+  if(!is.matrix(xgrid)){xgrid = matrix(xgrid, ncol = 1)}
+  p = ncol(xgrid)
+  
+  # Compute priors
+  tau2 = (1/(2*k*sqrt(m)))^2
+  
+  #--------------------------------------------------
+  # Cut points
+  xi=vector("list",p)
+  x=t(xgrid)
+  minx_temp=apply(x,1,min)
+  maxx_temp=apply(x,1,max)
+  
+  maxx = round(maxx_temp,1) + ifelse((round(maxx_temp,1)-maxx_temp)>0,0,0.1)
+  minx = round(minx_temp,1) - ifelse((minx_temp - round(minx_temp,1))>0,0,0.1)
+  for(i in 1:p){
+    xinc=(maxx[i]-minx[i])/(ncut+1)
+    xi[[i]]=(1:ncut)*xinc+minx[i]
+  }
+  
+  #--------------------------------------------------
+  # #write out config file
+  xroot="xvg"
+  hroot="hvg"
+  xiroot="xi"
+  folder=tempdir(check=TRUE)
+  if(!dir.exists(folder)) dir.create(folder)
+  tmpsubfolder=tempfile(tmpdir="")
+  tmpsubfolder=substr(tmpsubfolder,5,nchar(tmpsubfolder))
+  tmpsubfolder=paste("openbt",tmpsubfolder,sep="")
+  folder=paste(folder,"/",tmpsubfolder,sep="")
+  if(!dir.exists(folder)) dir.create(folder)
+  fout=file(paste(folder,"/config.variogram",sep=""),"w")
+  writeLines(c(modelname,paste(nd),paste(m),paste(p),paste(tau2),
+               paste(base),paste(power),paste(a1),paste(a2),paste(q),
+               paste(gam),const_gamma,xiroot,xroot,hroot
+            ),fout)
+  close(fout)
+  
+  #--------------------------------------------------
+  # Write data
+  write(xgrid,file=paste(folder,"/",xroot,sep=""))
+  write(hgrid,file=paste(folder,"/",hroot,sep=""))
+  for(i in 1:p) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
+  
+  #--------------------------------------------------
+  #run variogram program  -- it's not actually parallel so no call to mpirun.
+  runlocal=FALSE
+  if(Sys.which("openbtcli")[[1]]=="") # not installed in a global locaiton, so assume current directory
+    runlocal=TRUE
+  
+  if(runlocal){
+    cmd=paste("./openbtvariogram ",folder,sep="")
+  }else{
+    cmd=paste("openbtvariogram ",folder,sep="")
+  }
+  #cmd=paste("./openbtvartivity",sep="")
+  system(cmd)
+  #system(paste("rm -f ",folder,"/config.variogram",sep=""))
+  
+  #--------------------------------------------------
+  # Read in results
+  res=list()
+  res$vdraws=do.call(cbind,sapply(paste(folder,"/",modelname,".variogram",sep=""),data.table::fread))
+  #res$vdraws=read.table(paste(folder,"/",modelname,".variogram",sep=""))
+  res$vdraws = matrix(res$vdraws, ncol = length(hgrid), byrow = TRUE) 
+  res$vmean = apply(res$vdraws,2,mean)
+  return(res)
+}
+
+
+h_grid = seq(0.1,7,by = 0.1)
+vg = variogram.openbtmixing(x_train,h_grid,100,2,1,0.95,1,5,5,4)
+plot(h_grid,vg$vmean)

@@ -312,7 +312,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
             mb[j].t.getbots(bnv);
             // Reset phix
             phix = vxd::Ones(bnv.size());
-            get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+            mb[j].get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
             for(size_t l=0;l<bnv.size();l++){
                 //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
@@ -349,7 +349,7 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
             mb[j].t.getbots(bnv);
             // Reset phix
             phix = vxd::Ones(bnv.size());
-            get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+            mb[j].get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
             for(size_t l=0;l<bnv.size();l++){
                 //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
@@ -360,10 +360,53 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
 }
 
 
+// Getter for the gamma parameter
 std::vector<double> amxbrt::getgamma(){
     std::vector<double> outgamma;
     for(size_t j=0;j<m;j++){
         outgamma.push_back(mb[j].get_gamma());
     }
     return(outgamma);
+}
+
+
+// Sample tree prior -- used for variogram
+void amxbrt::sample_tree_prior(rn& gen){
+    for(size_t j=0;j<m;j++){
+        mb[j].sample_tree_prior(gen);
+    }
+}
+
+
+// Get phi matrix for each tree
+void amxbrt::get_phix_list(diterator &diter, std::vector<mxd, Eigen::aligned_allocator<mxd>> &phix_list, size_t np){
+    vxd phix;
+    mxd phix_mat;
+    tree::npv bnv; 
+    //std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
+    std::map<tree::tree_p,double> lbmap;
+    std::map<tree::tree_p,double> ubmap;
+    std::map<tree::tree_p,tree::npv> pathmap;
+
+    // Get bots and then get the path and bounds
+    for(size_t j=0;j<m;j++){
+        bnv.clear();
+        mb[j].t.getbots(bnv);
+        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+        phix_mat = mxd::Ones(np,bnv.size())/bnv.size();
+        phix_list.push_back(phix_mat);
+    }
+      
+    for(;diter<diter.until();diter++){   
+        double *xx = diter.getxp(); 
+        for(size_t j=0;j<m;j++){
+            // Get bots
+            bnv.clear();
+            mb[j].t.getbots(bnv);
+            // Reset phix
+            phix = vxd::Ones(bnv.size())/bnv.size(); // Reset phix 
+            mb[j].get_phix(xx,phix,bnv,lbmap,ubmap,pathmap); // Get phix for this x and tree
+            phix_list[j].row(*diter) = phix; // Edit the corresponding row in the jth matrix
+        }        
+    }
 }

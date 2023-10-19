@@ -270,6 +270,7 @@ public:
    void predict_vec_rpath(dinfo* dipred, finfo* fipred); 
    void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
    void setgamma(double gam){rpi.gamma = gam;} 
+   void sample_tree_prior(rn& gen);
 
 protected:
    //--------------------

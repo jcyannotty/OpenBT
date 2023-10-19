@@ -415,7 +415,8 @@ plot_residuals_hm_gg2 = function(x_test, resid, xcols = c(1,2), title=NULL, scal
   
   if(is.null(title)){title = paste("Residual Heat Map:",x1name,"vs.",x2name)}
   p = ggplot(hm_data, aes(x1,x2,fill=Residuals)) + 
-    geom_tile() + 
+    #geom_tile() +
+    geom_raster(interpolate = TRUE) +
     labs(x = x1name, y = x2name, title = title) + 
     theme_bw() +
     theme(axis.line = element_line(color = "grey70"),
@@ -437,7 +438,8 @@ plot_wts_2d_gg2 = function(x_test,wmean,wnum = 1,xcols = c(1,2), title=NULL, sca
   
   if(is.null(title)){title = paste0("W",wnum,"(",x1name,") vs. W",wnum,"(",x2name,")")}
   p = ggplot(wt_data, aes(x1,x2,fill=w)) + 
-    geom_tile() + 
+    #geom_tile() + 
+    geom_raster(interpolate = TRUE) +
     labs(x = x1name, y = x2name, title = title, fill = wname)+ 
     theme_bw() +
     theme(axis.line = element_line(color = "grey70"),
@@ -449,6 +451,34 @@ plot_wts_2d_gg2 = function(x_test,wmean,wnum = 1,xcols = c(1,2), title=NULL, sca
 
 }
 
+
+# Residuals 2D Heat Map
+plot_pred_2d_gg2 = function(x_test,pmean,xcols = c(1,2), title=NULL,
+                            viridis_scale = TRUE, viridis_opt = "viridis",
+                            scale_colors = c("navy","white","darkred",),scale_vals = c(-0.1,0.5,1.1)){
+  hm_data = data.frame(x_test, Values = pmean)
+  x1name = paste0('X',xcols[1])
+  x2name = paste0('X',xcols[2])
+  colnames(hm_data)[1:2] = c('x1', 'x2')
+  
+  if(is.null(title)){title = paste("Mean Predictions",x1name,"vs.",x2name)}
+  p = ggplot(hm_data, aes(x1,x2,fill=Values)) + 
+    #geom_tile() + 
+    geom_raster(interpolate = TRUE) +
+    labs(x = x1name, y = x2name, title = title) + 
+    theme_bw() +
+    theme(axis.line = element_line(color = "grey70"),
+          panel.border = element_blank(),plot.title = element_text(hjust = 0.5),
+          legend.position = "right", legend.text = element_text(size = 10)) 
+  if(viridis_scale){
+    p = p + scale_fill_viridis(option = viridis_opt, limits = scale_vals[c(1,3)])
+  }else{
+    p = p + 
+      scale_fill_gradient2(low = scale_colors[1], high = scale_colors[3], mid = scale_colors[2], 
+                           midpoint = scale_vals[2], limits = scale_vals[c(1,3)])
+  }
+  return(p)
+}
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

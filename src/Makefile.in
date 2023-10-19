@@ -95,7 +95,8 @@ host_triplet = @host@
 bin_PROGRAMS = openbtcli$(EXEEXT) openbtpred$(EXEEXT) \
 	openbtvartivity$(EXEEXT) openbtsobol$(EXEEXT) \
 	openbtmopareto$(EXEEXT) openbtmixingwts$(EXEEXT) \
-	openbtmixing$(EXEEXT) openbtmixingpred$(EXEEXT)
+	openbtmixing$(EXEEXT) openbtmixingpred$(EXEEXT) \
+	openbtvariogram$(EXEEXT)
 check_PROGRAMS = testcrn$(EXEEXT) testtree$(EXEEXT) testbrt$(EXEEXT) \
 	testbrtvp$(EXEEXT) testmbrt$(EXEEXT) testsbrt$(EXEEXT) \
 	testmxbrt$(EXEEXT) testambrt$(EXEEXT) testpsbrt$(EXEEXT) \
@@ -227,6 +228,10 @@ openbtsobol_OBJECTS = $(am_openbtsobol_OBJECTS)
 openbtsobol_DEPENDENCIES = libsinglebinomial.la libsinglepoisson.la \
 	libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la \
 	libtree.la libcrn.la
+am_openbtvariogram_OBJECTS = variogram.$(OBJEXT)
+openbtvariogram_OBJECTS = $(am_openbtvariogram_OBJECTS)
+openbtvariogram_DEPENDENCIES = libbrt.la libtree.la libcrn.la \
+	libamxbrt.la libmxbrt.la
 am_openbtvartivity_OBJECTS = vartivity.$(OBJEXT)
 openbtvartivity_OBJECTS = $(am_openbtvartivity_OBJECTS)
 openbtvartivity_DEPENDENCIES = libsinglebinomial.la \
@@ -306,7 +311,8 @@ am__depfiles_remade = ./$(DEPDIR)/ambrt.Plo ./$(DEPDIR)/amxbrt.Plo \
 	./$(DEPDIR)/test_singlebinomial.Po \
 	./$(DEPDIR)/test_singlepoisson.Po ./$(DEPDIR)/test_tree.Po \
 	./$(DEPDIR)/tnorm.Plo ./$(DEPDIR)/tree.Plo \
-	./$(DEPDIR)/treefuns.Plo ./$(DEPDIR)/vartivity.Po
+	./$(DEPDIR)/treefuns.Plo ./$(DEPDIR)/variogram.Po \
+	./$(DEPDIR)/vartivity.Po
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -353,10 +359,11 @@ SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(openbtcli_SOURCES) $(openbtmixing_SOURCES) \
 	$(openbtmixingpred_SOURCES) $(openbtmixingwts_SOURCES) \
 	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
-	$(openbtsobol_SOURCES) $(openbtvartivity_SOURCES) \
-	$(testambrt_SOURCES) $(testamxbrt_SOURCES) $(testbrt_SOURCES) \
-	$(testbrtvp_SOURCES) $(testcrn_SOURCES) $(testmbrt_SOURCES) \
-	$(testmxbrt_SOURCES) $(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
+	$(openbtsobol_SOURCES) $(openbtvariogram_SOURCES) \
+	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
+	$(testamxbrt_SOURCES) $(testbrt_SOURCES) $(testbrtvp_SOURCES) \
+	$(testcrn_SOURCES) $(testmbrt_SOURCES) $(testmxbrt_SOURCES) \
+	$(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
 	$(testsinglebinomial_SOURCES) $(testsinglepoisson_SOURCES) \
 	$(testtree_SOURCES)
 DIST_SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
@@ -368,10 +375,11 @@ DIST_SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(openbtcli_SOURCES) $(openbtmixing_SOURCES) \
 	$(openbtmixingpred_SOURCES) $(openbtmixingwts_SOURCES) \
 	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
-	$(openbtsobol_SOURCES) $(openbtvartivity_SOURCES) \
-	$(testambrt_SOURCES) $(testamxbrt_SOURCES) $(testbrt_SOURCES) \
-	$(testbrtvp_SOURCES) $(testcrn_SOURCES) $(testmbrt_SOURCES) \
-	$(testmxbrt_SOURCES) $(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
+	$(openbtsobol_SOURCES) $(openbtvariogram_SOURCES) \
+	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
+	$(testamxbrt_SOURCES) $(testbrt_SOURCES) $(testbrtvp_SOURCES) \
+	$(testcrn_SOURCES) $(testmbrt_SOURCES) $(testmxbrt_SOURCES) \
+	$(testpsbrt_SOURCES) $(testsbrt_SOURCES) \
 	$(testsinglebinomial_SOURCES) $(testsinglepoisson_SOURCES) \
 	$(testtree_SOURCES)
 am__can_run_installinfo = \
@@ -564,6 +572,8 @@ openbtmixing_SOURCES = mixing.cpp
 openbtmixing_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
 openbtmixingpred_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtvariogram_SOURCES = variogram.cpp
+openbtvariogram_LDADD = libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 testcrn_SOURCES = test_crn.cpp
 testcrn_LDADD = libcrn.la
 testtree_SOURCES = test_tree.cpp
@@ -799,6 +809,10 @@ openbtsobol$(EXEEXT): $(openbtsobol_OBJECTS) $(openbtsobol_DEPENDENCIES) $(EXTRA
 	@rm -f openbtsobol$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(openbtsobol_OBJECTS) $(openbtsobol_LDADD) $(LIBS)
 
+openbtvariogram$(EXEEXT): $(openbtvariogram_OBJECTS) $(openbtvariogram_DEPENDENCIES) $(EXTRA_openbtvariogram_DEPENDENCIES) 
+	@rm -f openbtvariogram$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(openbtvariogram_OBJECTS) $(openbtvariogram_LDADD) $(LIBS)
+
 openbtvartivity$(EXEEXT): $(openbtvartivity_OBJECTS) $(openbtvartivity_DEPENDENCIES) $(EXTRA_openbtvartivity_DEPENDENCIES) 
 	@rm -f openbtvartivity$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(openbtvartivity_OBJECTS) $(openbtvartivity_LDADD) $(LIBS)
@@ -893,6 +907,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tnorm.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tree.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/treefuns.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/variogram.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/vartivity.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -1241,6 +1256,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/tnorm.Plo
 	-rm -f ./$(DEPDIR)/tree.Plo
 	-rm -f ./$(DEPDIR)/treefuns.Plo
+	-rm -f ./$(DEPDIR)/variogram.Po
 	-rm -f ./$(DEPDIR)/vartivity.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1325,6 +1341,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/tnorm.Plo
 	-rm -f ./$(DEPDIR)/tree.Plo
 	-rm -f ./$(DEPDIR)/treefuns.Plo
+	-rm -f ./$(DEPDIR)/variogram.Po
 	-rm -f ./$(DEPDIR)/vartivity.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic

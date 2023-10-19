@@ -43,7 +43,7 @@ public:
       this->randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2);
       for(size_t j=0;j<m;j++){mb[j].setrpi(gam,q,shp1,shp2,n);}
    }
-   void setloss(mxd iloss){this->loss.resize(iloss.rows(),iloss.cols()); this->loss = iloss; for(size_t j=0;j<m;j++) mb[j].setloss(iloss);}
+   void setloss(mxd iloss){this->loss.resize(iloss.rows(),iloss.cols()); this->loss = iloss; for(size_t j=0;j<m;j++) mb[j].setloss(iloss);} // Remove
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }
    void setxi(xinfo *xi) { this->xi=xi; for(size_t j=0;j<m;j++) mb[j].setxi(xi); }
    void setfi(finfo *fi, size_t k) {this->fi = fi; this->k = k; this-> nsprior = false ;for(size_t j=0;j<m;j++) mb[j].setfi(fi,k); }
@@ -82,6 +82,8 @@ public:
    void drawgamma(rn &gen);
    void drawgamma_mpi(rn &gen);
    void setgamma(std::vector<double> gam){for(size_t j=0;j<m;j++) mb[j].setgamma(gam[j]);}
+   void sample_tree_prior(rn& gen);
+   void get_phix_list(diterator &diter, std::vector<mxd, Eigen::aligned_allocator<mxd>> &phix_list, size_t np); // m tree analogue to get_phix_matrix(...) 
    std::vector<double> getgamma();
 
 protected:
@@ -101,7 +103,7 @@ protected:
    virtual void local_setr_vec(diterator& diter);  //set the vector of residuals
    virtual void local_predict_vec(diterator& diter, finfo& fipred); // predict y at the (npred x p) settings *di.x
    virtual void local_predict_thetavec(diterator& diter, mxd& wts); // extract model weights at each *di.x settings
-   virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings
+   virtual void local_get_mix_theta(diterator& diter, mxd& wts); // extract the terminal node parameters for the first *di.x settings ---- remove
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
                   std::vector<std::vector<int> >& c, std::vector<std::vector<double> >& theta);
    virtual void local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn, std::vector<std::vector<int> >& id, std::vector<std::vector<int> >& v,
@@ -112,7 +114,6 @@ protected:
    // For random path
    virtual void local_predict_vec_rpath(diterator& diter, finfo& fipred);
    virtual void local_predict_thetavec_rpath(diterator& diter, mxd& wts); 
-
 };
 
 

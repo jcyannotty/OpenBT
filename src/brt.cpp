@@ -2218,38 +2218,7 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
    logphix = mxd::Zero(np, bnv.size());
    if(bnv.size()>1){
       // Get the upper and lower bounds for each path
-      for(size_t j=0;j<bnv.size();j++){
-         path.clear();
-         bnv[j]->getpathtoroot(path);
-         pathmap[bnv[j]] = path;
-         for(size_t l=0;l<(path.size()-1);l++){
-            // Reset L and U to min and max & then update
-            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
-            n0 = path[l];
-            p0 = path[l]->p; // get the parent of the current node on the path
-            v0 = p0->v; // get its split var
-            // If p0 is not a key already then add it
-            if(lbmap.find(p0) == lbmap.end()){
-               L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
-               p0->rgi(v0,&L,&U);
-               
-               // Now we have the interval endpoints, put corresponding values in a,b matrices.
-               if(L!=std::numeric_limits<int>::min()){ 
-                     lb=(*xi)[v0][L];
-               }else{
-                     lb=(*xi)[v0][0];
-               }
-               if(U!=std::numeric_limits<int>::max()) {
-                     ub=(*xi)[v0][U];
-               }else{
-                     ub=(*xi)[v0][(*xi)[v0].size()-1];
-               }
-               // Store in the maps
-               lbmap[p0] = lb;
-               ubmap[p0] = ub;
-            }            
-         }
-      }
+      get_phix_bounds(bnv,lbmap,ubmap,pathmap);
 
       for(;diter<diter.until();diter++){
          double *xx = diter.getxp();
@@ -3066,6 +3035,62 @@ void brt::shuffle_randz(rn &gen){
 #else
    }
 #endif
+}
+
+
+
+//--------------------------------------------------
+// Sample the tree prior - for rpath variogram
+void brt::sample_tree_prior(rn& gen){
+   std::vector<int> nidqueue;
+   tree::npv goodbots; 
+   double PBx = 0.5;
+   double u0;
+   int nid;
+   size_t dnx;
+   tree::tree_p nx0;
+
+   // Init tree and splitting queue
+   t.tonull();
+   nidqueue.push_back(1);
+ 
+   while(nidqueue.size()>0){
+      // Remove leading element in nidqueue
+      nid = nidqueue[0];
+      nx0 = t.getptr(nid);
+      nidqueue.erase(nidqueue.begin());
+      
+      //cout << "queue size = " << nidqueue.size() << endl;
+      dnx = nx0->depth();
+
+      // Sampling procedure at current node
+      u0 = gen.uniform();
+      if(tp.alpha/pow(1.0+dnx,tp.beta) >= u0){
+         // Try to split using birth proposal (these probs don't really matter - only used here to ensure we have valid splits)
+         goodbots.clear();
+         tree::tree_p nx; //bottom node
+         size_t v,c; //variable and cutpoint
+         int L,U;
+         double pr; //part of metropolis ratio from proposal and prior
+         
+         //cout << "nid = " << nid << endl;
+         
+         if(cansplit(t.getptr(nid),*xi)) goodbots.push_back(t.getptr(nid));
+         if(goodbots.size()>0){
+            L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+            bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);            
+            nx->rgi(v,&L,&U);
+            if((L!=c) && (U!=c)){
+               t.birthp(nx,v,c,0.0,0.0);
+               // bprop gives us the new tree - need to add to queue
+               nidqueue.push_back(nid*2); // left child id
+               nidqueue.push_back(nid*2 + 1); // right child id
+            }            
+         }
+      }
+   }
+   
+   //cout << "treesize = " << t.treesize() << endl;
 }
 
 
