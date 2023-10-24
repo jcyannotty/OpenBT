@@ -323,8 +323,3 @@ variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   res$vmean = apply(res$vdraws,2,mean)
   return(res)
 }
-
-
-h_grid = seq(0.1,7,by = 0.1)
-vg = variogram.openbtmixing(x_train,h_grid,100,2,1,0.95,1,5,5,4)
-plot(h_grid,vg$vmean)

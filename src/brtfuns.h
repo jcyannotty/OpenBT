@@ -39,7 +39,7 @@ using std::endl;
 void makexinfo(size_t p, size_t n, double *x, xinfo& xi, size_t nc);
 //--------------------------------------------------
 //compute prob of a birth, goodbots will contain all the good bottom nodes
-double getpb(tree& t, xinfo& xi, double pipb, tree::npv& goodbots);
+double getpb(tree& t, xinfo& xi, double pipb, tree::npv& goodbots, brt::tprior& tp);
 //--------------------------------------------------
 //bprop: function to generate birth proposal
 void bprop(tree& x, xinfo& xi, brt::tprior& tp, double pb, tree::npv& goodbots, double& PBx, tree::tree_p& nx, size_t& v, size_t& c, double& pr, rn& gen);

@@ -645,6 +645,7 @@ if(modeltype!=MODEL_MIXBART){
          axb.predict_vec_rpath(&dip, &fi_test); // Move to public in brt
          tempgam.clear();
       }
+      if(i%500 == 0 & mpirank==0){cout << "Draw " << i << endl;}
       for(size_t j=0;j<np;j++) tedraw[i][j] = fp[j] + fmean;
    }
 

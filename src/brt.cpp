@@ -1174,7 +1174,7 @@ void brt::bd(rn& gen)
 {
 //   cout << "--------------->>into bd" << endl;
    tree::npv goodbots;  //nodes we could birth at (split on)
-   double PBx = getpb(t,*xi,mi.pb,goodbots); //prob of a birth at x
+   double PBx = getpb(t,*xi,mi.pb,goodbots,tp); //prob of a birth at x
 
    if(gen.uniform() < PBx) { //do birth or death
       mi.bproposal++;
@@ -1653,7 +1653,7 @@ void brt::bd_vec(rn& gen)
 {
 //   cout << "--------------->>into bd" << endl;
    tree::npv goodbots;  //nodes we could birth at (split on)
-   double PBx = getpb(t,*xi,mi.pb,goodbots); //prob of a birth at x
+   double PBx = getpb(t,*xi,mi.pb,goodbots,tp); //prob of a birth at x
 
    if(gen.uniform() < PBx) { //do birth or death
       mi.bproposal++;
@@ -3075,7 +3075,7 @@ void brt::sample_tree_prior(rn& gen){
          
          //cout << "nid = " << nid << endl;
          
-         if(cansplit(t.getptr(nid),*xi)) goodbots.push_back(t.getptr(nid));
+         if(cansplit(nx0,*xi)&(nx0->depth() < (tp.maxd+1))) goodbots.push_back(nx0);
          if(goodbots.size()>0){
             L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
             bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);            

@@ -134,10 +134,12 @@ int main(int argc, char* argv[])
    double mybeta;
    double alphah;
    double mybetah;
+   size_t maxd;
    conf >> alpha;
    conf >> mybeta;
    conf >> alphah;
    conf >> mybetah;
+   conf >> maxd;
 
    //thread count
    int tc;
@@ -993,6 +995,7 @@ return 0;
    axb.settp(alpha, //the alpha parameter in the tree depth penalty prior
          mybeta     //the beta parameter in the tree depth penalty prior
          );
+   axb.setmaxd(maxd); // set maxdepth
    //MCMC info
    axb.setmi(
          pbd,  //probability of birth/death

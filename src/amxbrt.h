@@ -53,6 +53,7 @@ public:
    void setk(size_t k) {this->k = k; for(size_t j=0;j<m;j++) mb[j].setk(k); }
    void setdata_vec(dinfo *di);
    void settp(double alpha, double beta) { tp.alpha=alpha;tp.beta=beta; for(size_t j=0;j<m;j++) mb[j].settp(alpha,beta); }
+   void setmaxd(size_t maxd){tp.maxd = maxd; for(size_t j=0;j<m;j++) mb[j].setmaxd(maxd);}
    tree::tree_p gettree(size_t i) { return &mb[i].t; }
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
              { mi.pbd=pbd; mi.pb=pb; mi.minperbot=minperbot; mi.dopert=dopert;

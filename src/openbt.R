@@ -39,7 +39,7 @@ ntree=NULL,
 ntreeh=NULL,
 ndpost=1000, nskip=100,
 k=NULL,
-power=2.0, base=.95,
+power=2.0, base=.95, maxd = 999,
 tc=2,
 sigmav=rep(1,length(y.train)),
 f.sd.train = NULL, # rename
@@ -368,7 +368,7 @@ if(!dir.exists(folder)) dir.create(folder)
 fout=file(paste(folder,"/config",sep=""),"w")
 writeLines(c(paste(modeltype),xroot,yroot,fmean.out,paste(m),paste(mh),paste(nd),paste(burn),
             paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
-            paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),
+            paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),paste(maxd),
             paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(nsprior),
             paste(selectp),paste(rpath),paste(gam),paste(q),paste(rshp1),paste(rshp2),paste(wproot),paste(wtsprior), 
             paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
@@ -460,7 +460,7 @@ res$modeltype=modeltype
 res$model=model
 res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
 res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
-res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh
+res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh; res$maxd = maxd;
 res$tc=tc; res$sroot=sroot; res$chgvroot=chgvroot;res$froot=froot;res$fsdroot=fsdroot; 
 res$nsprior = nsprior;res$selectp = selectp;res$rpath = rpath; res$rshp1 = rshp1; res$rshp2 = rshp2;
 res$pbd=pbd; res$pb=pb

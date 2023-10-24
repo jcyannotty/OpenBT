@@ -105,10 +105,11 @@ public:
    //classes
    class tprior { //prior on the tree structure
    public:
-      tprior(): alpha(.95),beta(1.0) {}
+      tprior(): alpha(.95),beta(1.0),maxd(999) {}
       //prob(split) = alpha/(1+d)^beta, where d is node depth.
       double alpha;
       double beta;
+      size_t maxd;
    };
    class mcmcinfo { //algorithm parameters (eg move probabilities)
    public:
@@ -171,7 +172,8 @@ public:
                          }
    void setdata(dinfo *di) {this->di=di;resid.resize(di->n);yhat.resize(di->n);setf();setr();}
    void pr();
-   void settp(double alpha, double beta) {tp.alpha=alpha;tp.beta=beta;}
+   void settp(double alpha, double beta) {tp.alpha=alpha;tp.beta=beta;} 
+   void setmaxd(size_t maxd){tp.maxd = maxd;} 
    void setmi(double pbd, double pb, size_t minperbot, bool dopert, double pertalpha, double pchgv, std::vector<std::vector<double> >* chgv)
              {mi.pbd=pbd; mi.pb=pb; mi.minperbot=minperbot; mi.dopert=dopert;
               mi.pertalpha=pertalpha; mi.pchgv=pchgv; mi.corv=chgv; }
