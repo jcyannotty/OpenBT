@@ -129,6 +129,12 @@ void bprop(tree& x, xinfo& xi, brt::tprior& tp, double pb, tree::npv& goodbots, 
          }
       }
 
+      // If l and r from nx are at max depth, then they can't split so correct the above prob
+      if((dnx+1) == tp.maxd){
+         PGly = 0.0;
+         PGry = 0.0;      
+      }
+
       double PDy; //prob of proposing death at y
       if(goodbots.size()>1) { //can birth at y because splittable nodes left
          PDy = 1.0 - pb;
@@ -171,7 +177,7 @@ void dprop(tree& x, xinfo& xi, brt::tprior& tp, double pb, tree::npv& goodbots, 
       double PGny; //prob the nog node grows
       size_t dny = nx->depth();
       PGny = tp.alpha/pow(1.0+dny,tp.beta);
-
+      
       //better way to code these two?
       double PGlx = pgrow(nx->getl(),xi,tp);
       double PGrx = pgrow(nx->getr(),xi,tp);
@@ -185,8 +191,8 @@ void dprop(tree& x, xinfo& xi, brt::tprior& tp, double pb, tree::npv& goodbots, 
 
       double Pboty;  //prob of choosing the nog as bot to split on when y
       int ngood = goodbots.size();
-      if(cansplit(nx->getl(),xi)) --ngood; //if can split at left child, lose this one
-      if(cansplit(nx->getr(),xi)) --ngood; //if can split at right child, lose this one
+      if(cansplit(nx->getl(),xi) & (nx->depth()+1 < tp.maxd)) --ngood; //if can split at left child, lose this one
+      if(cansplit(nx->getr(),xi) & (nx->depth()+1 < tp.maxd)) --ngood; //if can split at right child, lose this one
       ++ngood;  //know you can split at nx
       Pboty=1.0/ngood;
 
@@ -199,7 +205,7 @@ void dprop(tree& x, xinfo& xi, brt::tprior& tp, double pb, tree::npv& goodbots, 
 //get prob a node grows, 0 if no good vars, else alpha/(1+d)^beta
 double pgrow(tree::tree_p n, xinfo& xi, brt::tprior& tp)
 {
-   if(cansplit(n,xi)) {
+   if(cansplit(n,xi)&(n->depth() < tp.maxd)) {
       return tp.alpha/pow(1.0+n->depth(),tp.beta);
    } else {
       return 0.0;

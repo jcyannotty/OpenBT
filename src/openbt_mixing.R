@@ -245,7 +245,7 @@ gammapost.openbtmixing = function(fit){
 
 
 # Variogram for random path mixing
-variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,ncut=100,modelname="model"){
+variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,maxd=999,ncut=100,modelname="model"){
   # Data and null values
   if(is.null(gam)){
     const_gamma = FALSE
@@ -288,7 +288,7 @@ variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   if(!dir.exists(folder)) dir.create(folder)
   fout=file(paste(folder,"/config.variogram",sep=""),"w")
   writeLines(c(modelname,paste(nd),paste(m),paste(p),paste(tau2),
-               paste(base),paste(power),paste(a1),paste(a2),paste(q),
+               paste(base),paste(power),paste(maxd),paste(a1),paste(a2),paste(q),
                paste(gam),const_gamma,xiroot,xroot,hroot
             ),fout)
   close(fout)

@@ -88,10 +88,12 @@ int main(int argc, char* argv[])
     double gamma0; // fixed value of gamma, used if const_gamma = True
     bool const_gamma = false;
     std::string const_gamma_str;
+    size_t maxd;
 
     conf >> tau2;
     conf >> base;
     conf >> power;
+    conf >> maxd;
     conf >> shape1;
     conf >> shape2;
     conf >> q;
@@ -183,6 +185,7 @@ int main(int argc, char* argv[])
     axb.setgamma(gammavec);
     axb.setxi(&xi);
     axb.settp(base, power);
+    axb.setmaxd(maxd);
     axb.setrpi(gamma0,q,shape1,shape2,n);
 
     dinfo digrid, dihgrid;
