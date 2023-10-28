@@ -75,7 +75,7 @@ double getpb(tree& t, xinfo& xi, double pipb, tree::npv& goodbots, brt::tprior& 
    tree::npv bnv; //all the bottom nodes
    t.getbots(bnv);
    for(size_t i=0;i!=bnv.size();i++)
-      if(cansplit(bnv[i],xi) & (bnv[i]->depth() < (tp.maxd+1))) goodbots.push_back(bnv[i]);
+      if(cansplit(bnv[i],xi) & (bnv[i]->depth() < tp.maxd)) goodbots.push_back(bnv[i]);
    if(goodbots.size()==0) { //are there any bottom nodes you can split on?
       pb=0.0;
    } else {
@@ -177,7 +177,7 @@ void dprop(tree& x, xinfo& xi, brt::tprior& tp, double pb, tree::npv& goodbots, 
       double PGny; //prob the nog node grows
       size_t dny = nx->depth();
       PGny = tp.alpha/pow(1.0+dny,tp.beta);
-      
+
       //better way to code these two?
       double PGlx = pgrow(nx->getl(),xi,tp);
       double PGrx = pgrow(nx->getr(),xi,tp);

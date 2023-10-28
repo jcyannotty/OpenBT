@@ -111,19 +111,19 @@ int main(int argc, char* argv[])
 
     conf.close();
 
-    // Read in xgrid
-    std::vector<double> x, xh;
+    // Read in x bounds
+    std::vector<double> xbnd, x, xh;
     double xtemp;
     std::stringstream xfss;
     std::string xfs;
-    size_t n;
+    //size_t n;
     
     xfss << folder << xcore;
     xfs=xfss.str();
     std::ifstream xf(xfs);
     while(xf >> xtemp)
-        x.push_back(xtemp);
-    n = x.size()/p;
+        xbnd.push_back(xtemp);
+    //n = x.size()/p;
 
     // Read in cuts and make xinfo
     xinfo xi;
@@ -186,12 +186,10 @@ int main(int argc, char* argv[])
     axb.setxi(&xi);
     axb.settp(base, power);
     axb.setmaxd(maxd);
-    axb.setrpi(gamma0,q,shape1,shape2,n);
+    axb.setrpi(gamma0,q,shape1,shape2,1);
 
     dinfo digrid, dihgrid;
-    digrid.x = &x[0]; digrid.n = n; digrid.p = p; digrid.tc = 1; digrid.y = NULL;
     
-
     // Containers for results
     std::vector<std::vector<double>> vg(nd,std::vector<double>(h));
     vxd phibar;
@@ -200,7 +198,7 @@ int main(int argc, char* argv[])
     for(size_t i=0;i<nd;i++){        
         // Print progress
         if(i%500 == 0) cout << "Step: " << i << endl;
-        
+                
         // Sample tree
         axb.sample_tree_prior(gen);
 
@@ -217,15 +215,21 @@ int main(int argc, char* argv[])
             axb.setgamma(gammavec);
         }
 
-        //cout << "gamma is set" << endl;
-        //cout << "gammavec[0] = " << gammavec[0] << endl;
+        // Sample x and set digrid
+        x.clear();
+        for(size_t k=0;k<p;k++){
+            xtemp = xbnd[2*k] + gen.uniform()*(xbnd[2*k+1]-xbnd[2*k]);
+            x.push_back(xtemp);
+        }
+        digrid.x = &x[0]; digrid.n = 1; digrid.p = p; digrid.tc = 1; digrid.y = NULL;
+
 
         // Reset diter
         diterator diter(&digrid);
         
         // Use diter's to get the phi(x) functions
         phix_list.clear();
-        axb.get_phix_list(diter, phix_list, n);
+        axb.get_phix_list(diter, phix_list, 1);
 
         // Get phix (might need to do this for the h group too....Loop over h starting here....)
         for(size_t k=0;k<h.size();k++){
@@ -233,29 +237,29 @@ int main(int argc, char* argv[])
             // Set the h diter
             xh.clear();
             for(size_t l=0;l<x.size();l++){
-                xh.push_back(x[l]+h[k]);
-                //cout << "x = " << x[l] << endl;
-                //cout << "xh = " << xh[l] << endl;
+                xh.push_back(x[l]+h[k]/pow(p,0.5));
             }
 
             // Set the h diter
-            dihgrid.x = &xh[0]; dihgrid.n = n; dihgrid.p = p; dihgrid.tc = 1; dihgrid.y = NULL;
+            dihgrid.x = &xh[0]; dihgrid.n = 1; dihgrid.p = p; dihgrid.tc = 1; dihgrid.y = NULL;
             diterator dhiter(&dihgrid);
 
             // Use diter's to get the phi(x) functions
             phixh_list.clear();
-            axb.get_phix_list(dhiter, phixh_list, n);
+            axb.get_phix_list(dhiter, phixh_list, 1);
 
             // Compute the phi(x) product for each pair in each tree
-            phibar = vxd::Zero(n);
+            phibar = vxd::Zero(1);
             for(size_t j=0;j<m;j++){
-                for(size_t l=0;l<n;l++){
+                // Used to be looping through n terms - now only one term so can eventually remove the inner loop  
+                for(size_t l=0;l<1;l++){
                     phibar.row(l) = phibar.row(l) + phix_list[j].row(l)*phixh_list[j].row(l).transpose()/m;
                 }    
             }
 
             // Compute variogram and store for this h
-            vg[i][k] = 2*tau2*m*(n - phibar.sum())/n; // average over the x's for numeric integral
+            //vg[i][k] = 2*tau2*m*(1 - phibar.sum()); // average over the x's for numeric integral
+            vg[i][k] = 2*tau2*m*(1 - phibar(0)); // n = 1 now
         }
     }
 

@@ -3075,7 +3075,7 @@ void brt::sample_tree_prior(rn& gen){
          
          //cout << "nid = " << nid << endl;
          
-         if(cansplit(nx0,*xi)&(nx0->depth() < (tp.maxd+1))) goodbots.push_back(nx0);
+         if(cansplit(nx0,*xi)&(nx0->depth() < tp.maxd)) goodbots.push_back(nx0);
          if(goodbots.size()>0){
             L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
             bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);            

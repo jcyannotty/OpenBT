@@ -245,7 +245,7 @@ gammapost.openbtmixing = function(fit){
 
 
 # Variogram for random path mixing
-variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,maxd=999,ncut=100,modelname="model"){
+variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,maxd=999,ncut=100,modelname="model"){
   # Data and null values
   if(is.null(gam)){
     const_gamma = FALSE
@@ -254,18 +254,19 @@ variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
     const_gamma = TRUE
   }
   
-  if(!is.matrix(xgrid)){xgrid = matrix(xgrid, ncol = 1)}
-  p = ncol(xgrid)
+  if(!is.matrix(xbnds)){xbnds = matrix(xbnds, ncol = 2)}
+  p = nrow(xbnds)
   
+  if(ncol(xbnds)!=2){stop("Error: dimension of xbnds must be px2.")}
+
   # Compute priors
   tau2 = (1/(2*k*sqrt(m)))^2
   
   #--------------------------------------------------
   # Cut points
   xi=vector("list",p)
-  x=t(xgrid)
-  minx_temp=apply(x,1,min)
-  maxx_temp=apply(x,1,max)
+  minx_temp=apply(xbnds,1,min)
+  maxx_temp=apply(xbnds,1,max)
   
   maxx = round(maxx_temp,1) + ifelse((round(maxx_temp,1)-maxx_temp)>0,0,0.1)
   minx = round(minx_temp,1) - ifelse((minx_temp - round(minx_temp,1))>0,0,0.1)
@@ -295,7 +296,7 @@ variogram.openbtmixing = function(xgrid,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   
   #--------------------------------------------------
   # Write data
-  write(xgrid,file=paste(folder,"/",xroot,sep=""))
+  write(t(xbnds),file=paste(folder,"/",xroot,sep=""))
   write(hgrid,file=paste(folder,"/",hroot,sep=""))
   for(i in 1:p) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
   
