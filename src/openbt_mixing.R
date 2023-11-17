@@ -324,3 +324,27 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   res$vmean = apply(res$vdraws,2,mean)
   return(res)
 }
+
+
+# R Predicion Function for mixing
+# Required - f_test is in the same order as x_test used in fitw
+predict.openbtmixing=function(fitw, f_test, q.lower = 0.025,q.upper = 0.975){
+  # Control
+  K = ncol(f_test)
+  n_test = nrow(f_test)
+  n_draws = nrow(fitw$wdraws[[1]])
+  pred_draws = matrix(0, nrow = n_draws, ncol = n_test)
+
+  # Loop through each weight funtion
+  for(j in 1:K){
+    pred_draws = pred_draws + t(t(fitw$wdraws[[j]])*f_test[,j])
+    cat("Weight ",j," done...\n")
+  }
+  pred_mean = apply(pred_draws,2,mean)
+  pred_lb = apply(pred_draws,2,quantile, q.lower)
+  pred_ub = apply(pred_draws,2,quantile, q.upper)
+  
+  out = list(pred_mean = pred_mean, pred_lb = pred_lb, pred_ub = pred_ub)
+  return(out)
+}
+

@@ -135,10 +135,11 @@ void brt::pertcv(rn& gen)
       delete[] request;
 
       mpi_update_norm_cormat(rank,tc,pertnode,*xi,chgvrownew,chv_lwr,chv_upr);
-      if(chgvrownew[oldv]==0.0)
-         cout << "Proposal newv cannot return to oldv!  This is not possible!" << endl;
-
+      //if(chgvrownew[oldv]==0.0)
+      //   cout << "Proposal newv cannot return to oldv!  This is not possible!" << endl;
+      
       double alpha0=chgvrownew[oldv]/chgvrow[newv];  //proposal ratio for newv->oldv and oldv->newv
+      //if(chgvrownew[oldv]==0.0) cout << "alpha0 = " << alpha0 << endl;
 #else
       //now we also need to update the row of chgv for newv->oldv to calc MH correctly
       updatecormat(pertnode,*xi,chgv);
@@ -175,12 +176,14 @@ void brt::pertcv(rn& gen)
             lmnew += lm(*(sivnew[j]));
          }
       }else{
+         // No need to use suff stats because the z(x)'s are fixed -- so changing v has no effect on the residuals!
          getchgvsuff_rpath(pertnode,bnv,oldc,oldv,didswap,lmold,lmnew);
       }
       double alpha1 = ((double)(Uo-Lo+1.0))/((double)(Un-Ln+1.0)); //from prior for cutpoints
       double alpha2=alpha0*alpha1*exp(lmnew-lmold);
       double alpha = std::min(1.0,alpha2);
       if(hardreject) alpha=0.0;  //change of variable led to an bottom node with <minperbot observations in it, we reject this.
+      //cout << "alpha = " << alpha << endl;
 #ifdef _OPENMPI
       request = new MPI_Request[tc];
 #endif
