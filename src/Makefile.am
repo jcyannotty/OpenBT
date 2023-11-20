@@ -6,7 +6,7 @@ ACLOCAL_AMFLAGS = -I m4
 AUTOMAKE_OPTIONS = foreign subdir-objects no-installinfo no-installman dist-zip
 
 # main package installed binaries
-bin_PROGRAMS = openbtcli openbtpred openbtvartivity openbtsobol openbtmopareto openbtmixingwts openbtmixing openbtmixingpred openbtvariogram
+bin_PROGRAMS = openbtcli openbtpred openbtvartivity openbtsobol openbtmopareto openbtmixingwts openbtmixing openbtmixingpred openbtmixingts openbtmixingpredts openbtvariogram
 
 
 # main package programs
@@ -33,6 +33,12 @@ openbtmixing_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la l
 
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
 openbtmixingpred_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+
+openbtmixingts_SOURCES = mixingts.cpp
+openbtmixingts_LDADD = libparameters.la libpsbrt.la libsbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+
+openbtmixingpredts_SOURCES = mixingpredts.cpp
+openbtmixingpredts_LDADD = libparameters.la libpsbrt.la libsbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 
 openbtvariogram_SOURCES = variogram.cpp
 openbtvariogram_LDADD = libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la

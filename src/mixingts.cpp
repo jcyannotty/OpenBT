@@ -23,8 +23,6 @@ Desc: Trains the BMM model assuming a two step process. This means the simulator
 #include "brt.h"
 #include "brtfuns.h"
 #include "dinfo.h"
-#include "mbrt.h"
-#include "ambrt.h"
 #include "psbrt.h"
 #include "tnorm.h"
 #include "mxbrt.h"
@@ -550,12 +548,12 @@ int main(int argc, char* argv[])
 
     //--------------------------------------------------
     //run mcmc
-    std::vector<int> onn(nd*m,1);
-    std::vector<std::vector<int> > oid(nd*m, std::vector<int>(1));
-    std::vector<std::vector<int> > ovar(nd*m, std::vector<int>(1));
-    std::vector<std::vector<int> > oc(nd*m, std::vector<int>(1));
-    std::vector<std::vector<double> > otheta(nd*m, std::vector<double>(1));
-    std::vector<std::vector<double> > obeta(nd*m, std::vector<double>(1));
+    std::vector<int> onn(writebatchsz*m,1);
+    std::vector<std::vector<int> > oid(writebatchsz*m, std::vector<int>(1));
+    std::vector<std::vector<int> > ovar(writebatchsz*m, std::vector<int>(1));
+    std::vector<std::vector<int> > oc(writebatchsz*m, std::vector<int>(1));
+    std::vector<std::vector<double> > otheta(writebatchsz*m, std::vector<double>(1));
+
     std::vector<double> ogam(nd*m, 1);
     //std::vector<double> osig(nd,1);
 
@@ -641,6 +639,7 @@ int main(int argc, char* argv[])
     // Enter the Draw stage
     //------------------------------------------------------------    
     size_t batchnum = 0; //batch number for writing the results
+    size_t bnd; // number of draws per batch
     if(summarystats) {
         axb.setstats(true);
         psbm.setstats(true);
@@ -667,8 +666,10 @@ int main(int argc, char* argv[])
 
     //save tree to vec format
     if(mpirank==0) {
-            axb.savetree_vec(i,m,onn,oid,ovar,oc,otheta); 
-            psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
+        // Save vectors
+        size_t bind = i - batchnum*writebatchsz;        
+        axb.savetree_vec(bind,m,onn,oid,ovar,oc,otheta); 
+        psbm.savetree(i,mh,snn,sid,svar,sc,stheta); 
 
         if(randpath){
             std::vector<double> tempgam(m,0);
@@ -677,14 +678,16 @@ int main(int argc, char* argv[])
         }
 
         // Write the mean tree results in batches....
-        if((i % writebatchsz) == 0 || i == (nd-1)){
-            for(size_t i=0;i<nd;i++){
+        if(((i+1) % writebatchsz) == 0 || i == (nd-1)){
+            bnd = (i+1) - writebatchsz*batchnum;
+            e_ots->resize(bnd*m);
+            for(size_t i=0;i<bnd;i++){
                 for(size_t j=0;j<m;j++) {
-                e_ots->at(i*m+j)=static_cast<int>(oid[i*m+j].size());
-                e_oid->insert(e_oid->end(),oid[i*m+j].begin(),oid[i*m+j].end());
-                e_ovar->insert(e_ovar->end(),ovar[i*m+j].begin(),ovar[i*m+j].end());
-                e_oc->insert(e_oc->end(),oc[i*m+j].begin(),oc[i*m+j].end());
-                e_otheta->insert(e_otheta->end(),otheta[i*m+j].begin(),otheta[i*m+j].end());
+                    e_ots->at(i*m+j)=static_cast<int>(oid[i*m+j].size());
+                    e_oid->insert(e_oid->end(),oid[i*m+j].begin(),oid[i*m+j].end());
+                    e_ovar->insert(e_ovar->end(),ovar[i*m+j].begin(),ovar[i*m+j].end());
+                    e_oc->insert(e_oc->end(),oc[i*m+j].begin(),oc[i*m+j].end());
+                    e_otheta->insert(e_otheta->end(),otheta[i*m+j].begin(),otheta[i*m+j].end());
                 }
             }
             
@@ -697,9 +700,9 @@ int main(int argc, char* argv[])
                 // Append to the existing file
                 omf.open(folder + modelname + ".fit", std::ios_base::app);
             }
-            omf << (i+1) - batchnum*i << endl;
+                        
+            omf << bnd << endl;
             omf << m << endl;
-            omf << mh << endl;
             omf << e_ots->size() << endl;
             for(size_t i=0;i<e_ots->size();i++) omf << e_ots->at(i) << endl;
             omf << e_oid->size() << endl;
@@ -714,6 +717,26 @@ int main(int argc, char* argv[])
             
             // Increase batch number
             batchnum += 1;
+
+            // Clear the vectors for writing
+            e_ots->clear();
+            e_oid->clear();
+            e_ovar->clear();
+            e_oc->clear();
+            e_otheta->clear();
+
+            // Clear and Resize vectors for storing
+            onn.clear();
+            oid.clear();
+            ovar.clear();
+            oc.clear();
+            otheta.clear();
+
+            onn.resize(writebatchsz*m,1);
+            oid.resize(writebatchsz*m, std::vector<int>(1));
+            ovar.resize(writebatchsz*m, std::vector<int>(1));
+            oc.resize(writebatchsz*m, std::vector<int>(1));
+            otheta.resize(writebatchsz*m, std::vector<double>(1));
         }
     }
 }
@@ -744,6 +767,8 @@ int main(int argc, char* argv[])
             }
         }
         std::ofstream smf(folder + modelname + ".sfit");
+        smf << nd;
+        smf << mh;
         smf << e_sts->size() << endl;
         for(size_t i=0;i<e_sts->size();i++) smf << e_sts->at(i) << endl;
         smf << e_sid->size() << endl;

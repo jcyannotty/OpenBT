@@ -96,6 +96,7 @@ bin_PROGRAMS = openbtcli$(EXEEXT) openbtpred$(EXEEXT) \
 	openbtvartivity$(EXEEXT) openbtsobol$(EXEEXT) \
 	openbtmopareto$(EXEEXT) openbtmixingwts$(EXEEXT) \
 	openbtmixing$(EXEEXT) openbtmixingpred$(EXEEXT) \
+	openbtmixingts$(EXEEXT) openbtmixingpredts$(EXEEXT) \
 	openbtvariogram$(EXEEXT)
 check_PROGRAMS = testcrn$(EXEEXT) testtree$(EXEEXT) testbrt$(EXEEXT) \
 	testbrtvp$(EXEEXT) testmbrt$(EXEEXT) testsbrt$(EXEEXT) \
@@ -207,6 +208,15 @@ openbtmixingpred_DEPENDENCIES = libparameters.la libsinglebinomial.la \
 	libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la \
 	libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la \
 	libmxbrt.la
+am_openbtmixingpredts_OBJECTS = mixingpredts.$(OBJEXT)
+openbtmixingpredts_OBJECTS = $(am_openbtmixingpredts_OBJECTS)
+openbtmixingpredts_DEPENDENCIES = libparameters.la libpsbrt.la \
+	libsbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la \
+	libmxbrt.la
+am_openbtmixingts_OBJECTS = mixingts.$(OBJEXT)
+openbtmixingts_OBJECTS = $(am_openbtmixingts_OBJECTS)
+openbtmixingts_DEPENDENCIES = libparameters.la libpsbrt.la libsbrt.la \
+	libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 am_openbtmixingwts_OBJECTS = mixingwts.$(OBJEXT)
 openbtmixingwts_OBJECTS = $(am_openbtmixingwts_OBJECTS)
 openbtmixingwts_DEPENDENCIES = libsinglebinomial.la \
@@ -299,6 +309,7 @@ am__depfiles_remade = ./$(DEPDIR)/ambrt.Plo ./$(DEPDIR)/amxbrt.Plo \
 	./$(DEPDIR)/brtmoves.Plo ./$(DEPDIR)/calibratefuns.Plo \
 	./$(DEPDIR)/cli.Po ./$(DEPDIR)/crn.Plo ./$(DEPDIR)/mbrt.Plo \
 	./$(DEPDIR)/mixandemulatepred.Po ./$(DEPDIR)/mixing.Po \
+	./$(DEPDIR)/mixingpredts.Po ./$(DEPDIR)/mixingts.Po \
 	./$(DEPDIR)/mixingwts.Po ./$(DEPDIR)/mopareto.Po \
 	./$(DEPDIR)/mxbrt.Plo ./$(DEPDIR)/parameters.Plo \
 	./$(DEPDIR)/pred.Po ./$(DEPDIR)/psbrt.Plo ./$(DEPDIR)/sbrt.Plo \
@@ -357,7 +368,8 @@ SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(libsbrt_la_SOURCES) $(libsinglebinomial_la_SOURCES) \
 	$(libsinglepoisson_la_SOURCES) $(libtree_la_SOURCES) \
 	$(openbtcli_SOURCES) $(openbtmixing_SOURCES) \
-	$(openbtmixingpred_SOURCES) $(openbtmixingwts_SOURCES) \
+	$(openbtmixingpred_SOURCES) $(openbtmixingpredts_SOURCES) \
+	$(openbtmixingts_SOURCES) $(openbtmixingwts_SOURCES) \
 	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
 	$(openbtsobol_SOURCES) $(openbtvariogram_SOURCES) \
 	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
@@ -373,7 +385,8 @@ DIST_SOURCES = $(libambrt_la_SOURCES) $(libamxbrt_la_SOURCES) \
 	$(libsbrt_la_SOURCES) $(libsinglebinomial_la_SOURCES) \
 	$(libsinglepoisson_la_SOURCES) $(libtree_la_SOURCES) \
 	$(openbtcli_SOURCES) $(openbtmixing_SOURCES) \
-	$(openbtmixingpred_SOURCES) $(openbtmixingwts_SOURCES) \
+	$(openbtmixingpred_SOURCES) $(openbtmixingpredts_SOURCES) \
+	$(openbtmixingts_SOURCES) $(openbtmixingwts_SOURCES) \
 	$(openbtmopareto_SOURCES) $(openbtpred_SOURCES) \
 	$(openbtsobol_SOURCES) $(openbtvariogram_SOURCES) \
 	$(openbtvartivity_SOURCES) $(testambrt_SOURCES) \
@@ -572,6 +585,10 @@ openbtmixing_SOURCES = mixing.cpp
 openbtmixing_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 openbtmixingpred_SOURCES = mixandemulatepred.cpp
 openbtmixingpred_LDADD = libparameters.la libsinglebinomial.la libsinglepoisson.la libpsbrt.la libambrt.la libsbrt.la libmbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixingts_SOURCES = mixingts.cpp
+openbtmixingts_LDADD = libparameters.la libpsbrt.la libsbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
+openbtmixingpredts_SOURCES = mixingpredts.cpp
+openbtmixingpredts_LDADD = libparameters.la libpsbrt.la libsbrt.la libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 openbtvariogram_SOURCES = variogram.cpp
 openbtvariogram_LDADD = libbrt.la libtree.la libcrn.la libamxbrt.la libmxbrt.la
 testcrn_SOURCES = test_crn.cpp
@@ -793,6 +810,14 @@ openbtmixingpred$(EXEEXT): $(openbtmixingpred_OBJECTS) $(openbtmixingpred_DEPEND
 	@rm -f openbtmixingpred$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(openbtmixingpred_OBJECTS) $(openbtmixingpred_LDADD) $(LIBS)
 
+openbtmixingpredts$(EXEEXT): $(openbtmixingpredts_OBJECTS) $(openbtmixingpredts_DEPENDENCIES) $(EXTRA_openbtmixingpredts_DEPENDENCIES) 
+	@rm -f openbtmixingpredts$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(openbtmixingpredts_OBJECTS) $(openbtmixingpredts_LDADD) $(LIBS)
+
+openbtmixingts$(EXEEXT): $(openbtmixingts_OBJECTS) $(openbtmixingts_DEPENDENCIES) $(EXTRA_openbtmixingts_DEPENDENCIES) 
+	@rm -f openbtmixingts$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(openbtmixingts_OBJECTS) $(openbtmixingts_LDADD) $(LIBS)
+
 openbtmixingwts$(EXEEXT): $(openbtmixingwts_OBJECTS) $(openbtmixingwts_DEPENDENCIES) $(EXTRA_openbtmixingwts_DEPENDENCIES) 
 	@rm -f openbtmixingwts$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(openbtmixingwts_OBJECTS) $(openbtmixingwts_LDADD) $(LIBS)
@@ -882,6 +907,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mbrt.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixandemulatepred.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixing.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixingpredts.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixingts.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mixingwts.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mopareto.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mxbrt.Plo@am__quote@ # am--include-marker
@@ -1231,6 +1258,8 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/mbrt.Plo
 	-rm -f ./$(DEPDIR)/mixandemulatepred.Po
 	-rm -f ./$(DEPDIR)/mixing.Po
+	-rm -f ./$(DEPDIR)/mixingpredts.Po
+	-rm -f ./$(DEPDIR)/mixingts.Po
 	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
@@ -1316,6 +1345,8 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/mbrt.Plo
 	-rm -f ./$(DEPDIR)/mixandemulatepred.Po
 	-rm -f ./$(DEPDIR)/mixing.Po
+	-rm -f ./$(DEPDIR)/mixingpredts.Po
+	-rm -f ./$(DEPDIR)/mixingts.Po
 	-rm -f ./$(DEPDIR)/mixingwts.Po
 	-rm -f ./$(DEPDIR)/mopareto.Po
 	-rm -f ./$(DEPDIR)/mxbrt.Plo
