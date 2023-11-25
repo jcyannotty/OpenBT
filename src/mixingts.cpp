@@ -767,8 +767,8 @@ int main(int argc, char* argv[])
             }
         }
         std::ofstream smf(folder + modelname + ".sfit");
-        smf << nd;
-        smf << mh;
+        smf << nd << endl;
+        smf << mh << endl;
         smf << e_sts->size() << endl;
         for(size_t i=0;i<e_sts->size();i++) smf << e_sts->at(i) << endl;
         smf << e_sid->size() << endl;

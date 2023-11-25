@@ -230,17 +230,17 @@ train.openbtmixing = function(
   #run program
   cmdopt=100 #default to serial/OpenMP
   runlocal=FALSE
-  cmd="openbtcli --conf"
-  if(Sys.which("openbtcli")[[1]]=="") # not installed in a global location, so assume current directory
+  cmd="openbtmixingts --conf"
+  if(Sys.which("openbtmixingts")[[1]]=="") # not installed in a global location, so assume current directory
     runlocal=TRUE
   
-  if(runlocal) cmd="./openbtcli --conf"
+  if(runlocal) cmd="./openbtmixingts --conf"
   
   cmdopt=system(cmd)
   
   if(cmdopt==101) # MPI
   {
-    cmd=paste("mpirun -np ",tc," openbtcli ",folder,sep="")
+    cmd=paste("mpirun -np ",tc," openbtmixingts ",folder,sep="")
   }
   
   if(cmdopt==100)  # serial/OpenMP
@@ -264,7 +264,7 @@ train.openbtmixing = function(
   res$pbd=pbd; res$pb=pb
   res$pbdh=pbdh; res$pbh=pbh; res$stepwpert=stepwpert; res$stepwperth=stepwperth
   res$probchv=probchv; res$probchvh=probchvh; res$minnumbot=minnumbot; res$minnumboth=minnumboth
-  res$printevery=printevery; res$xiroot=xiroot;
+  res$printevery=printevery; res$batchsize = batchsize; res$xiroot=xiroot;
   res$summarystats=summarystats; res$modelname=modelname
   class(xi)="OpenBT_cutinfo"
   res$xicuts=xi
@@ -283,24 +283,32 @@ predict.openbtmixing = function(
   ptype = "all",
   tc=2,
   q.lower=0.025,
-  q.upper=0.975,
-  batchsize = 100)
+  q.upper=0.975)
 {
   #--------------------------------------------------
   # params
   if(is.null(fit)) stop("No fitted model specified!\n")
   if(is.null(x.test)) stop("No prediction points specified!\n")
   if(ptype == "all"){
-    domdraws = TRUE;dosdraws = TRUE;dopdraws = FALSE 
+    domdraws = TRUE;dosdraws = TRUE;dopdraws = TRUE 
   }else if(ptype == "mean"){
     domdraws = TRUE;dosdraws = FALSE;dopdraws = FALSE
   }else if(ptype == "sigma"){
     domdraws = FALSE;dosdraws = TRUE;dopdraws = FALSE
+  }else if(ptype == "proj"){
+    domdraws = FALSE;dosdraws = FALSE;dopdraws = TRUE
+  }else if(ptype == "mean_and_proj"){
+    domdraws = TRUE;dosdraws = FALSE;dopdraws = TRUE
+  }else if(ptype == "mean_and_sigma"){
+    domdraws = TRUE;dosdraws = TRUE;dopdraws = FALSE
   }else{
     cat("Prediction type not specified.\n")
     cat("Available options are:\n")
     cat("ptype='all'\n")
-    cat("ptype='mean'\n")
+    cat("ptype='mean'....(unconstrained predictions & weights) \n")
+    cat("ptype='proj' .... (projected/constrained predictions & weights)\n")
+    cat("ptype='mean_and_proj' .... (unconstrained and constrained predictions & weights)\n")
+    cat("ptype='mean_and_sigma' .... (unconstrained predictions & weights and get sigma)\n")
     cat("ptype='sigma'\n")
     stop("missing model type.\n")      
   }
@@ -320,8 +328,7 @@ predict.openbtmixing = function(
   
   #--------------------------------------------------
   # Batch size calculation
-  nd = fit$nd
-  numbatches = ceiling(nd/batchsize)
+  numbatches = ceiling(fit$nd/fit$batchsize)
   
   #--------------------------------------------------
   #write out config file
@@ -330,7 +337,7 @@ predict.openbtmixing = function(
                paste(fit$nd),paste(fit$m),
                paste(fit$mh),paste(p),paste(k),
                paste(domdraws),paste(dosdraws),paste(dopdraws),
-               paste(batchsize),paste(numbatches),paste(tc),
+               paste(fit$batchsize),paste(numbatches),paste(tc),
                paste(rpath), gammaroot), fout)
   close(fout)
   
@@ -349,8 +356,8 @@ predict.openbtmixing = function(
   #run prediction program
   cmdopt=100 #default to serial/OpenMP
   runlocal=FALSE
-  cmd="openbtcli --conf"
-  if(Sys.which("openbtcli")[[1]]=="") # not installed in a global location, so assume current directory
+  cmd="openbtmixingpredts --conf"
+  if(Sys.which("openbtmixingpredts")[[1]]=="") # not installed in a global location, so assume current directory
     runlocal=TRUE
   
   if(runlocal) cmd="./openbtcli --conf"
@@ -359,7 +366,7 @@ predict.openbtmixing = function(
   
   if(cmdopt==101) # MPI
   {
-    cmd=paste("mpirun -np ",tc," openbtpred ",fit$folder,sep="")
+    cmd=paste("mpirun -np ",tc," openbtmixingpredts ",fit$folder,sep="")
   }
   
   if(cmdopt==100)  # serial/OpenMP
@@ -373,7 +380,7 @@ predict.openbtmixing = function(
   #cmd=paste("mpirun -np ",tc," openbtpred",sep="")
   #cat(cmd)
   system(cmd)
-  system(paste("rm -f ",fit$folder,"/config.pred",sep=""))
+  #system(paste("rm -f ",fit$folder,"/config.pred",sep=""))
   
   
   #--------------------------------------------------
@@ -388,11 +395,11 @@ predict.openbtmixing = function(
     
     # Now return weights
     wt_list = list()
-    mean_matrix = sd_matrix = ub_matrix = lb_matrix = med_matrix = matrix(0, nrow = n, ncol = numwts)
+    mean_matrix = sd_matrix = ub_matrix = lb_matrix = med_matrix = matrix(0, nrow = n, ncol = k)
     
     #Get the file names for the model weights 
     #--file name for model weight j using processor p is ".wjdrawsp"
-    for(j in 1:numwts){
+    for(j in 1:k){
       #Get the files for weight j
       tagname = paste0(".w", j,"draws*")
       fnames=list.files(fit$folder,pattern=paste(fit$modelname,tagname,sep=""),full.names=TRUE)
@@ -440,6 +447,61 @@ predict.openbtmixing = function(
     
   }
 
+  
+  if(dopdraws){
+    fnames=list.files(fit$folder,pattern=paste(fit$modelname,".pmdraws*",sep=""),full.names=TRUE)
+    res$pmdraws=do.call(cbind,sapply(fnames,data.table::fread))
+    
+    # Now return weights
+    wt_list = list()
+    mean_matrix = sd_matrix = ub_matrix = lb_matrix = med_matrix = matrix(0, nrow = n, ncol = k)
+    
+    #Get the file names for the model weights 
+    #--file name for model weight j using processor p is ".wjdrawsp"
+    for(j in 1:k){
+      #Get the files for weight j
+      tagname = paste0(".pw", j,"draws*")
+      fnames=list.files(fit$folder,pattern=paste(fit$modelname,tagname,sep=""),full.names=TRUE)
+      
+      #Bind the posteriors for weight j across all x points -- npost X n data 
+      wt_list[[j]] = do.call(cbind,sapply(fnames,data.table::fread))
+      
+      #Now populate the summary stat matrices -- n X k matrices
+      mean_matrix[,j] = apply(wt_list[[j]], 2, mean)
+      sd_matrix[,j] = apply(wt_list[[j]], 2, sd)
+      med_matrix[,j] = apply(wt_list[[j]], 2, median)
+      lb_matrix[,j] = apply(wt_list[[j]], 2, quantile,q.lower)
+      ub_matrix[,j] = apply(wt_list[[j]], 2, quantile,q.upper)
+    }
+    
+    # Store results
+    res$pmmean=apply(res$pmdraws,2,mean)
+    res$pmsd=apply(res$pmdraws,2,sd)
+    res$pm.5=apply(res$pmdraws,2,quantile,0.5)
+    res$pm.lower=apply(res$pmdraws,2,quantile,q.lower)
+    res$pm.upper=apply(res$pmdraws,2,quantile,q.upper)
+    
+    #Save the list of posterior draws -- each list element is an npost X n dataframe 
+    res$pwdraws = wt_list 
+    
+    #Get model mixing results
+    res$pwmean=mean_matrix
+    res$pwsd=sd_matrix
+    res$pw.5=med_matrix
+    res$pw.lower=lb_matrix
+    res$pw.upper=ub_matrix
+    
+  }
+  
+  if(domdraws && dopdraws){
+    res$ddraws=res$mdraws - res$pmdraws
+    res$dmean=apply(res$ddraws,2,mean)
+    res$dsd=apply(res$ddraws,2,sd)
+    res$d.5=apply(res$ddraws,2,median)
+    res$d.lower=apply(res$ddraws,2,quantile, q.lower)
+    res$d.upper=apply(res$ddraws,2,quantile, q.upper)
+  }
+  
   res$q.lower=q.lower
   res$q.upper=q.upper
   res$modeltype=fit$modeltype

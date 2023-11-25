@@ -159,7 +159,19 @@ void amxbrt::local_predict_thetavec(diterator& diter, mxd& wts){
 }
 
 //--------------------------------------------------
-//extract terminal node parameters for a specific point
+// Project each theta vector onto the simplex
+void amxbrt::project_thetavec(std::vector<double> *v, std::vector<double>& vstar){
+    // Scale v by m
+    std::vector<double> v0;
+    for(size_t i=0;i<k;i++){v0.push_back((*v)[i]*m);}
+    
+    // Get projection and rescale by 1/m
+    brt::project_thetavec(&v0,vstar);
+    for(size_t i=0;i<k;i++){vstar[i] = vstar[i]/m;}
+}
+
+//--------------------------------------------------
+//extract terminal node parameters for a specific point -- remove
 void amxbrt::local_get_mix_theta(diterator& diter, mxd& wts){
     tree::tree_p bn;
     vxd thetavec_temp(k);

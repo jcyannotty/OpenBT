@@ -1989,6 +1989,41 @@ void brt::local_omppredict_thetavec(dinfo dipred, mxd wts){
 }
 
 //--------------------------------------------------
+// Project thetavec onto the simplex
+void brt::project_thetavec(std::vector<double>* v, std::vector<double>& vstar){
+   std::vector<size_t> vorder(k);
+   std::vector<double> vprime, csum(k);
+   double mu, muprime;
+   
+   // Sorting the vector into descending order
+   std::iota(vorder.begin(), vorder.end(), 0);
+   stable_sort(vorder.begin(), vorder.end(),[&v](size_t i1, size_t i2) {return (*v)[i1] > (*v)[i2];});
+   
+   // Get v in descending order, sotre as vprime, then get cumulative sum
+   for(auto i: vorder){vprime.push_back((*v)[i]);}
+   std::partial_sum(vprime.begin(), vprime.end(), csum.begin());
+
+   // Get the value of mu
+   mu = 0;
+   for (size_t i=0;i<k;i++) {
+      muprime = (csum[i] - 1)/(i+1);
+      if(vprime[i] - muprime > 0){
+         mu = muprime;
+      }else{
+         break;
+      }
+   }
+   
+   // Get the projected theta and put back to original orer
+   for (size_t i=0;i<k;i++) {
+      vstar.push_back(std::max((*v)[i]-mu,0.0));
+      //cout << "vstar["<<i<<"] = " << vstar[i] << endl;
+   }
+
+}
+
+
+//--------------------------------------------------
 //Get modeling mixing weights per tree
 void brt::get_mix_theta(dinfo* dipred, mxd *wts){
    #ifdef _OPENMP

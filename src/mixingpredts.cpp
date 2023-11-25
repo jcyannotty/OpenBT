@@ -102,10 +102,6 @@ int main(int argc, char* argv[])
     int tc;
     conf >> tc;
 
-    //mean offset
-    double fmean;
-    conf >> fmean;
-
     // random path
     std::string rpath_str, rpg;
     bool rpath = false;
@@ -146,7 +142,7 @@ int main(int argc, char* argv[])
     if(mpirank==0) {
         cout << endl;
         cout << "-----------------------------------" << endl;
-        cout << "OpenBT prediction CLI" << endl;
+        cout << "OpenBT Model Mixing Prediction Interface" << endl;
         cout << "Loading config file at " << folder << endl;
     }
 
@@ -241,6 +237,7 @@ int main(int argc, char* argv[])
     std::vector<std::vector<int> > ov(m, std::vector<int>(1));
     std::vector<std::vector<int> > oc(m, std::vector<int>(1));
     std::vector<std::vector<double> > otheta(m, std::vector<double>(1));
+    std::vector<std::vector<double> > optheta(m, std::vector<double>(1)); // projected theta
 
     //objects where we'll store the realizations
     std::vector<std::vector<double> > tedraw(nd,std::vector<double>(np));
@@ -266,34 +263,44 @@ int main(int argc, char* argv[])
     size_t temp = 0;
     size_t curdx=0;
     size_t cumdx=0;
+    std::vector<double> ctheta, ptheta;
 
     //Create Eigen objects to store the weight posterior draws -- these are just the thetas for each bottom node
     mxd wts_iter(k,np); //Eigen matrix to store the weights at each iteration -- will be reset to zero prior to running get wts method  
     mxd wts_draw(nd,np); //Eigen matrix to hold posterior draws for each model weight -- used when writing to the file for ease of notation
     std::vector<mxd, Eigen::aligned_allocator<mxd>> wts_list(k); //An std vector of dim k -- each element is an nd X np eigen matrix
+    
+    // For projected weights
+    std::vector<mxd, Eigen::aligned_allocator<mxd>> pwts_list(k); 
+    mxd pwts_draw(nd,np);
+
 
     //Initialize wts_list -- the vector of eigen matrices which will hold the nd X np weight draws
+    // Moved to below
+    /*
     for(size_t i=0; i<k; i++){
-        wts_list[i] = mxd::Zero(nd,np);
+        if(domdraws) wts_list[i] = mxd::Zero(nd,np);
+        if(dopdraws) pwts_list[i] = mxd::Zero(nd,np);
     }
+    */
 
     #ifdef _OPENMPI
     double tstart=0.0,tend=0.0;
     if(mpirank==0) tstart=MPI_Wtime();
     #endif
     
-    if(domdraws){
+    if(domdraws || dopdraws){
         std::ifstream imf(folder + modelname + ".fit");
     if(mpirank==0) cout << "Drawing mean response from posterior predictive" << endl;
         for(size_t b=0;b<numbatches;b++){
             imf >> ind;
             imf >> im;
 #ifdef _OPENMPI
-            if(batchsize!=ind || (nd%batchsize)!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; MPI_Finalize(); return 0; }
+            if(batchsize!=ind && (nd%batchsize)!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; MPI_Finalize(); return 0; }
             if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; MPI_Finalize(); return 0; }
             //if(mh!=imh) { cout << "Error loading posterior trees"  << endl; MPI_Finalize(); return 0; }
 #else
-            if(batchsize!=ind || (nd%batchsize)!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; return 0; }
+            if(batchsize!=ind && (nd%batchsize)!=ind) { cout << "Error loading posterior trees" << "nd = " << nd << " -- ind = " << ind << endl; return 0; }
             if(m!=im) { cout << "Error loading posterior trees" << "m = " << m << " -- im = " << im<< endl; return 0; }
             //if(mh!=imh) { cout << "Error loading posterior trees"  << endl; return 0; }
 #endif
@@ -322,6 +329,15 @@ int main(int argc, char* argv[])
             std::vector<double> e_otheta(temp);
             for(size_t i=0;i<temp;i++) imf >> std::scientific >> e_otheta.at(i);
 
+            // Reset and resize things
+            wts_draw.resize(ind,np);
+            pwts_draw.resize(ind,np);
+            for(size_t l=0; l<k; l++){
+                if(domdraws) wts_list[l] = mxd::Zero(ind,np);
+                if(dopdraws) pwts_list[l] = mxd::Zero(ind,np);
+            }
+            cumdx=0; // reset cumdx since this is batch looping
+            
             for(size_t i=0;i<ind;i++) {
                 curdx=0;
                 for(size_t j=0;j<m;j++) {
@@ -334,44 +350,174 @@ int main(int argc, char* argv[])
                         oid[j][l]=e_oid.at(cumdx+curdx+l);
                         ov[j][l]=e_ovar.at(cumdx+curdx+l);
                         oc[j][l]=e_oc.at(cumdx+curdx+l);
-                        for(size_t r=0;r<k;r++){
-                            otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
+                        if(dopdraws){
+                            // Project the theta's onto the simplex
+                            ctheta.clear();
+                            ptheta.clear();
+                            optheta[j].resize(onn[j]*k);
+                            for(size_t r=0;r<k;r++){
+                                otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
+                                ctheta.push_back(e_otheta.at((cumdx+curdx+l)*k+r));
+                            }
+                            
+                            axb.project_thetavec(&ctheta,ptheta);
+                            //optheta[j].insert(optheta[j].end(),ptheta.begin(),ptheta.end());
+                            for(size_t r=0;r<k;r++){optheta[j][l*k+r] = ptheta[r];}
+                                                        
+                        }else{
+                            // No simplex projection
+                            for(size_t r=0;r<k;r++){
+                                otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
+                            }
                         }
-                        
                     }
                     curdx+=(size_t)onn[j];
                 }
                 cumdx+=curdx;
 
-                axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
-            
-                //Get the current posterior draw of the weights
-                wts_iter = mxd::Zero(k,np);
-                if(!rpath){
-                    axb.predict_thetavec(&dip, &wts_iter);
-                }else{
-                    // Get and set gamma, then get predictions and clear the temp vec
-                    std::vector<double> tempgam;
-                    for(size_t j=0;j<m;j++){tempgam.push_back(e_gamma[i*m+j]);}        
-                    axb.setgamma(tempgam);
-                    axb.predict_thetavec_rpath(&dip, &wts_iter);
-                    tempgam.clear();
+                if(domdraws){
+                    // Load tree and get results for unconstrained data
+                    axb.loadtree_vec(0,m,onn,oid,ov,oc,otheta); 
+                
+                    //Get the current posterior draw of the weights
+                    wts_iter = mxd::Zero(k,np);
+                    if(!rpath){
+                        axb.predict_thetavec(&dip, &wts_iter);
+                    }else{
+                        // Get and set gamma, then get predictions and clear the temp vec
+                        std::vector<double> tempgam;
+                        for(size_t j=0;j<m;j++){tempgam.push_back(e_gamma[m*(i+b*batchsize)+j]);}        
+                        axb.setgamma(tempgam);
+                        axb.predict_thetavec_rpath(&dip, &wts_iter);
+                        tempgam.clear();
+                    }
+
+                    // Get the resulting prediction
+                    for(size_t j=0;j<np;j++){
+                        tedraw[i+b*batchsize][j] = fi_test.row(j)*wts_iter.col(j);
+                    } 
+
+                    //Store these weights into the Vector of Eigen Matrices
+                    for(size_t j = 0; j<k; j++){
+                        //wts_list[j].row(i+b*batchsize) = wts_iter.row(j); //populate the ith row of each wts_list[j] matrix (ith post draw) for model weight j
+                        wts_list[j].row(i) = wts_iter.row(j);
+                    }
                 }
 
-                // Get the resulting prediction
-                for(size_t j=0;j<np;j++){
-                    tedraw[i+b*batchsize][j] = fi_test.row(j)*wts_iter.col(j) + fmean;
-                } 
+                
+                if(dopdraws){
+                    // Load tree and get results for unconstrained data
+                    axb.loadtree_vec(0,m,onn,oid,ov,oc,optheta); 
+                    //Get the current posterior draw of the weights
+                    wts_iter = mxd::Zero(k,np);
+                    if(!rpath){
+                        axb.predict_thetavec(&dip, &wts_iter);
+                    }else{
+                        // Get and set gamma, then get predictions and clear the temp vec
+                        std::vector<double> tempgam;
+                        for(size_t j=0;j<m;j++){tempgam.push_back(e_gamma[m*(i+b*batchsize)+j]);}        
+                        axb.setgamma(tempgam);
+                        axb.predict_thetavec_rpath(&dip, &wts_iter);
+                        tempgam.clear();
+                    }
 
-                //Store these weights into the Vector of Eigen Matrices
-                for(size_t j = 0; j<k; j++){
-                    wts_list[j].row(i+b*batchsize) = wts_iter.row(j); //populate the ith row of each wts_list[j] matrix (ith post draw) for model weight j
+                    // Get the resulting prediction
+                    for(size_t j=0;j<np;j++){
+                        tedrawp[i+b*batchsize][j] = fi_test.row(j)*wts_iter.col(j);
+                    } 
+                    //Store these weights into the Vector of Eigen Matrices
+                    for(size_t j = 0; j<k; j++){
+                        //pwts_list[j].row(i+b*batchsize) = wts_iter.row(j); //populate the ith row of each wts_list[j] matrix (ith post draw) for model weight j
+                        pwts_list[j].row(i) = wts_iter.row(j);
+                    }
                 }
             }
 
+            if(domdraws){
+                if(mpirank==0) cout << "Saving posterior predictive draws...";
+                std::ofstream omf;
+                if(b == 0){
+                    // Create the file 
+                    omf.open(folder + modelname + ".mdraws" + std::to_string(mpirank));
+                }else{
+                    // Append to the existing file
+                    omf.open(folder + modelname + ".mdraws" + std::to_string(mpirank), std::ios_base::app);
+                }
+                //std::ofstream omf(folder + modelname + ".mdraws" + std::to_string(mpirank));
+                
+                for(size_t i=0;i<ind;i++) {
+                    for(size_t j=0;j<np;j++)
+                        omf << std::scientific << tedraw[i][j] << " ";
+                    omf << endl;
+                }
+                omf.close();
+
+                if(mpirank==0) cout << "Saving posterior weight draws..." << endl;
+                for(size_t l = 0; l<k; l++){
+                    //std::ofstream owf(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+                    std::ofstream owf;
+                    if(b == 0){
+                        // Create the file 
+                        owf.open(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+                    }else{
+                        // Append to the existing file
+                        owf.open(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank), std::ios_base::app);
+                    }
+    
+                    wts_draw = wts_list[l];
+                    for(size_t i=0;i<ind;i++) {
+                        for(size_t j=0;j<np;j++)
+                            owf << std::scientific << wts_draw(i,j) << " ";
+                        owf << endl;
+                    }
+                    owf.close();
+                }
+            }
+
+            // Write the projected weights and ensuing predictions
+            if(dopdraws){
+                if(mpirank==0) cout << "Saving projections of posterior predictive draws...";
+                //std::ofstream opmf(folder + modelname + ".pmdraws" + std::to_string(mpirank));
+                std::ofstream opmf;
+                if(b == 0){
+                    // Create the file 
+                    opmf.open(folder + modelname + ".pmdraws" + std::to_string(mpirank));
+                }else{
+                    // Append to the existing file
+                    opmf.open(folder + modelname + ".pmdraws" + std::to_string(mpirank), std::ios_base::app);
+                }
+                
+                for(size_t i=0;i<ind;i++) {
+                    for(size_t j=0;j<np;j++)
+                        opmf << std::scientific << tedrawp[i][j] << " ";
+                    opmf << endl;
+                }
+                opmf.close();
+
+                if(mpirank==0) cout << "Saving projections of posterior weight draws..." << endl;
+                for(size_t l = 0; l<k; l++){
+                    //std::ofstream opwf(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+                    std::ofstream opwf;
+                    if(b == 0){
+                        // Create the file 
+                        opwf.open(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+                    }else{
+                        // Append to the existing file
+                        opwf.open(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank), std::ios_base::app);
+                    }
+                    pwts_draw = pwts_list[l];
+                    for(size_t i=0;i<ind;i++) {
+                        for(size_t j=0;j<np;j++)
+                            opwf << std::scientific << pwts_draw(i,j) << " ";
+                        opwf << endl;
+                    }
+                    opwf.close();
+                }
+            }
         }
         imf.close();
     }
+
 
     //----------------------------------------------
     // Variance trees second
@@ -450,10 +596,10 @@ int main(int argc, char* argv[])
 
     //----------------------------------------------
     // Save the draws
-    //----------------------------------------------
-    if(mpirank==0) cout << "Saving posterior predictive draws...";
-    
+    //----------------------------------------------    
+/*
     if(domdraws){
+        if(mpirank==0) cout << "Saving posterior predictive draws...";
         std::ofstream omf(folder + modelname + ".mdraws" + std::to_string(mpirank));
         for(size_t i=0;i<nd;i++) {
             for(size_t j=0;j<np;j++)
@@ -475,6 +621,30 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Write the projected weights and ensuing predictions
+    if(dopdraws){
+        if(mpirank==0) cout << "Saving projections of posterior predictive draws...";
+        std::ofstream opmf(folder + modelname + ".pmdraws" + std::to_string(mpirank));
+        for(size_t i=0;i<nd;i++) {
+            for(size_t j=0;j<np;j++)
+                opmf << std::scientific << tedrawp[i][j] << " ";
+            opmf << endl;
+        }
+        opmf.close();
+
+        if(mpirank==0) cout << "Saving projections of posterior weight draws..." << endl;
+        for(size_t l = 0; l<k; l++){
+            std::ofstream opwf(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+            pwts_draw = pwts_list[l];
+            for(size_t i=0;i<nd;i++) {
+                for(size_t j=0;j<np;j++)
+                    opwf << std::scientific << pwts_draw(i,j) << " ";
+                opwf << endl;
+            }
+            opwf.close();
+        }
+    }
+*/
     if(dosdraws){
         if(mpirank==0) cout << "Saving posterior standard dev. draws..." << endl;
         std::ofstream smf(folder + modelname + ".sdraws" + std::to_string(mpirank));
