@@ -1118,9 +1118,7 @@ return 0;
       if((i % printevery) ==0 && mpirank==0) cout << "Adapt iteration " << i << endl;
 #ifdef _OPENMPI
       if(mpirank==0){axb.drawvec(gen);} else {axb.drawvec_mpislave(gen);}
-      if(randpath){ 
-         if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}
-      }
+      if(randpath){ if(mpirank==0){ axb.drawgamma(gen);}else {axb.drawgamma_mpi(gen);}}
 #else
       axb.drawvec(gen);
       if(randpath) axb.drawgamma(gen);

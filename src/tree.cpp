@@ -480,6 +480,107 @@ void tree::rgi(size_t v, int* L, int* U)
    }
 }
 //--------------------
+// Applies rgi at each internal node and stores results in a map with nid as the key
+void tree::rgimaps(std::map<tree_p,int> &lbmap, std::map<tree_p,int> &ubmap, std::map<tree_p,int> &vmap){
+   int L0, U0; 
+   size_t v0, vr;
+   L0=std::numeric_limits<int>::min(); U0=std::numeric_limits<int>::max();
+
+   // Terminal node
+   if(this->l==0){
+      return;
+   }
+
+   // Internal node
+   v0 = this->v;
+   this->rgi(v0,&L0,&U0);
+   vmap[this] = v0;
+   lbmap[this] = L0;
+   ubmap[this] = U0;
+
+   // Apply to children nodes
+   (this->l)->rgimaps(lbmap, ubmap, vmap);
+   (this->r)->rgimaps(lbmap, ubmap, vmap);
+}
+
+//--------------------
+void tree::calcphix(double *xx, xinfo& xi , std::map<tree_p,double> &phixmap, std::map<tree_p,double> &logpathprob, 
+                     std::map<tree_p,double> &lbmap, std::map<tree_p,double> &ubmap, 
+                     double gamma, double q){
+   double psi0;
+   double logphix;
+   double c0, ub, lb;
+
+   // Check if this node is a terminal node
+   if((this->l) == 0 & (this->p) == 0){
+      // Tree stump case
+      phixmap[this] = 1;
+      logpathprob[this] = 0;
+      return;
+   }else if((this->l) == 0){
+      // Tree with some depth, this is a terminal node that isn't the root
+      phixmap[this] = exp(logpathprob[this]);
+      return;
+   }else{   
+      // Internal node - Compute psi0 
+      c0 = xi[this->v][this->c];
+      lb = lbmap[this];
+      ub = ubmap[this];
+      psi0 = calcpsix(gamma,xx[this->v],c0,lb,ub,q);
+
+      logpathprob[(this->l)] = log(1 - psi0) + logpathprob[this];
+      logpathprob[(this->r)] = log(psi0) + logpathprob[this];;        
+
+      // Internal node, so apply this to the left and right nodes if we can get to them with non-zero prob
+      if(psi0 > 0){
+         (this->r)->calcphix(xx,xi,phixmap,logpathprob,lbmap,ubmap,gamma,q); 
+      }
+
+      if((1-psi0)>0){
+         (this->l)->calcphix(xx,xi,phixmap,logpathprob,lbmap,ubmap,gamma,q);
+      } 
+   }
+}
+
+
+//--------------------
+double tree::calcpsix(double gam, double x, double c, double L, double U, double q){
+   double psi = 0.0;
+   double a, b, d1, d2;   
+   a = c - (c-L)*gam;
+   b = c + (U-c)*gam;
+   d1 = (c-x)/(c-a);
+   d2 = (x-c)/(b-c);
+   
+   if(c<L || c>U){
+      std::cout << "ERROR: c is out of [L,U]..." << std::endl;
+   }
+
+   if(x<c){
+      psi = 0.5*std::pow(std::max(1-d1,0.0),q);
+      if(psi>1){   
+         std::cout << "L = " << L << std::endl;
+         std::cout << "U = " << U << std::endl;
+         std::cout << "a = " << a << std::endl;
+         std::cout << "c = " << c << std::endl;
+         std::cout << "gamma = " << gam << std::endl;
+         std::cout << "x = " << x << std::endl;
+         std::cout << "d1 = " << d1 << std::endl;
+      }
+   }else{
+      psi = 1-0.5*std::pow(std::max(1-d2,0.0),q);
+      if(psi>1){   
+         std::cout << "L = " << L << std::endl;
+         std::cout << "U = " << U << std::endl;
+         std::cout << "b = " << b << std::endl;
+         std::cout << "c = " << c << std::endl;
+         std::cout << "d2 = " << d2 << std::endl;
+      }
+   }
+   return(psi);
+}
+
+//--------------------
 //cut back to one node
 void tree::tonull()
 {

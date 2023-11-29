@@ -1351,7 +1351,7 @@ void brt::drawvec(rn& gen)
    }
 
    // Gibbs Step
-    drawthetavec(gen);
+   drawthetavec(gen);
 
    //update statistics
    if(mi.dostats) {
@@ -1578,18 +1578,24 @@ void brt::drawvec_mpislave(rn& gen)
       tree::tree_p root;
       vxd phix;
       vxd thetavec_temp(k); 
-      std::map<tree::tree_p,double> lbmap;
-      std::map<tree::tree_p,double> ubmap;
+      //std::map<tree::tree_p,double> lbmap;
+      //std::map<tree::tree_p,double> ubmap;
       std::map<tree::tree_p,tree::npv> pathmap;
       std::vector<sinfo*>& sivold = newsinfovec();
       std::vector<sinfo*>& sivnew = newsinfovec();
+      std::map<tree::tree_p,double> lbmap, ubmap;
+      std::map<tree::tree_p,int> Umap, Lmap, vmap;
+
 
       diterator diter(di);
       root = t.getptr(t.nid());
 
       // Get bounds
       t.getbots(rbnv);
-      get_phix_bounds(rbnv, lbmap, ubmap, pathmap);
+      t.rgimaps(Lmap,Umap,vmap);
+      get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+
+      //get_phix_bounds(rbnv, lbmap, ubmap, pathmap);
 
       // Apply subsuff to the current assignments
       subsuff(root,rbnv,sivold);
@@ -1606,8 +1612,25 @@ void brt::drawvec_mpislave(rn& gen)
          double *xx = diter.getxp(); 
          double u0 = gen.uniform();
          double prob = 0.0;
-         get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap);
+         tree::tree_p n0;
+         std::map<tree::tree_p,double> phixmap;
+         std::map<tree::tree_p,double> logpathprob;
+         logpathprob[t.getptr(t.nid())] = 0; // init at root 
+         t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma, rpi.q);
+         
+         std::map<tree::tree_p,double>::iterator pit;
+         for(pit = phixmap.begin();pit != phixmap.end();pit++){
+            prob += pit->second;
+            if((u0<prob)){
+               n0 = pit->first;
+               randz.push_back(n0); 
+               break;  
+            }
+         }
+
+         //get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap);
          //if(phix.sum() != 1){cout << "sum to 1 error..." << phix.sum()<< endl;}
+         /*
          for(size_t i=0;i<rbnv.size();i++){
             prob += phix(i);
             if((u0<prob)){
@@ -1615,6 +1638,7 @@ void brt::drawvec_mpislave(rn& gen)
                break;  
             }   
          }
+         */
       }
       // Checker
       if(randz.size() != randz_shuffle.size()){
@@ -1637,7 +1661,6 @@ void brt::drawvec_mpislave(rn& gen)
       }
 
    }
-
    // Gibbs Step
    drawthetavec(gen);
 
@@ -2238,6 +2261,7 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 //--------------------------------------------------
 // predict_vec_rpath
 // ----- need path to root and loop through the root per bnv
+/*
 void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np){
    tree::npv path; 
    tree::tree_p p0, n0;
@@ -2274,7 +2298,6 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
                   logphix(*diter,j)=logphix(*diter,j)+log(psi0);
                }
                if(std::isnan(logphix(*diter,j))){
-                  /*
                   cout << "logphi(x) nan ... " << endl;
                   cout << "psi0 = " << psi0 << endl;
                   cout << "rpi.gamma = " << rpi.gamma << endl;
@@ -2282,7 +2305,6 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
                   cout << "v0 = " << v0 << endl;
                   cout << "ub = " << ub << endl;
                   cout << "lb = " << lb << endl;
-                  */
                }
             }
             // Convert back to phix scale
@@ -2291,10 +2313,53 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
       }
    }   
 }
-
+*/
 
 //--------------------------------------------------
 // Get phi(x) bounds
+void brt::get_phix_bounds(std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
+                           std::map<tree::tree_p,int> &lbintmap, std::map<tree::tree_p,int> &ubintmap, std::map<tree::tree_p,int> &vmap) 
+{   
+   int L,U,v0;
+   double lb, ub;
+
+   // Iterate through the maps to get the bounds in terms of cutpoints
+   for(auto it_lb = lbintmap.cbegin(), end_lb = lbintmap.cend(),
+        it_ub = ubintmap.cbegin(), end_ub = ubintmap.cend(),
+        it_v = vmap.cbegin(), end_v = vmap.cend();
+        it_lb != end_lb || it_ub != end_ub || it_v != end_v;)
+    {
+      // Reset L and U to min and max & then update
+      L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
+
+      // Get bounds in terms of cutpoints
+      L = it_lb->second; 
+      U = it_ub->second;
+      v0 = it_v->second;
+
+      if(L!=std::numeric_limits<int>::min()){ 
+         lb=(*xi)[v0][L];
+      }else{
+         lb=(*xi)[v0][0];
+      }
+      if(U!=std::numeric_limits<int>::max()) {
+         ub=(*xi)[v0][U];
+      }else{
+         ub=(*xi)[v0][(*xi)[v0].size()-1];
+      }
+
+      // Store the cutpoint bound   
+      lbmap[it_lb->first] = lb;
+      ubmap[it_ub->first] = ub;
+
+      it_lb++;
+      it_ub++;
+      it_v++;
+   }
+}
+
+
+// Used in variogram
 void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
                         std::map<tree::tree_p,tree::npv> &pathmap) 
 { 
@@ -2338,6 +2403,8 @@ void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, s
 }
 
 
+//--------------------------------------------------
+// Get phi(x) using the bounds from above
 void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
                         std::map<tree::tree_p,tree::npv> &pathmap){
    vxd logphix;
@@ -2346,6 +2413,8 @@ void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_
    double c0, ub, lb, psi0;
    logphix = vxd::Zero(bnv.size());
 
+
+   /*
    if(bnv.size()>1){
       for(size_t j = 0;j<bnv.size();j++){
          for(size_t l=0;l<(pathmap[bnv[j]].size()-1);l++){
@@ -2359,9 +2428,19 @@ void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_
             if((n0->nid())%2 == 0){
                // Left move prob
                logphix(j)=logphix(j)+log(1-psi0);
+               if((1-psi0) == 0){
+                  // if no chance of moving left then break from the loop
+                  //cout << "break da loop" << endl;
+                  break;
+               }
             }else{
                // Right move prob
                logphix(j)=logphix(j)+log(psi0);
+               if(psi0 == 0){
+                  // if no chance of moving right then break from the loop
+                  //cout << "break da loop" << logphix(j) << endl;
+                  break;
+               }
             }
             if(std::isnan(logphix(j))){
                cout << "logphi(x) nan ... " << endl;
@@ -2379,6 +2458,7 @@ void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_
    }else{
       phixvec = vxd::Ones(1);
    }
+   */
 }
 
 
@@ -2394,22 +2474,36 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
    tree::npv bnv;
    vxd phix;
    vxd thetavec_temp(k); 
-   std::map<tree::tree_p,double> lbmap;
-   std::map<tree::tree_p,double> ubmap;
-   std::map<tree::tree_p,tree::npv> pathmap;
+   std::map<tree::tree_p,double> lbmap, ubmap;
+   std::map<tree::tree_p,int> Umap, Lmap, vmap;
+   //std::map<tree::tree_p,tree::npv> pathmap;
 
    // Get bots and then get the path and bounds
    t.getbots(bnv);
-   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+   
+   t.rgimaps(Lmap,Umap,vmap);
+   get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+   //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
 
    for(;diter<diter.until();diter++) {
       thetavec_temp = vxd::Zero(k);
       phix = vxd::Ones(bnv.size());
-      double *xx = diter.getxp(); 
+      double *xx = diter.getxp();
+      std::map<tree::tree_p,double> phixmap;
+      std::map<tree::tree_p,double> logpathprob;
+      logpathprob[t.getptr(t.nid())] = 0; // init at root
+
+      t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
+      std::map<tree::tree_p,double>::iterator pit;
+      for(pit = phixmap.begin();pit != phixmap.end();pit++){
+         thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
+      }
+      /*
       get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
       for(size_t i=0;i<bnv.size();i++){
          thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
       }
+      */
       diter.sety(fipred.row(*diter)*thetavec_temp);
    }   
 }
@@ -2446,23 +2540,41 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
    vxd thetavec_temp(k); 
    std::vector<std::vector<double>> lbvec;
    std::vector<std::vector<double>> ubvec;
-   std::map<tree::tree_p,double> lbmap;
-   std::map<tree::tree_p,double> ubmap;
    std::map<tree::tree_p,tree::npv> pathmap;
+   std::map<tree::tree_p,double> lbmap, ubmap;
+   std::map<tree::tree_p,int> Umap, Lmap, vmap;
+   tree::tree_p n0;
 
    // Get bots and then get the path and bounds
    t.getbots(bnv);
-   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+   t.rgimaps(Lmap,Umap,vmap);
+   get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+   
+   //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
 
    // Fix by removing diter below...
    for(;diter<diter.until();diter++){
       thetavec_temp = vxd::Zero(k);
-      phix = vxd::Ones(bnv.size());
+      std::map<tree::tree_p,double> phixmap;
+      std::map<tree::tree_p,double> logpathprob;
       double *xx = diter.getxp(); 
+      
+      /*
+      //phix = vxd::Ones(bnv.size())/bnv.size();
       get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+      
       for(size_t i=0;i<bnv.size();i++){
          thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
       }
+      */
+      logpathprob[t.getptr(t.nid())] = 0;
+      t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
+      std::map<tree::tree_p,double>::iterator pit;
+      for(pit = phixmap.begin();pit != phixmap.end();pit++){
+         n0 = pit->first;
+         thetavec_temp = thetavec_temp + (n0->getthetavec())*(pit->second);   
+      }
+      
       wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
    }   
 }
@@ -2570,7 +2682,7 @@ void brt::rpath_adapt(){
 // Get sum log(phix) for each obs on the processor
 // This can be used for the entire tree or a subset of the tree starting at node nx
 double brt::sumlogphix(double gam, tree::tree_p nx){
-   double sumlogphix = 0;
+   double sumlphix = 0;
    double psi0 = 0;
    int v0, U, L;
    double lb,ub, c0;
@@ -2642,10 +2754,10 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
                cout << "n0->nid() = " << n0->nid() << endl;
                cout << "psi0 = " << psi0 << endl;
                */
-               sumlogphix=sumlogphix+log(1-psi0); 
+               sumlphix=sumlphix+log(1-psi0); 
             }else{
                // node derived from right move
-               sumlogphix=sumlogphix+log(psi0); 
+               sumlphix=sumlphix+log(psi0); 
             }
             //if(rank == 1) cout << "contributed to sum...." << endl; 
             //}else{
@@ -2655,11 +2767,11 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
          }
       }
    }
-   return(sumlogphix);
+   return(sumlphix);
 }
 
 
-
+// Moved to tree.cpp
 double brt::psix(double gam, double x, double c, double L, double U){
    double psi = 0.0;
    double a, b, d1, d2;   
@@ -2784,6 +2896,7 @@ void brt::rpath_mhstep(double osum, double nsum, double newgam,rn &gen){
 #endif
 
 }
+
 
 // Proposal distribution for random path assignments (birth)
 void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birth){

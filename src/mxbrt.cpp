@@ -328,7 +328,7 @@ double mxbrt::lmmix(sinfo& si){
     cmax = -0.5*mxsi.sump(mx);
 
     // Now get sum q and sumc
-    for(int j=0;j<sz;j++){
+    for(size_t j=0;j<sz;j++){
         sumq += exp(qvec[j]-qmax);
         sumc += exp(-0.5*mxsi.sump(j)-cmax);
     }

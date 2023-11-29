@@ -233,43 +233,4 @@ void getinternalvars(tree::tree_p n, xinfo& xi,  std::vector<size_t>& goodvars)
 //--------------------------------------------------
 
 
-//--------------------------------------------------
-//Add helper functions for model mixing
-//--------------------------------------------------
-//--------------------------------------------------
-//gmr_vec -- evaluate tree tr on grid given by xgrid and write to os. use vector parameter thetavec
-//-----xgrid is a vector of vectors for cutpoints and values -- might need to include f
-void grm_vec(tree& tr, xinfo& xgrid, std::ostream& os)
-{
-   size_t p = xgrid.size();
-   if(p!=2) {
-      std::cout << "error in grm, p !=2\n";
-      return;
-   }
-   size_t n1 = xgrid[0].size();
-   size_t n2 = xgrid[1].size();
-   tree::tree_p bp; //pointer to bottom node
-   double *x = new double[2];
-   for(size_t i=0;i!=n1;i++) {
-      for(size_t j=0;j!=n2;j++) {
-         x[0] = xgrid[0][i];
-         x[1] = xgrid[1][j];
-         bp = tr.bn(x,xgrid);
-         os << x[0] << " " << x[1] << " " << bp->getthetavec() << " " << bp->nid() << std::endl;
-      }
-   }
-   delete[] x;
-}
-//--------------------------------------------------
-//fit_mix = perform model mixing with a tree at matrix of x and f, matrix is stacked columns x[i,j] is *(x+p*i+j)
-//---need to include f to mix models.
-void mix(tree& t, xinfo& xi, size_t p, size_t n, double *x,  double* fv)
-{
-   tree::tree_p bn;
-   for(size_t i=0;i<n;i++) {
-      bn = t.bn(x+i*p,xi);
-      fv[i] = bn->gettheta();
-   }
-}
-
 

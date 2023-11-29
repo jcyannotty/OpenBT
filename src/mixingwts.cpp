@@ -345,6 +345,8 @@
             //theta_list[j].row(i) = theta_iter.row(j); //populate the ith row of each theta_list[j] matrix (ith post draw) for term node parameter j 
         }
 
+        if(mpirank == 0 & (i%500) == 0){cout << "Iteration " << i << endl;}
+
     }
     #ifdef _OPENMPI
     if(mpirank==0) {

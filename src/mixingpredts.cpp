@@ -436,12 +436,14 @@ int main(int argc, char* argv[])
             if(domdraws){
                 if(mpirank==0) cout << "Saving posterior predictive draws...";
                 std::ofstream omf;
+                std::string rankstr;
+                if(mpirank<10){rankstr = "0"+std::to_string(mpirank);}else{rankstr = std::to_string(mpirank);}
                 if(b == 0){
                     // Create the file 
-                    omf.open(folder + modelname + ".mdraws" + std::to_string(mpirank));
+                    omf.open(folder + modelname + ".mdraws" + rankstr);
                 }else{
                     // Append to the existing file
-                    omf.open(folder + modelname + ".mdraws" + std::to_string(mpirank), std::ios_base::app);
+                    omf.open(folder + modelname + ".mdraws" + rankstr, std::ios_base::app);
                 }
                 //std::ofstream omf(folder + modelname + ".mdraws" + std::to_string(mpirank));
                 
@@ -458,10 +460,10 @@ int main(int argc, char* argv[])
                     std::ofstream owf;
                     if(b == 0){
                         // Create the file 
-                        owf.open(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+                        owf.open(folder + modelname + ".w" + std::to_string(l+1) + "draws" + rankstr);
                     }else{
                         // Append to the existing file
-                        owf.open(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank), std::ios_base::app);
+                        owf.open(folder + modelname + ".w" + std::to_string(l+1) + "draws" + rankstr, std::ios_base::app);
                     }
     
                     wts_draw = wts_list[l];
@@ -476,15 +478,17 @@ int main(int argc, char* argv[])
 
             // Write the projected weights and ensuing predictions
             if(dopdraws){
+                std::string rankstr;
+                if(mpirank<10){rankstr = "0"+std::to_string(mpirank);}else{rankstr = std::to_string(mpirank);}
                 if(mpirank==0) cout << "Saving projections of posterior predictive draws...";
                 //std::ofstream opmf(folder + modelname + ".pmdraws" + std::to_string(mpirank));
                 std::ofstream opmf;
                 if(b == 0){
                     // Create the file 
-                    opmf.open(folder + modelname + ".pmdraws" + std::to_string(mpirank));
+                    opmf.open(folder + modelname + ".pmdraws" + rankstr);
                 }else{
                     // Append to the existing file
-                    opmf.open(folder + modelname + ".pmdraws" + std::to_string(mpirank), std::ios_base::app);
+                    opmf.open(folder + modelname + ".pmdraws" + rankstr, std::ios_base::app);
                 }
                 
                 for(size_t i=0;i<ind;i++) {
@@ -500,10 +504,10 @@ int main(int argc, char* argv[])
                     std::ofstream opwf;
                     if(b == 0){
                         // Create the file 
-                        opwf.open(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
+                        opwf.open(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + rankstr);
                     }else{
                         // Append to the existing file
-                        opwf.open(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank), std::ios_base::app);
+                        opwf.open(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + rankstr, std::ios_base::app);
                     }
                     pwts_draw = pwts_list[l];
                     for(size_t i=0;i<ind;i++) {
