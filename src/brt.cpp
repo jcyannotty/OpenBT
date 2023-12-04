@@ -1382,7 +1382,7 @@ void brt::drawthetavec(rn& gen)
   allsuff(bnv,siv);
 #ifdef _OPENMPI
   mpi_resetrn(gen);
-#endif
+#endif 
    for(size_t i=0;i<bnv.size();i++) {
       // Update random hyperparameters if randhp is true
       if(randhp){
@@ -1479,7 +1479,7 @@ void brt::drawvec_mpislave(rn& gen)
       MPI_Unpack(buffer,SIZE_UINT3,&position,&nrid,1,MPI_UNSIGNED,MPI_COMM_WORLD);
       nl=t.getptr((size_t)nlid);
       nr=t.getptr((size_t)nrid);
-      //if(randpath){randz_proposal(nl->p,(nl->p)->v,(nl->p)->c,gen,false);}
+      
       getsuff(nl,nr,tsil,tsir);
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
@@ -1592,10 +1592,10 @@ void brt::drawvec_mpislave(rn& gen)
 
       // Get bounds
       t.getbots(rbnv);
-      t.rgimaps(Lmap,Umap,vmap);
-      get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+      //t.rgimaps(Lmap,Umap,vmap);
+      //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
 
-      //get_phix_bounds(rbnv, lbmap, ubmap, pathmap);
+      get_phix_bounds(rbnv, lbmap, ubmap, pathmap);
 
       // Apply subsuff to the current assignments
       subsuff(root,rbnv,sivold);
@@ -1615,6 +1615,7 @@ void brt::drawvec_mpislave(rn& gen)
          tree::tree_p n0;
          std::map<tree::tree_p,double> phixmap;
          std::map<tree::tree_p,double> logpathprob;
+         /*
          logpathprob[t.getptr(t.nid())] = 0; // init at root 
          t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma, rpi.q);
          
@@ -1627,10 +1628,10 @@ void brt::drawvec_mpislave(rn& gen)
                break;  
             }
          }
-
-         //get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap);
+         */
+         
+         get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap);
          //if(phix.sum() != 1){cout << "sum to 1 error..." << phix.sum()<< endl;}
-         /*
          for(size_t i=0;i<rbnv.size();i++){
             prob += phix(i);
             if((u0<prob)){
@@ -1638,7 +1639,6 @@ void brt::drawvec_mpislave(rn& gen)
                break;  
             }   
          }
-         */
       }
       // Checker
       if(randz.size() != randz_shuffle.size()){
@@ -1711,7 +1711,12 @@ void brt::bd_vec(rn& gen)
          lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
          hardreject=false;
          lalpha = log(pr) + (lml+lmr-lmt);
+         //cout << "lalpha = " << lalpha << endl;
+         //cout << "lprop = " << rpi.logproppr << endl;
+         
          if(randpath){lalpha = lalpha-rpi.logproppr;}
+         
+         //if(randpath){cout << "lprop = " << rpi.logproppr << endl;}
          //std::cout << "lml" << lml << std::endl;
          //std::cout << "lmr" << lmr << std::endl;
          //std::cout << "lmt" << lmt << std::endl;
@@ -1785,6 +1790,7 @@ void brt::bd_vec(rn& gen)
       double lml, lmr, lmt;  // lm is the log marginal left,right,total
       lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
       double lalpha = log(pr) + (lmt - lml - lmr);
+      //cout << "death lalpha = " << lalpha << endl;;
       if(randpath){lalpha = lalpha+rpi.logproppr;}
       lalpha = std::min(0.0,lalpha);
 
@@ -2413,8 +2419,6 @@ void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_
    double c0, ub, lb, psi0;
    logphix = vxd::Zero(bnv.size());
 
-
-   /*
    if(bnv.size()>1){
       for(size_t j = 0;j<bnv.size();j++){
          for(size_t l=0;l<(pathmap[bnv[j]].size()-1);l++){
@@ -2458,7 +2462,6 @@ void brt::get_phix(double *xx, vxd &phixvec, tree::npv bnv, std::map<tree::tree_
    }else{
       phixvec = vxd::Ones(1);
    }
-   */
 }
 
 
@@ -2476,14 +2479,15 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
    vxd thetavec_temp(k); 
    std::map<tree::tree_p,double> lbmap, ubmap;
    std::map<tree::tree_p,int> Umap, Lmap, vmap;
-   //std::map<tree::tree_p,tree::npv> pathmap;
+   std::map<tree::tree_p,tree::npv> pathmap;
 
    // Get bots and then get the path and bounds
    t.getbots(bnv);
    
-   t.rgimaps(Lmap,Umap,vmap);
-   get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-   //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+   //t.rgimaps(Lmap,Umap,vmap);
+   //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+
+   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
 
    for(;diter<diter.until();diter++) {
       thetavec_temp = vxd::Zero(k);
@@ -2493,17 +2497,19 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
       std::map<tree::tree_p,double> logpathprob;
       logpathprob[t.getptr(t.nid())] = 0; // init at root
 
+      /*
       t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
       std::map<tree::tree_p,double>::iterator pit;
       for(pit = phixmap.begin();pit != phixmap.end();pit++){
          thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
       }
-      /*
+      */
+      
       get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
       for(size_t i=0;i<bnv.size();i++){
          thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
       }
-      */
+      
       diter.sety(fipred.row(*diter)*thetavec_temp);
    }   
 }
@@ -2547,10 +2553,10 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
 
    // Get bots and then get the path and bounds
    t.getbots(bnv);
-   t.rgimaps(Lmap,Umap,vmap);
-   get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+   //t.rgimaps(Lmap,Umap,vmap);
+   //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
    
-   //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
 
    // Fix by removing diter below...
    for(;diter<diter.until();diter++){
@@ -2559,14 +2565,13 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
       std::map<tree::tree_p,double> logpathprob;
       double *xx = diter.getxp(); 
       
-      /*
-      //phix = vxd::Ones(bnv.size())/bnv.size();
+      phix = vxd::Ones(bnv.size())/bnv.size();
       get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
       
       for(size_t i=0;i<bnv.size();i++){
          thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
       }
-      */
+      /*
       logpathprob[t.getptr(t.nid())] = 0;
       t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
       std::map<tree::tree_p,double>::iterator pit;
@@ -2574,7 +2579,7 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
          n0 = pit->first;
          thetavec_temp = thetavec_temp + (n0->getthetavec())*(pit->second);   
       }
-      
+      */
       wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
    }   
 }
@@ -2932,11 +2937,9 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
       for(;diter<diter.until();diter++){
          if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
             // compute psi(x), the prob of moving right
-            //cout << "nx in randz = " << nx << endl;
             xx = diter.getxp();
-            //if(rank == 1) cout << "xx[v} = " << xx[v] << endl;
+            /*
             psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);
-            //if(rank == 1) cout << "psi0 = " << psi0 << endl;   
             if(gen.uniform()<psi0){
                // Rightrandz_p
                randz_bdp.push_back(2);
@@ -2946,6 +2949,20 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
                randz_bdp.push_back(1);
                rpi.logproppr+=log((1-psi0));
             }
+            */
+            // Deterministic proposal
+            
+            if(xx[v]<cx){ psi0 = 0;}else{psi0 = 1;}
+            if(xx[v]>=cx){
+               // Rightrandz_p
+               randz_bdp.push_back(2);
+               rpi.logproppr+=log(psi0);      
+            } else {
+               // Left
+               randz_bdp.push_back(1);
+               rpi.logproppr+=log((1-psi0));
+            }  
+            
          }else{
             // Not involved
             randz_bdp.push_back(0);
@@ -2957,13 +2974,15 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
          if((nx->r)==randz[*diter]){
             // compute psi(x), the prob of moving right
             xx = diter.getxp();      
-            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
+            //psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
+            psi0 = 1;
             rpi.logproppr+=log(psi0);      
             randz_bdp.push_back(2);
          }else if((nx->l)==randz[*diter]){
             // compute 1-psi(x), the prob of moving left
             xx = diter.getxp();      
-            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
+            //psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
+            psi0 = 0;
             rpi.logproppr+=log((1-psi0));
             randz_bdp.push_back(1);
          }else{
@@ -2971,7 +2990,7 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
          }
       }
    }
-   
+
    // Pass the proposal probability
    mpi_randz_proposal(rpi.logproppr,nx,v,c,birth);
 }
@@ -3019,7 +3038,7 @@ void brt::mpi_randz_proposal(double &logproppr, tree::tree_p nx, size_t v, size_
    }
    else
    {
-      // Send the log prop probability from tall nodes to root
+      // Send the log prop probability from all nodes to root
       char buffer[SIZE_UINT2];
       int position=0;  
       MPI_Pack(&logproppr,1,MPI_DOUBLE,buffer,SIZE_UINT2,&position,MPI_COMM_WORLD);
@@ -3139,7 +3158,7 @@ void brt::shuffle_randz(rn &gen){
    // Get suff stats
    subsuff(root,rbnv,sold);
    subsuff(root,rbnv,snew);
-
+   
    // Get lm
    for(size_t i=0;i<rbnv.size();i++)
       lmold += lm(*(sold[i]));

@@ -306,7 +306,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
     //std::vector<mxd, Eigen::aligned_allocator<vxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
     //std::map<tree::tree_p,double> lbmap;
     //std::map<tree::tree_p,double> ubmap;
-    //std::map<tree::tree_p,tree::npv> pathmap;
+    std::map<tree::tree_p,tree::npv> pathmap;
     std::map<tree::tree_p,double> lbmap, ubmap;
     std::map<tree::tree_p,int> Umap, Lmap, vmap;
 
@@ -314,9 +314,9 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
     for(size_t j=0;j<m;j++){
         bnv.clear();
         mb[j].t.getbots(bnv);
-        mb[j].t.rgimaps(Lmap,Umap,vmap);
-        get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-        //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+        //mb[j].t.rgimaps(Lmap,Umap,vmap);
+        //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
     }
       
     for(;diter<diter.until();diter++){
@@ -324,6 +324,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
         double *xx = diter.getxp(); 
         for(size_t j=0;j<m;j++){
             // Get bots
+            /*
             std::map<tree::tree_p,double> phixmap;
             std::map<tree::tree_p,double> logpathprob;
             bnv.clear();
@@ -333,7 +334,11 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
             for(pit = phixmap.begin();pit != phixmap.end();pit++){
                 thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
             }
-            /*
+            */
+            
+            // Get Bots
+            bnv.clear();
+            mb[j].t.getbots(bnv);
             // Reset phix
             phix = vxd::Ones(bnv.size());
             mb[j].get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
@@ -341,7 +346,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
                 //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
             }
-            */
+            
         }
         diter.sety(fipred.row(*diter)*thetavec_temp);
     }
@@ -356,7 +361,7 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
     //std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
     //std::map<tree::tree_p,double> lbmap;
     //std::map<tree::tree_p,double> ubmap;
-    //std::map<tree::tree_p,tree::npv> pathmap;
+    std::map<tree::tree_p,tree::npv> pathmap;
     std::map<tree::tree_p,double> lbmap, ubmap;
     std::map<tree::tree_p,int> Umap, Lmap, vmap;
 
@@ -365,14 +370,15 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
     for(size_t j=0;j<m;j++){
         bnv.clear();
         mb[j].t.getbots(bnv);
-        mb[j].t.rgimaps(Lmap,Umap,vmap);
-        get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-        //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+        //mb[j].t.rgimaps(Lmap,Umap,vmap);
+        //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
+        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
     }
       
     for(;diter<diter.until();diter++){
         thetavec_temp = vxd::Zero(k);   
         double *xx = diter.getxp(); 
+        /*
         for(size_t j=0;j<m;j++){
             // Get bots
             std::map<tree::tree_p,double> phixmap;
@@ -385,7 +391,8 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
                 thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
             }
         }
-        /*
+        */
+        
         for(size_t j=0;j<m;j++){
             // Get bots
             bnv.clear();
@@ -398,7 +405,7 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
             }
         }
-        */
+        
         wts.col(*diter) = thetavec_temp;
     }
 }

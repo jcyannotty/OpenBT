@@ -434,7 +434,7 @@ int main(int argc, char* argv[])
             }
 
             if(domdraws){
-                if(mpirank==0) cout << "Saving posterior predictive draws...";
+                if(mpirank==0 & b%10 == 0) cout << "Saving posterior predictive draws...Batch " << b << endl;
                 std::ofstream omf;
                 std::string rankstr;
                 if(mpirank<10){rankstr = "0"+std::to_string(mpirank);}else{rankstr = std::to_string(mpirank);}
@@ -454,7 +454,7 @@ int main(int argc, char* argv[])
                 }
                 omf.close();
 
-                if(mpirank==0) cout << "Saving posterior weight draws..." << endl;
+                if(mpirank==0 & b%10 == 0) cout << "Saving posterior weight draws...Batch " << b << endl;
                 for(size_t l = 0; l<k; l++){
                     //std::ofstream owf(folder + modelname + ".w" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
                     std::ofstream owf;
@@ -480,7 +480,7 @@ int main(int argc, char* argv[])
             if(dopdraws){
                 std::string rankstr;
                 if(mpirank<10){rankstr = "0"+std::to_string(mpirank);}else{rankstr = std::to_string(mpirank);}
-                if(mpirank==0) cout << "Saving projections of posterior predictive draws...";
+                if(mpirank==0 & b%10 == 0) cout << "Saving projected posterior predictive draws...Batch " << b << endl;
                 //std::ofstream opmf(folder + modelname + ".pmdraws" + std::to_string(mpirank));
                 std::ofstream opmf;
                 if(b == 0){
@@ -498,7 +498,7 @@ int main(int argc, char* argv[])
                 }
                 opmf.close();
 
-                if(mpirank==0) cout << "Saving projections of posterior weight draws..." << endl;
+                if(mpirank==0 & b%10 == 0) cout << "Saving projected posterior weight draws...Batch " << b << endl;
                 for(size_t l = 0; l<k; l++){
                     //std::ofstream opwf(folder + modelname + ".pw" + std::to_string(l+1) + "draws" + std::to_string(mpirank));
                     std::ofstream opwf;
