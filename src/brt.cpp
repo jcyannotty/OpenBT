@@ -326,6 +326,7 @@ void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, s
 {
    double *xx;//current x
    sil.n=0; sir.n=0;
+   size_t nxnid;
    // Soft BART Version ----
    //cout << "nx = " << nx << " --- rank -- " << rank << endl;
    //cout << "nx nid = " << nx->nid() << " --- rank -- " << rank << endl;
@@ -333,7 +334,8 @@ void brt::local_getsuff(diterator& diter, tree::tree_p nx, size_t v, size_t c, s
       // Random Path BART update
       for(;diter<diter.until();diter++){
          //cout << "randz[*diter] nid = " << randz[*diter]->nid() << " --- rank " << rank << endl;
-         if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
+         nxnid = nx->nid();
+         if(nxnid==randz[*diter]){ //does the bottom node = xx's bottom node
             if(randz_bdp[*diter] == 1) {
                // Left move
                add_observation_to_suff(diter,sil);
@@ -373,7 +375,7 @@ void brt::local_getsuff(diterator& diter, tree::tree_p l, tree::tree_p r, sinfo&
    {
       // Soft vs deterministic BART
       if(randpath){
-         bn = randz[*diter];
+         bn = t.getptr(randz[*diter]);
       }else{
          // Regular Deterministic step
          bn = t.bn(diter.getxp(),*xi);   
@@ -445,6 +447,7 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
    tree::tree_cp tbn; //the pointer to the bottom node for the current observation
    size_t ni;         //the  index into vector of the current bottom node
    size_t index;      //the index into the path vector.
+   size_t tbnid; // the nid for tbn (used in rpath)
    double *x;
    tree::tree_p root=path[path.size()-1];
 
@@ -454,10 +457,11 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
    siv.resize(nb);
 
    std::map<tree::tree_cp,size_t> bnmap;
-   for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
+   std::map<size_t,size_t> bnmapnid;
 
    if(!randpath){
       // Determinisitc version
+      for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
       for(;diter<diter.until();diter++) {
          index=path.size()-1;
          x=diter.getxp();
@@ -471,11 +475,12 @@ void brt::local_subsuff(diterator& diter, tree::tree_p nx, tree::npv& path, tree
       }
    }else{
       // Random path version
+      for(bvsz i=0;i!=bnv.size();i++) { bnmapnid[bnv[i]->nid()]=i; siv[i]=newsinfo(); }
       for(;diter<diter.until();diter++) {
          // If randz pointer is in the bnmap, then add some suff stats
-         if(bnmap.find(randz[*diter]) != bnmap.end()) {
-            tbn = randz[*diter];          
-            ni = bnmap[tbn];
+         if(bnmapnid.find(randz[*diter]) != bnmapnid.end()) {
+            tbnid = randz[*diter];          
+            ni = bnmapnid[tbnid];
             add_observation_to_suff(diter, *(siv[ni]));
          }
          //else this x doesn't map to the subtree so it's not added into suff stats.
@@ -747,6 +752,7 @@ void brt::local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& si
 {
    tree::tree_cp tbn; //the pointer to the bottom node for the current observations
    size_t ni;         //the  index into vector of the current bottom node
+   size_t tbnid; // nid to the bottom node corresponding to tbn (for rpath)
 
    typedef tree::npv::size_type bvsz;
    bvsz nb = bnv.size();
@@ -754,11 +760,20 @@ void brt::local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& si
    siv.resize(nb);
 
    std::map<tree::tree_cp,size_t> bnmap;
-   for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
-
+   std::map<size_t,size_t> bnmapnid;
+   if(!randpath){ 
+      for(bvsz i=0;i!=bnv.size();i++) { bnmap[bnv[i]]=i; siv[i]=newsinfo(); }
+   }else{
+      for(bvsz i=0;i!=bnv.size();i++) { bnmapnid[bnv[i]->nid()]=i; siv[i]=newsinfo(); }
+   }
    for(;diter<diter.until();diter++) {
-      if(!randpath){tbn = t.bn(diter.getxp(),*xi);}else{tbn = randz[*diter];}      
-      ni = bnmap[tbn];
+      if(!randpath){
+         tbn = t.bn(diter.getxp(),*xi);
+         ni = bnmap[tbn];
+      }else{
+         tbnid = randz[*diter];
+         ni = bnmapnid[tbnid];
+      }      
       //siv[ni].n +=1; 
       add_observation_to_suff(diter, *(siv[ni]));
    }
@@ -1389,6 +1404,7 @@ void brt::drawthetavec(rn& gen)
          bnv[i]->setthetahypervec(drawnodehypervec(*(siv[i]),gen));   
       }
       // Update thetavec
+      //cout << bnv[i]->nid() << "; ";
       bnv[i]->setthetavec(drawnodethetavec(*(siv[i]),gen));
       delete siv[i]; //set it, then forget it!
    }
@@ -1535,6 +1551,12 @@ void brt::drawvec_mpislave(rn& gen)
             bool didswap=false;
             unsigned int propcint;
             unsigned int propvint;
+            
+            std::map<size_t,tree::tree_p> bnvnidmap; // Used for rpath when performing swap, it keeps track of the old to new ids
+            tree::npv bnvc; //current bnv
+            t.getbots(bnvc);
+            for(size_t i=0;i<bnvc.size();i++){bnvnidmap[bnvc[i]->nid()] = bnvc[i] ;}
+
             position=0;
             mpi_update_norm_cormat(rank,tc,pertnode,*xi,(*mi.corv)[oldv],chv_lwr,chv_upr);
             MPI_Recv(buffer,SIZE_UINT3,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
@@ -1559,8 +1581,10 @@ void brt::drawvec_mpislave(rn& gen)
             if(status2.MPI_TAG==MPI_TAG_PERTCHGV_ACCEPT) { //accept change var and pert
                pertnode->setc(propc);
                pertnode->setv(propv);
-               if(didswap)
+               if(didswap){
                   pertnode->swaplr();
+                  for(size_t i=0;i<randz.size();i++){randz[i] = bnvnidmap[randz[i]]->nid();}  // Get the updated nids after swap
+               }
             }
             // else reject, for which we do nothing.
          }
@@ -1574,6 +1598,7 @@ void brt::drawvec_mpislave(rn& gen)
 
    // Shuffle proposal for rpath
    if(randpath & t.treesize()>1){
+      //cout << "Update SHUFFLE" << endl;
       tree::npv rbnv;
       tree::tree_p root;
       vxd phix;
@@ -1635,9 +1660,11 @@ void brt::drawvec_mpislave(rn& gen)
          for(size_t i=0;i<rbnv.size();i++){
             prob += phix(i);
             if((u0<prob)){
-               randz.push_back(rbnv[i]); 
+               randz.push_back(rbnv[i]->nid()); 
                break;  
-            }   
+            }
+            //if(!t.getptr(randz[i])){cout << "0 ptr for nid " << randz[i] << endl;}   
+            //if(!t.getptr(randz[i])){for(size_t i=0;i<rbnv.size();i++){cout << rbnv[i]->nid() << ",";} cout << endl;}
          }
       }
       // Checker
@@ -1656,8 +1683,10 @@ void brt::drawvec_mpislave(rn& gen)
          randz.clear();
          for(size_t i=0;i<randz_shuffle.size();i++){randz.push_back(randz_shuffle[i]);}
          randz_shuffle.clear();
+         //cout << "SHUFFLE REJCET" << endl;
       }else{
          randz_shuffle.clear();
+         //cout << "SHUFFLE ACCEPT" << endl;
       }
 
    }
@@ -1866,7 +1895,8 @@ void brt::local_setf_vec(diterator& diter)
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
    for(;diter<diter.until();diter++) {
-      if(!randpath){bn = t.bn(diter.getxp(),*xi);}else{bn = randz[*diter];}
+      //cout << "t.getptr(randz[*diter]) = " << t.getptr(randz[*diter]) << endl;
+      if(!randpath){bn = t.bn(diter.getxp(),*xi);}else{bn = t.getptr(randz[*diter]);}
       thetavec_temp = bn->getthetavec(); 
       yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
    }
@@ -1905,7 +1935,7 @@ void brt::local_setr_vec(diterator& diter)
    // Set residual for random or deterministic path models
    if(randpath){
       for(;diter<diter.until();diter++) {
-         bn = randz[*diter];
+         bn = t.getptr(randz[*diter]);
          thetavec_temp = bn->getthetavec();
          resid[*diter] = di->y[*diter] - (*fi).row(*diter)*thetavec_temp;
       }
@@ -2698,6 +2728,7 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
    diterator diter(di);
    tree::npv bnv;
    tree::npv path;
+   tree::tree_p rzptr;
    std::map<tree::tree_p,double> lbmap;
    std::map<tree::tree_p,double> ubmap;
    std::map<tree::tree_p,tree::npv> pathmap;
@@ -2738,11 +2769,12 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
    //if(rank == 1) cout << "randz.size() = " << randz.size() << " ---- " << rank << endl;
    for(;diter<diter.until();diter++){
       double *xx = diter.getxp();
-      if(pathmap.find(randz[*diter]) != pathmap.end()){
-         for(size_t j=0;j<(pathmap[randz[*diter]].size()-1);j++){
+      rzptr = t.getptr(randz[*diter]);
+      if(pathmap.find(rzptr) != pathmap.end()){
+         for(size_t j=0;j<(pathmap[rzptr].size()-1);j++){
             // Get cutpoint
             //if(randz[*diter][j].p != 0){
-            n0 = pathmap[randz[*diter]][j];
+            n0 = pathmap[rzptr][j];
             p0 = n0->p; // randz[*diter][j].p;
             v0 = p0->v; // (randz[*diter][j].p)->v;
             c0 = (*xi)[v0][p0->c]; // (*xi)[v0][(randz[*diter][j].p)->c];
@@ -2938,7 +2970,7 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
    randz_bdp.clear();
    if(birth){
       for(;diter<diter.until();diter++){
-         if(nx==randz[*diter]){ //does the bottom node = xx's bottom node
+         if(nx==t.getptr(randz[*diter])){ //does the bottom node = xx's bottom node
             // compute psi(x), the prob of moving right
             xx = diter.getxp();
             /*
@@ -2974,14 +3006,14 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
    }else{
       // No need to modify the randz vector, just compute the log proposal probs
       for(;diter<diter.until();diter++){
-         if((nx->r)==randz[*diter]){
+         if((nx->r)==t.getptr(randz[*diter])){
             // compute psi(x), the prob of moving right
             xx = diter.getxp();      
             //psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
             psi0 = 1;
             rpi.logproppr+=log(psi0);      
             randz_bdp.push_back(2);
-         }else if((nx->l)==randz[*diter]){
+         }else if((nx->l)==t.getptr(randz[*diter])){
             // compute 1-psi(x), the prob of moving left
             xx = diter.getxp();      
             //psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
@@ -3055,20 +3087,22 @@ void brt::mpi_randz_proposal(double &logproppr, tree::tree_p nx, size_t v, size_
 void brt::update_randz_bd(tree::tree_p nx, bool birth){
    diterator diter(di);
    if(birth){
+      //cout << "Update BIRTH" << nx->nid() << endl;
       for(;diter<diter.until();diter++){
          if(randz_bdp[*diter]==2){
             // Right move accepted
-            randz[*diter] = randz[*diter]->r;
+            randz[*diter] = (nx->r)->nid();
          }else if(randz_bdp[*diter]==1){
             // Left move accepted
-            randz[*diter] = randz[*diter]->l;
+            randz[*diter] = (nx->l)->nid();
          }
       }
    }else{
+      //cout << "Update DEATH" << nx->nid() << endl;
       for(;diter<diter.until();diter++){
          // Was a left or right child
          if(randz_bdp[*diter] > 0){
-            randz[*diter] = nx;
+            randz[*diter] = nx->nid();
          }
       }
    }
@@ -3122,6 +3156,7 @@ void brt::sumlogphix_mpi(double &osum, double &nsum){
 }
 
 
+// Change of variable and pert moves - you do not need bnv anymore
 void brt::getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog){
    // Compute values
    nsumlog = sumlogphix(rpi.gamma,pertnode);

@@ -261,6 +261,7 @@ int main(int argc, char* argv[])
       while(xf >> xtemp)
          x.push_back(xtemp);
       p = x.size()/n;
+      cout << "p = " << p << endl;
 #ifndef SILENT
       cout << "node " << mpirank << " loaded " << n << " inputs of dimension " << p << " from " << xfs << endl;
 #endif
@@ -464,6 +465,10 @@ int main(int argc, char* argv[])
    axb.setfi(&fi, k);
    //set individual function discrepacnies if provided 
    if(eftprior) {axb.setfsd(&fsd);}
+   // Random path setter (must be before data right now...)
+   if(randpath){
+      axb.setrpi(gam,q,sh1,sh2,n);
+   }
    //data objects
    axb.setdata_vec(&di);  //set the data
    //thread count
@@ -491,11 +496,7 @@ int main(int argc, char* argv[])
    
    axb.setci(tau,beta0,sig);
    mxd loss;
-   
-   if(randpath){
-      axb.setrpi(gam,q,sh1,sh2,n);
-   }
-   
+      
 
    //--------------------------------------------------
    //setup psbrt object

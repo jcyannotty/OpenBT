@@ -364,12 +364,14 @@ protected:
    size_t kp; // vector size for hyperparameters
 
    // Random path information
-   tree::npv randz; // random path assignments, vector of node pointers
+   std::vector<size_t> randz;
    std::vector<size_t> randz_bdp; // used for birth & death proposal...0 for not involved, 1 for left and 2 for right
-   tree::npv randz_shuffle; // used for shuffle step.... pushback the pointer
-
+   std::vector<size_t> randz_shuffle;
+   //tree::npv randz_shuffle; // used for shuffle step.... pushback the pointer
+   //tree::npv randz; // random path assignments, vector of node pointers
+   
    // Set randz pointer...this should be initialized as the root
-   void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.getptr(t.nid());}};
+   void set_randz(size_t n){this->randz.resize(n);  for(size_t i=0;i<n;i++){randz[i] = t.nid();}};
 
    virtual Eigen::VectorXd drawnodethetavec(sinfo& si, rn& gen);
    virtual std::vector<double> drawnodehypervec(sinfo& si, rn& gen); // General method for sampling hyperparameters in a hierarchical model
@@ -429,6 +431,7 @@ protected:
    void sumlogphix_mpi(double &osum, double &nsum);
    void getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog);
    void getpertsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, double &osumlog, double &nsumlog);
+   //void update_pertswap(tree::tree_p); // update the random path assignment nids when doing a swap 
 
    // Shuffle move for rpath
    void shuffle_randz(rn &gen);

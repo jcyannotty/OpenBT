@@ -98,7 +98,7 @@ train.openbtmixing = function(
     for(i in 1:p)
     {
       xinc=(maxx[i]-minx[i])/(numcut+1)
-      xi[[i]]=(1:numcut)*xinc+minx[i]
+      xi[[i]]=(0:(numcut+1))*xinc+minx[i]
     }
   }else{
     # Use default xcuts
