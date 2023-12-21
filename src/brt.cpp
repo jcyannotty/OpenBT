@@ -2019,17 +2019,19 @@ void brt::local_omppredict_thetavec(dinfo dipred, mxd wts){
 
 //--------------------------------------------------
 // Project thetavec onto the simplex
-void brt::project_thetavec(std::vector<double>* v, std::vector<double>& vstar){
+void brt::project_thetavec(std::vector<double>& v, std::vector<double>& vstar){
    std::vector<size_t> vorder(k);
    std::vector<double> vprime, csum(k);
    double mu, muprime;
    
    // Sorting the vector into descending order
    std::iota(vorder.begin(), vorder.end(), 0);
-   stable_sort(vorder.begin(), vorder.end(),[&v](size_t i1, size_t i2) {return (*v)[i1] > (*v)[i2];});
+   //stable_sort(vorder.begin(), vorder.end(),[&v](size_t i1, size_t i2) {return (*v)[i1] > (*v)[i2];});
+   stable_sort(vorder.begin(), vorder.end(),[&v](size_t i1, size_t i2) {return v[i1] > v[i2];});
    
    // Get v in descending order, sotre as vprime, then get cumulative sum
-   for(auto i: vorder){vprime.push_back((*v)[i]);}
+   //for(auto i: vorder){vprime.push_back((*v)[i]);}
+   for(auto i: vorder){vprime.push_back(v[i]);}
    std::partial_sum(vprime.begin(), vprime.end(), csum.begin());
 
    // Get the value of mu
@@ -2045,7 +2047,8 @@ void brt::project_thetavec(std::vector<double>* v, std::vector<double>& vstar){
    
    // Get the projected theta and put back to original orer
    for (size_t i=0;i<k;i++) {
-      vstar.push_back(std::max((*v)[i]-mu,0.0));
+      //vstar.push_back(std::max((*v)[i]-mu,0.0));
+      vstar.push_back(std::max(v[i]-mu,0.0));
       //cout << "vstar["<<i<<"] = " << vstar[i] << endl;
    }
 
@@ -2322,7 +2325,7 @@ void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np)
 */
 
 //--------------------------------------------------
-// Get phi(x) bounds
+// Get phi(x) bounds (This will be the NEW and IMPROVED version of getting the bounds)
 void brt::get_phix_bounds(std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
                            std::map<tree::tree_p,int> &lbintmap, std::map<tree::tree_p,int> &ubintmap, std::map<tree::tree_p,int> &vmap) 
 {   
@@ -2365,7 +2368,7 @@ void brt::get_phix_bounds(std::map<tree::tree_p,double> &lbmap, std::map<tree::t
 }
 
 
-// Used in variogram
+// Used in variogram (The older and seemingly slower way to get phix bounds)
 void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
                         std::map<tree::tree_p,tree::npv> &pathmap) 
 { 

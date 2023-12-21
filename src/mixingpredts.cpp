@@ -350,6 +350,10 @@ int main(int argc, char* argv[])
                         oid[j][l]=e_oid.at(cumdx+curdx+l);
                         ov[j][l]=e_ovar.at(cumdx+curdx+l);
                         oc[j][l]=e_oc.at(cumdx+curdx+l);
+                        for(size_t r=0;r<k;r++){
+                            otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
+                        }
+                        /*
                         if(dopdraws){
                             // Project the theta's onto the simplex
                             ctheta.clear();
@@ -370,6 +374,7 @@ int main(int argc, char* argv[])
                                 otheta[j][l*k+r]=e_otheta.at((cumdx+curdx+l)*k+r);
                             }
                         }
+                        */
                     }
                     curdx+=(size_t)onn[j];
                 }
@@ -403,9 +408,9 @@ int main(int argc, char* argv[])
                         wts_list[j].row(i) = wts_iter.row(j);
                     }
                 }
-
                 
                 if(dopdraws){
+                    /*
                     // Load tree and get results for unconstrained data
                     axb.loadtree_vec(0,m,onn,oid,ov,oc,optheta); 
                     //Get the current posterior draw of the weights
@@ -420,16 +425,22 @@ int main(int argc, char* argv[])
                         axb.predict_thetavec_rpath(&dip, &wts_iter);
                         tempgam.clear();
                     }
+                    */
 
-                    // Get the resulting prediction
                     for(size_t j=0;j<np;j++){
-                        tedrawp[i+b*batchsize][j] = fi_test.row(j)*wts_iter.col(j);
-                    } 
-                    //Store these weights into the Vector of Eigen Matrices
-                    for(size_t j = 0; j<k; j++){
-                        //pwts_list[j].row(i+b*batchsize) = wts_iter.row(j); //populate the ith row of each wts_list[j] matrix (ith post draw) for model weight j
-                        pwts_list[j].row(i) = wts_iter.row(j);
+                        std::vector<double> w;
+                        std::vector<double> wstar;
+                        for(size_t l=0;l<k;l++){w.push_back(wts_iter(l,j));}
+                        axb.project_thetavec(w, wstar);
+
+                        // Store wts and calculate prediction
+                        tedrawp[i+b*batchsize][j] = 0;
+                        for(size_t l = 0; l<k; l++){
+                           pwts_list[l](i,j) = wstar[l];
+                           tedrawp[i+b*batchsize][j] += fi_test(j,l)*wstar[l];
+                        }
                     }
+                    
                 }
             }
 

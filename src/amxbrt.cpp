@@ -160,14 +160,15 @@ void amxbrt::local_predict_thetavec(diterator& diter, mxd& wts){
 
 //--------------------------------------------------
 // Project each theta vector onto the simplex
-void amxbrt::project_thetavec(std::vector<double> *v, std::vector<double>& vstar){
+void amxbrt::project_thetavec(std::vector<double> &v, std::vector<double>& vstar){
     // Scale v by m
-    std::vector<double> v0;
-    for(size_t i=0;i<k;i++){v0.push_back((*v)[i]*m);}
+    //std::vector<double> v0;
+    //for(size_t i=0;i<k;i++){v0.push_back((*v)[i]*m);}
     
     // Get projection and rescale by 1/m
-    brt::project_thetavec(&v0,vstar);
-    for(size_t i=0;i<k;i++){vstar[i] = vstar[i]/m;}
+    brt::project_thetavec(v,vstar);
+    //for(size_t i=0;i<k;i++){vstar[i] = vstar[i]/m;}
+    for(size_t i=0;i<k;i++){vstar[i] = vstar[i];}
 }
 
 //--------------------------------------------------

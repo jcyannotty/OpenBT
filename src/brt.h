@@ -242,7 +242,7 @@ public:
    void predict_vec(dinfo* dipred, finfo* fipred); // predict y at the (npred x p) settings *di.x 
    void predict_mix_fd(dinfo* dipred, finfo* fipred, finfo* fpdmean, finfo* fpdsd, rn& gen); // remove
    void predict_thetavec(dinfo* dipred, mxd* wts);
-   void project_thetavec(std::vector<double> *v, std::vector<double>& vstar);
+   void project_thetavec(std::vector<double> &v, std::vector<double>& vstar);
    void get_mix_theta(dinfo* dipred, mxd* wts); // Remove
    void get_fi(){std::cout << "fi = \n" << *fi << std::endl;}
     
