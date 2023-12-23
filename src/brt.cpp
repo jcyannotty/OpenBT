@@ -1894,8 +1894,7 @@ void brt::local_setf_vec(diterator& diter)
 {
    tree::tree_p bn;
    vxd thetavec_temp(k); //Initialize a temp vector to facilitate the fitting
-   for(;diter<diter.until();diter++) {
-      //cout << "t.getptr(randz[*diter]) = " << t.getptr(randz[*diter]) << endl;
+   for(;diter<diter.until();diter++){
       if(!randpath){bn = t.bn(diter.getxp(),*xi);}else{bn = t.getptr(randz[*diter]);}
       thetavec_temp = bn->getthetavec(); 
       yhat[*diter] = (*fi).row(*diter)*thetavec_temp;
@@ -2298,62 +2297,6 @@ void brt::local_savetree_vec(size_t iter, int beg, int end, std::vector<int>& nn
 //--------------------------------------------------
 // Random Path Functions -- Move Elsewhere eventually
 //--------------------------------------------------
-// predict_vec_rpath
-// ----- need path to root and loop through the root per bnv
-/*
-void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np){
-   tree::npv path; 
-   tree::tree_p p0, n0;
-   mxd logphix;
-   std::map<tree::tree_p,double> lbmap;
-   std::map<tree::tree_p,double> ubmap;
-   std::map<tree::tree_p,tree::npv> pathmap;
-   int L,U, v0, c0;
-   double lb, ub, psi0;
-
-   phix = mxd::Ones(np, bnv.size());
-   phix = (1/bnv.size())*phix; // init as a random draw, should always be changed unless node size == 1
-   logphix = mxd::Zero(np, bnv.size());
-   if(bnv.size()>1){
-      // Get the upper and lower bounds for each path
-      get_phix_bounds(bnv,lbmap,ubmap,pathmap);
-
-      for(;diter<diter.until();diter++){
-         double *xx = diter.getxp();
-         for(size_t j = 0;j<bnv.size();j++){
-            for(size_t l=0;l<(pathmap[bnv[j]].size()-1);l++){
-               n0 = pathmap[bnv[j]][l];
-               p0 = n0->p;
-               v0 = p0->v;
-               c0 = (*xi)[v0][p0->c];
-               ub = ubmap[p0];
-               lb = lbmap[p0];
-               psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
-               if((n0->nid())%2 == 0){
-                  // Left move prob
-                  logphix(*diter,j)=logphix(*diter,j)+log(1-psi0);
-               }else{
-                  // Right move prob
-                  logphix(*diter,j)=logphix(*diter,j)+log(psi0);
-               }
-               if(std::isnan(logphix(*diter,j))){
-                  cout << "logphi(x) nan ... " << endl;
-                  cout << "psi0 = " << psi0 << endl;
-                  cout << "rpi.gamma = " << rpi.gamma << endl;
-                  cout << "c0 = " << c0 << endl;
-                  cout << "v0 = " << v0 << endl;
-                  cout << "ub = " << ub << endl;
-                  cout << "lb = " << lb << endl;
-               }
-            }
-            // Convert back to phix scale
-            phix(*diter,j)=exp(logphix(*diter,j));
-         }
-      }
-   }   
-}
-*/
-
 //--------------------------------------------------
 // Get phi(x) bounds (This will be the NEW and IMPROVED version of getting the bounds)
 void brt::get_phix_bounds(std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
@@ -2773,7 +2716,6 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
       if(pathmap.find(rzptr) != pathmap.end()){
          for(size_t j=0;j<(pathmap[rzptr].size()-1);j++){
             // Get cutpoint
-            //if(randz[*diter][j].p != 0){
             n0 = pathmap[rzptr][j];
             p0 = n0->p; // randz[*diter][j].p;
             v0 = p0->v; // (randz[*diter][j].p)->v;
@@ -3297,6 +3239,64 @@ void brt::sample_tree_prior(rn& gen){
    
    //cout << "treesize = " << t.treesize() << endl;
 }
+
+
+
+// ----- need path to root and loop through the root per bnv
+/*
+void brt::get_phix_matrix(diterator &diter, mxd &phix, tree::npv bnv, size_t np){
+   tree::npv path; 
+   tree::tree_p p0, n0;
+   mxd logphix;
+   std::map<tree::tree_p,double> lbmap;
+   std::map<tree::tree_p,double> ubmap;
+   std::map<tree::tree_p,tree::npv> pathmap;
+   int L,U, v0, c0;
+   double lb, ub, psi0;
+
+   phix = mxd::Ones(np, bnv.size());
+   phix = (1/bnv.size())*phix; // init as a random draw, should always be changed unless node size == 1
+   logphix = mxd::Zero(np, bnv.size());
+   if(bnv.size()>1){
+      // Get the upper and lower bounds for each path
+      get_phix_bounds(bnv,lbmap,ubmap,pathmap);
+
+      for(;diter<diter.until();diter++){
+         double *xx = diter.getxp();
+         for(size_t j = 0;j<bnv.size();j++){
+            for(size_t l=0;l<(pathmap[bnv[j]].size()-1);l++){
+               n0 = pathmap[bnv[j]][l];
+               p0 = n0->p;
+               v0 = p0->v;
+               c0 = (*xi)[v0][p0->c];
+               ub = ubmap[p0];
+               lb = lbmap[p0];
+               psi0 = psix(rpi.gamma,xx[v0],c0,lb,ub);
+               if((n0->nid())%2 == 0){
+                  // Left move prob
+                  logphix(*diter,j)=logphix(*diter,j)+log(1-psi0);
+               }else{
+                  // Right move prob
+                  logphix(*diter,j)=logphix(*diter,j)+log(psi0);
+               }
+               if(std::isnan(logphix(*diter,j))){
+                  cout << "logphi(x) nan ... " << endl;
+                  cout << "psi0 = " << psi0 << endl;
+                  cout << "rpi.gamma = " << rpi.gamma << endl;
+                  cout << "c0 = " << c0 << endl;
+                  cout << "v0 = " << v0 << endl;
+                  cout << "ub = " << ub << endl;
+                  cout << "lb = " << lb << endl;
+               }
+            }
+            // Convert back to phix scale
+            phix(*diter,j)=exp(logphix(*diter,j));
+         }
+      }
+   }   
+}
+*/
+
 
 
 
