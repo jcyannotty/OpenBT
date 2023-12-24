@@ -265,7 +265,6 @@ public:
    void drawgamma(rn &gen);
    void drawgamma_mpi(rn &gen);
    
-   void get_phix_matrix(diterator &diter, mxd &phix,tree::npv bnv, size_t np);
    void get_phix_bounds(std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
                               std::map<tree::tree_p,int> &lbintmap, std::map<tree::tree_p,int> &ubintmap, std::map<tree::tree_p,int> &vmap);
    void get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, std::map<tree::tree_p,double> &ubmap,
@@ -278,6 +277,7 @@ public:
    void predict_thetavec_rpath(dinfo* dipred, mxd* wts);
    void setgamma(double gam){rpi.gamma = gam;} 
    void sample_tree_prior(rn& gen);
+   void setcutbnds(int v, int &Lv, int &Ub);
 
 protected:
    //--------------------

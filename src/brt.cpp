@@ -1484,7 +1484,12 @@ void brt::drawvec_mpislave(rn& gen)
       if(status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) t.birthp(nx,(size_t)v,(size_t)c,theta0,theta0); //accept birth
       if((status2.MPI_TAG==MPI_TAG_BD_BIRTH_VC_ACCEPT) & randpath){
          //cout << "ACCEPT AND UPDATE -- " << rank << endl;
+         int Uv, Lv;
+         Lv=std::numeric_limits<int>::min(); Uv=std::numeric_limits<int>::max();
          update_randz_bd(nx, true);
+         nx->rgi(nx->v,&Lv,&Uv);
+         setcutbnds(nx->v,Lv,Uv);
+         nx->setcbnds(Lv,Uv);
       }
       //else reject, for which we do nothing.
    }
@@ -1499,7 +1504,11 @@ void brt::drawvec_mpislave(rn& gen)
       getsuff(nl,nr,tsil,tsir);
       MPI_Status status2;
       MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
-      if((status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) & randpath){update_randz_bd(nl->p, false);} // random path move for death
+      // random path move for death
+      if((status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) & randpath){
+         update_randz_bd(nl->p, false);
+         (nl->p)->setcbnds(0,0);   
+      }
       if(status2.MPI_TAG==MPI_TAG_BD_DEATH_LR_ACCEPT) t.deathp(nl->getp(),theta0); //accept death
       
       //else reject, for which we do nothing.
@@ -1541,7 +1550,7 @@ void brt::drawvec_mpislave(rn& gen)
             if(!randpath){getpertsuff(pertnode,bnv,oldc,sivold,sivnew);}else{getpertsuff_rpath(pertnode,bnv,oldc,oldsumlog,newsumlog);}
             MPI_Status status2;
             MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
-            if(status2.MPI_TAG==MPI_TAG_PERTCV_ACCEPT) pertnode->setc(propc); //accept new cutpoint
+            if(status2.MPI_TAG==MPI_TAG_PERTCV_ACCEPT){pertnode->setc(propc); pertnode->rgitree(*xi);} // Update c & the bounds below
             //else reject, for which we do nothing.
          }
          else if(status.MPI_TAG==MPI_TAG_PERTCHGV)
@@ -1583,8 +1592,12 @@ void brt::drawvec_mpislave(rn& gen)
                pertnode->setv(propv);
                if(didswap){
                   pertnode->swaplr();
-                  for(size_t i=0;i<randz.size();i++){randz[i] = bnvnidmap[randz[i]]->nid();}  // Get the updated nids after swap
+                  if(randpath){
+                     for(size_t i=0;i<randz.size();i++){randz[i] = bnvnidmap[randz[i]]->nid();}  // Get the updated nids after swap
+                  }
                }
+               // Update the cutpoint bounds for this node
+               if(randpath){pertnode->rgitree(*xi);}
             }
             // else reject, for which we do nothing.
          }
@@ -1611,16 +1624,14 @@ void brt::drawvec_mpislave(rn& gen)
       std::map<tree::tree_p,double> lbmap, ubmap;
       std::map<tree::tree_p,int> Umap, Lmap, vmap;
 
-
       diterator diter(di);
       root = t.getptr(t.nid());
 
       // Get bounds
       t.getbots(rbnv);
       //t.rgimaps(Lmap,Umap,vmap);
-      //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-
-      get_phix_bounds(rbnv, lbmap, ubmap, pathmap);
+      //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap); //newer
+      //get_phix_bounds(rbnv, lbmap, ubmap, pathmap); //older
 
       // Apply subsuff to the current assignments
       subsuff(root,rbnv,sivold);
@@ -1640,33 +1651,33 @@ void brt::drawvec_mpislave(rn& gen)
          tree::tree_p n0;
          std::map<tree::tree_p,double> phixmap;
          std::map<tree::tree_p,double> logpathprob;
-         /*
+         
          logpathprob[t.getptr(t.nid())] = 0; // init at root 
-         t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma, rpi.q);
+         t.calcphix(xx,*xi,phixmap,logpathprob,rpi.gamma, rpi.q);
          
          std::map<tree::tree_p,double>::iterator pit;
          for(pit = phixmap.begin();pit != phixmap.end();pit++){
             prob += pit->second;
             if((u0<prob)){
                n0 = pit->first;
-               randz.push_back(n0); 
+               randz.push_back(n0->nid()); 
                break;  
             }
          }
-         */
          
-         get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap);
-         //if(phix.sum() != 1){cout << "sum to 1 error..." << phix.sum()<< endl;}
+         /*
+         get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap); // older
+         // if(phix.sum() != 1){cout << "sum to 1 error..." << phix.sum()<< endl;}
          for(size_t i=0;i<rbnv.size();i++){
             prob += phix(i);
             if((u0<prob)){
                randz.push_back(rbnv[i]->nid()); 
                break;  
             }
-            //if(!t.getptr(randz[i])){cout << "0 ptr for nid " << randz[i] << endl;}   
-            //if(!t.getptr(randz[i])){for(size_t i=0;i<rbnv.size();i++){cout << rbnv[i]->nid() << ",";} cout << endl;}
          }
+         */
       }
+
       // Checker
       if(randz.size() != randz_shuffle.size()){
          cout << "ERROR: randz.size() != randz_shuffle.size()..." << randz_shuffle.size() << "---" << randz.size() << endl;
@@ -1767,7 +1778,15 @@ void brt::bd_vec(rn& gen)
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
          //cout << "ACCEPT & Update" << endl;
-         if(randpath){update_randz_bd(nx, true);}
+         if(randpath){
+            int Lv,Uv; //Upper and Lower bounds for new variable
+            Lv=std::numeric_limits<int>::min(); Uv=std::numeric_limits<int>::max();
+            update_randz_bd(nx, true);     
+            // Now Update the bounds
+            nx->rgi(nx->v,&Lv,&Uv);
+            setcutbnds(nx->v,Lv,Uv); // Correct bounds that are at the numeric limits
+            nx->setcbnds(Lv,Uv);
+         }
 #ifdef _OPENMPI
 //        cout << "accept birth " << lalpha << endl;
          const int tag=MPI_TAG_BD_BIRTH_VC_ACCEPT;
@@ -1833,9 +1852,12 @@ void brt::bd_vec(rn& gen)
          thetavec = Eigen::VectorXd::Zero(k); 
          t.deathp(nx,thetavec);
          mi.daccept++;
-         if(randpath){update_randz_bd(nx, false);}
+         if(randpath){
+            update_randz_bd(nx, false);
+            // Set upper and lower bounds to 0 since nx is now terminal
+            nx->setcbnds(0,0);
+         }
 #ifdef _OPENMPI
-//        cout << "accept death " << lalpha << endl;
          const int tag=MPI_TAG_BD_DEATH_LR_ACCEPT;
          for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Isend(NULL,0,MPI_PACKED,i,tag,MPI_COMM_WORLD,&request[i-1]);
@@ -2460,10 +2482,10 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
    // Get bots and then get the path and bounds
    t.getbots(bnv);
    
+   t.rgitree(*xi);
    //t.rgimaps(Lmap,Umap,vmap);
-   //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-
-   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+   //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap); // newer
+   //get_phix_bounds(bnv, lbmap, ubmap, pathmap); // older
 
    for(;diter<diter.until();diter++) {
       thetavec_temp = vxd::Zero(k);
@@ -2473,42 +2495,26 @@ void brt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
       std::map<tree::tree_p,double> logpathprob;
       logpathprob[t.getptr(t.nid())] = 0; // init at root
 
-      /*
-      t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
+      // Newer
+      t.calcphix(xx,*xi,phixmap,logpathprob,rpi.gamma,rpi.q); 
       std::map<tree::tree_p,double>::iterator pit;
       for(pit = phixmap.begin();pit != phixmap.end();pit++){
          thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
       }
-      */
-      
-      get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
+            
+      /*
+      //get_phix(xx,phix,bnv,lbmap,ubmap,pathmap); // Older
       for(size_t i=0;i<bnv.size();i++){
          thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
       }
+      */
       
       diter.sety(fipred.row(*diter)*thetavec_temp);
    }   
 }
 
-/*
-void brt::local_predict_vec_rpath(diterator& diterphix, diterator& diter, finfo& fipred){
-   tree::npv bnv;
-   mxd phix;
-   vxd thetavec_temp(k); 
-   t.getbots(bnv);
-   get_phix_matrix(diter,phix,bnv,fipred.rows());
-   // Fix by removing diter below...
-   for(;diter<diter.until();diter++) {
-      thetavec_temp = vxd::Zero(k);
-      for(size_t i=0;i<bnv.size();i++){
-         thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(*diter,i);
-      }
-      diter.sety(fipred.row(*diter)*thetavec_temp);
-   }   
-}
-*/
 
-
+// Predict for theta
 void brt::predict_thetavec_rpath(dinfo* dipred, mxd* wts){
    diterator diter(dipred);
    //diterator diterphix(dipred);
@@ -2516,6 +2522,7 @@ void brt::predict_thetavec_rpath(dinfo* dipred, mxd* wts){
 }
 
 
+// Local predict for theta
 void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
    tree::npv bnv;
    vxd phix;
@@ -2529,10 +2536,11 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
 
    // Get bots and then get the path and bounds
    t.getbots(bnv);
+   t.rgitree(*xi);
    //t.rgimaps(Lmap,Umap,vmap);
    //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
    
-   get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+   //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
 
    // Fix by removing diter below...
    for(;diter<diter.until();diter++){
@@ -2541,41 +2549,28 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
       std::map<tree::tree_p,double> logpathprob;
       double *xx = diter.getxp(); 
       
+      /*
       phix = vxd::Ones(bnv.size())/bnv.size();
       get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
       
       for(size_t i=0;i<bnv.size();i++){
          thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(i);
       }
-      /*
+      */
+      
       logpathprob[t.getptr(t.nid())] = 0;
-      t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
+      t.calcphix(xx,*xi,phixmap,logpathprob,rpi.gamma,rpi.q); 
       std::map<tree::tree_p,double>::iterator pit;
       for(pit = phixmap.begin();pit != phixmap.end();pit++){
          n0 = pit->first;
          thetavec_temp = thetavec_temp + (n0->getthetavec())*(pit->second);   
       }
-      */
+      
+      // Set the theta vector
       wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
    }   
 }
 
-/*
-void brt::local_predict_thetavec_rpath(diterator& diterphix, diterator& diter, mxd& wts){
-   tree::npv bnv;
-   vxd thetavec_temp(k); 
-   mxd phix;
-   t.getbots(bnv);
-   get_phix_matrix(diterphix,phix,bnv,wts.cols());
-   for(;diter<diter.until();diter++) {
-      thetavec_temp = vxd::Zero(k);
-      for(size_t i=0;i<bnv.size();i++){
-         thetavec_temp = thetavec_temp + (bnv[i]->getthetavec())*phix(*diter,i);
-      }
-      wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
-   }
-}
-*/
 
 //--------------------------------------------------
 // Random Path Class Methods - Move elsewhere eventually
@@ -2660,8 +2655,58 @@ void brt::rpath_adapt(){
 }
 
 
-// Get sum log(phix) for each obs on the processor
+// NEWER: Get sum log(phix) for each obs on the processor
 // This can be used for the entire tree or a subset of the tree starting at node nx
+double brt::sumlogphix(double gam, tree::tree_p nx){
+   double sumlphix = 0;
+   double psi0 = 0;
+   int v0, U, L;
+   double lb,ub, c0;
+   tree::tree_p p0, n0;
+   diterator diter(di);
+   tree::npv bnv;
+   tree::npv path;
+   tree::tree_p rzptr;
+
+   nx->getbots(bnv);
+
+   if(bnv.size()>1){
+      for(;diter<diter.until();diter++){
+         double *xx = diter.getxp();
+         rzptr = t.getptr(randz[*diter]);
+         path.clear();
+         rzptr->getpathtoroot(path);
+         for(size_t j=0;j<(path.size()-1);j++){
+            // Get cutpoint
+            n0 = path[j];
+            p0 = n0->p; // randz[*diter][j].p;
+            v0 = p0->v; // (randz[*diter][j].p)->v;
+            c0 = (*xi)[v0][p0->c]; // (*xi)[v0][(randz[*diter][j].p)->c];
+            lb = (*xi)[v0][p0->Lv];
+            ub = (*xi)[v0][p0->Uv];
+
+            // Need to account for left vs right move here
+            psi0 = t.calcpsix(gam,xx[v0],c0,lb,ub,rpi.q);
+            if((n0->nid()%2) == 0){
+               // node derived from left move
+               sumlphix=sumlphix+log(1-psi0); 
+            }else{
+               // node derived from right move
+               sumlphix=sumlphix+log(psi0); 
+            }
+         }
+      }
+   }else{
+      // Tree is the root, all are mapped to root with probability 1
+      sumlphix = 0;
+   }
+   return(sumlphix);
+
+}
+
+// OLDER: Get sum log(phix) for each obs on the processor
+// This can be used for the entire tree or a subset of the tree starting at node nx
+/*
 double brt::sumlogphix(double gam, tree::tree_p nx){
    double sumlphix = 0;
    double psi0 = 0;
@@ -2727,7 +2772,6 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
             psi0 = psix(gam,xx[v0],c0,lb,ub);
             if((n0->nid()%2) == 0){
                // node derived from left move
-               /*
                cout << "v = " << v0 << endl;
                cout << "c = " << c0 << endl;
                cout << "ub = " << ub << endl;
@@ -2735,7 +2779,6 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
                cout << "x = " << xx[v0] << endl;
                cout << "n0->nid() = " << n0->nid() << endl;
                cout << "psi0 = " << psi0 << endl;
-               */
                sumlphix=sumlphix+log(1-psi0); 
             }else{
                // node derived from right move
@@ -2751,7 +2794,7 @@ double brt::sumlogphix(double gam, tree::tree_p nx){
    }
    return(sumlphix);
 }
-
+*/
 
 // Moved to tree.cpp
 double brt::psix(double gam, double x, double c, double L, double U){
@@ -3100,11 +3143,15 @@ void brt::sumlogphix_mpi(double &osum, double &nsum){
 
 // Change of variable and pert moves - you do not need bnv anymore
 void brt::getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog){
-   // Compute values
+   // Update the bounds for all nodes below the pert node
+   pertnode->rgitree(*xi);
    nsumlog = sumlogphix(rpi.gamma,pertnode);
+   
+   // Go back to original tree
    if(didswap) pertnode->swaplr();  //undo the swap so we can calculate the suff stats for the original variable, cutpoint.
    pertnode->setv(oldv);
    pertnode->setc(oldc);
+   pertnode->rgitree(*xi);
    osumlog = sumlogphix(rpi.gamma,pertnode);
 
    // Pass the sums across the mpi
@@ -3113,9 +3160,13 @@ void brt::getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, 
 
 
 void brt::getpertsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, double &osumlog, double &nsumlog){
-   // Compute values
+   // Update the bounds for all nodes below the pert node
+   pertnode->rgitree(*xi);
    nsumlog = sumlogphix(rpi.gamma,pertnode);
+   
+   // Go back to original tree
    pertnode->setc(oldc);
+   pertnode->rgitree(*xi);
    osumlog = sumlogphix(rpi.gamma,pertnode);
 
    // Pass the sums across the mpi
@@ -3240,6 +3291,15 @@ void brt::sample_tree_prior(rn& gen){
    //cout << "treesize = " << t.treesize() << endl;
 }
 
+
+void brt::setcutbnds(int v, int &Lv, int &Uv){
+   if(Lv==std::numeric_limits<int>::min()){ 
+         Lv = 0;   
+   }
+   if(Uv==std::numeric_limits<int>::max()) {
+         Uv = (*xi)[v].size()-1;
+   }   
+}
 
 
 // ----- need path to root and loop through the root per bnv

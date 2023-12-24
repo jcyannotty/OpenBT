@@ -304,39 +304,36 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
     tree::npv bnv;
     vxd thetavec_temp(k); 
     vxd phix;
-    //std::vector<mxd, Eigen::aligned_allocator<vxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
-    //std::map<tree::tree_p,double> lbmap;
-    //std::map<tree::tree_p,double> ubmap;
     std::map<tree::tree_p,tree::npv> pathmap;
     std::map<tree::tree_p,double> lbmap, ubmap;
     std::map<tree::tree_p,int> Umap, Lmap, vmap;
 
     // Get bots and then get the path and bounds
     for(size_t j=0;j<m;j++){
-        bnv.clear();
-        mb[j].t.getbots(bnv);
-        //mb[j].t.rgimaps(Lmap,Umap,vmap);
+        //bnv.clear();
+        //mb[j].t.getbots(bnv);
+        mb[j].t.rgitree(*xi);
         //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+        //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
     }
       
     for(;diter<diter.until();diter++){
         thetavec_temp = vxd::Zero(k);   
         double *xx = diter.getxp(); 
+
         for(size_t j=0;j<m;j++){
-            // Get bots
-            /*
             std::map<tree::tree_p,double> phixmap;
             std::map<tree::tree_p,double> logpathprob;
-            bnv.clear();
-            mb[j].t.getbots(bnv);
-            mb[j].t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
-            std::map<tree::tree_p,double>::iterator pit;
-            for(pit = phixmap.begin();pit != phixmap.end();pit++){
-                thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
+            logpathprob[mb[j].t.getptr(t.nid())] = 0; // init at root
+
+            // Newer
+            mb[j].t.calcphix(xx,*xi,phixmap,logpathprob,mb[j].get_gamma(),rpi.q); 
+            //std::map<tree::tree_p,double>::iterator pit;
+            for(auto i = phixmap.begin(); i != phixmap.end();i++){
+                thetavec_temp = thetavec_temp + ((i->first)->getthetavec())*(i->second);   
             }
-            */
-            
+
+            /*
             // Get Bots
             bnv.clear();
             mb[j].t.getbots(bnv);
@@ -347,6 +344,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
                 //if(std::isnan(tempphix)){ cout << "nan phix ..." << endl; }
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
             }
+            */
             
         }
         diter.sety(fipred.row(*diter)*thetavec_temp);
@@ -359,9 +357,6 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
     tree::npv bnv;
     vxd thetavec_temp(k); 
     vxd phix;
-    //std::vector<mxd, Eigen::aligned_allocator<mxd>> phixlist(m); //An std vector of dim k -- each element is an nd X np eigen matrix
-    //std::map<tree::tree_p,double> lbmap;
-    //std::map<tree::tree_p,double> ubmap;
     std::map<tree::tree_p,tree::npv> pathmap;
     std::map<tree::tree_p,double> lbmap, ubmap;
     std::map<tree::tree_p,int> Umap, Lmap, vmap;
@@ -369,31 +364,29 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
 
     // Get bots and then get the path and bounds
     for(size_t j=0;j<m;j++){
-        bnv.clear();
-        mb[j].t.getbots(bnv);
-        //mb[j].t.rgimaps(Lmap,Umap,vmap);
+        mb[j].t.rgitree(*xi);
+        //bnv.clear();
+        //mb[j].t.getbots(bnv);
         //get_phix_bounds(lbmap, ubmap, Lmap, Umap, vmap);
-        get_phix_bounds(bnv, lbmap, ubmap, pathmap);
+        //get_phix_bounds(bnv, lbmap, ubmap, pathmap);
     }
       
     for(;diter<diter.until();diter++){
         thetavec_temp = vxd::Zero(k);   
         double *xx = diter.getxp(); 
-        /*
         for(size_t j=0;j<m;j++){
-            // Get bots
             std::map<tree::tree_p,double> phixmap;
             std::map<tree::tree_p,double> logpathprob;
-            bnv.clear();
-            mb[j].t.getbots(bnv);
-            mb[j].t.calcphix(xx,*xi,phixmap,logpathprob,lbmap,ubmap,rpi.gamma,rpi.q); 
-            std::map<tree::tree_p,double>::iterator pit;
-            for(pit = phixmap.begin();pit != phixmap.end();pit++){
-                thetavec_temp = thetavec_temp + ((pit->first)->getthetavec())*(pit->second);   
+            logpathprob[mb[j].t.getptr(t.nid())] = 0; // init at root
+
+            // Newer
+            mb[j].t.calcphix(xx,*xi,phixmap,logpathprob,mb[j].get_gamma(),rpi.q); 
+            for(auto i = phixmap.begin(); i != phixmap.end();i++){
+                thetavec_temp = thetavec_temp + ((i->first)->getthetavec())*(i->second);   
             }
+
         }
-        */
-        
+        /*
         for(size_t j=0;j<m;j++){
             // Get bots
             bnv.clear();
@@ -406,7 +399,7 @@ void amxbrt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
                 thetavec_temp = thetavec_temp + (bnv[l]->getthetavec())*phix(l);
             }
         }
-        
+        */
         wts.col(*diter) = thetavec_temp;
     }
 }

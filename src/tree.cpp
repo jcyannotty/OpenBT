@@ -481,7 +481,7 @@ void tree::rgi(size_t v, int* L, int* U)
 }
 //--------------------
 // Applies rgi at each internal node and stores results in a map with nid as the key
-void tree::rgimaps(std::map<tree_p,int> &lbmap, std::map<tree_p,int> &ubmap, std::map<tree_p,int> &vmap){
+void tree::rgitree(xinfo& xi){
    int L0, U0; 
    size_t v0, vr;
    L0=std::numeric_limits<int>::min(); U0=std::numeric_limits<int>::max();
@@ -494,19 +494,17 @@ void tree::rgimaps(std::map<tree_p,int> &lbmap, std::map<tree_p,int> &ubmap, std
    // Internal node
    v0 = this->v;
    this->rgi(v0,&L0,&U0);
-   vmap[this] = v0;
-   lbmap[this] = L0;
-   ubmap[this] = U0;
+   if(L0<0){L0 = 0;}
+   if(U0>xi[v0].size()){U0 = xi[v0].size()-1;}
+   this->setcbnds(L0,U0);
 
    // Apply to children nodes
-   (this->l)->rgimaps(lbmap, ubmap, vmap);
-   (this->r)->rgimaps(lbmap, ubmap, vmap);
+   (this->l)->rgitree(xi);
+   (this->r)->rgitree(xi);
 }
 
 //--------------------
-void tree::calcphix(double *xx, xinfo& xi , std::map<tree_p,double> &phixmap, std::map<tree_p,double> &logpathprob, 
-                     std::map<tree_p,double> &lbmap, std::map<tree_p,double> &ubmap, 
-                     double gamma, double q){
+void tree::calcphix(double *xx, xinfo& xi , std::map<tree_p,double> &phixmap, std::map<tree_p,double> &logpathprob,double gamma, double q){
    double psi0;
    double logphix;
    double c0, ub, lb;
@@ -518,26 +516,27 @@ void tree::calcphix(double *xx, xinfo& xi , std::map<tree_p,double> &phixmap, st
       logpathprob[this] = 0;
       return;
    }else if((this->l) == 0){
-      // Tree with some depth, this is a terminal node that isn't the root
+      // Tree with some depth - this is a terminal node that isn't the root
       phixmap[this] = exp(logpathprob[this]);
       return;
    }else{   
       // Internal node - Compute psi0 
       c0 = xi[this->v][this->c];
-      lb = lbmap[this];
-      ub = ubmap[this];
+      lb = xi[this->v][this->Lv];
+      ub = xi[this->v][this->Uv];
+
       psi0 = calcpsix(gamma,xx[this->v],c0,lb,ub,q);
 
       logpathprob[(this->l)] = log(1 - psi0) + logpathprob[this];
-      logpathprob[(this->r)] = log(psi0) + logpathprob[this];;        
+      logpathprob[(this->r)] = log(psi0) + logpathprob[this];        
 
       // Internal node, so apply this to the left and right nodes if we can get to them with non-zero prob
       if(psi0 > 0){
-         (this->r)->calcphix(xx,xi,phixmap,logpathprob,lbmap,ubmap,gamma,q); 
+         (this->r)->calcphix(xx,xi,phixmap,logpathprob,gamma,q); 
       }
 
       if((1-psi0)>0){
-         (this->l)->calcphix(xx,xi,phixmap,logpathprob,lbmap,ubmap,gamma,q);
+         (this->l)->calcphix(xx,xi,phixmap,logpathprob,gamma,q);
       } 
    }
 }

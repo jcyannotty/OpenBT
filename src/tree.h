@@ -91,6 +91,7 @@ public:
    void setthetahypervec(std::vector<double> thetahyper0) {this->thetahyper.resize(thetahyper0.size());this->thetahyper = thetahyper0;} // random hyperparameters
    void setv(size_t v) {this->v = v;}
    void setc(size_t c) {this->c = c;}
+   void setcbnds(size_t Lv, size_t Uv){this->Lv = Lv; this->Uv = Uv;}
    //get
    double gettheta() const {return theta;}
    std::vector<double> getthetahyper() const {return thetahyper;}
@@ -127,10 +128,9 @@ public:
    void ru(size_t v, int *U);      // find upper region
    void rg(size_t v, int* L, int* U); //recursively find region [L,U] for var v
    void rgi(size_t v, int* L, int* U);  //recursively rind the inteval [L,U] for var v, used in Sobol indices calculations.
-   void rgimaps(std::map<tree_p,int> &lbmap, std::map<tree_p,int> &ubmap, std::map<tree_p,int> &vmap); // Apply rgi to all internal nodes an store into maps 
-   void calcphix(double *xx, xinfo& xi, std::map<tree_p,double> &phixmap,std::map<tree_p,double> &logpathprob, 
-               std::map<tree_p,double> &lbmap, std::map<tree_p,double> &ubmap,double gamma, double q);
-   double calcpsix(double gam, double x, double c, double L, double U, double q);
+   void rgitree(xinfo& xi); // Apply rgi to all internal nodes an store into maps 
+   void calcphix(double *xx, xinfo& xi, std::map<tree_p,double> &phixmap,std::map<tree_p,double> &logpathprob, double gamma, double q); // For all nodes with positive prob
+   double calcpsix(double gam, double x, double c, double L, double U, double q); // For a specific internal node
    //node functions--------------------
    size_t nid() const; //nid of a node
    size_t depth();  //depth of a node
@@ -145,6 +145,8 @@ public:
 
    size_t v;
    size_t c;
+   size_t Lv;
+   size_t Uv;
    //tree structure
    tree_p p; //parent
    tree_p l; //left child

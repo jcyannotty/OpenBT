@@ -193,6 +193,9 @@ void brt::pertcv(rn& gen)
          if(didswap) pertnode->swaplr();  //because the call to getchgvsuff unswaped if they were swapped
          pertnode->setv(newv); //because the call to getchgvsuff changes it back to oldv to calc the old lil
          pertnode->setc(newc); //because the call to getchgvsuff changes it back to oldc to calc the old lil
+
+         // Update Lv and Uv for random path
+         if(randpath){pertnode->rgitree(*xi);}
 #ifdef _OPENMPI
          for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Isend(NULL,0,MPI_PACKED,i,MPI_TAG_PERTCHGV_ACCEPT,MPI_COMM_WORLD,&request[i-1]);
@@ -288,6 +291,7 @@ void brt::pertcv(rn& gen)
       if(gen.uniform()<alpha) {
          mi.pertaccept++;
          pertnode->setc(propc); //because the call to getpertsuff changes it back to oldc to calc the old lil.
+         if(randpath){pertnode->rgitree(*xi);} // Update Lv and Uv for random path
 #ifdef _OPENMPI
          for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Isend(NULL,0,MPI_PACKED,i,MPI_TAG_PERTCV_ACCEPT,MPI_COMM_WORLD,&request[i-1]);
