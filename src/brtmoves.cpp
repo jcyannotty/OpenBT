@@ -68,11 +68,22 @@ void brt::pertcv(rn& gen)
 
    // Get interior nodes and propose new split value
    tree::npv intnodes;
+   std::map<size_t,size_t> bnvnidmap; // used for rpath
+   tree::npv bnvr; // current bottom node vector for rpath
+
    t.getintnodes(intnodes);
    for(size_t pertdx=0;pertdx<intnodes.size();pertdx++)
    if(gen.uniform()<mi.pchgv) {
       mi.chgvproposal++;
       pertnode = intnodes[pertdx];
+
+      // If using random path model, store the node ids of current bots
+      if(randpath){
+         t.getbots(bnvr);
+         for(size_t i=0;i<bnvr.size();i++){
+            bnvnidmap[bnvr[i]->nid()] = i;
+         }
+      }
 
       //get L,U for the old variable and save it as well as oldc
       int Lo,Uo;
@@ -177,7 +188,7 @@ void brt::pertcv(rn& gen)
          }
       }else{
          // No need to use suff stats because the z(x)'s are fixed -- so changing v has no effect on the residuals!
-         getchgvsuff_rpath(pertnode,bnv,oldc,oldv,didswap,lmold,lmnew);
+         getchgvsuff_rpath(pertnode,bnvr,bnvnidmap,oldc,oldv,didswap,lmold,lmnew);
       }
       double alpha1 = ((double)(Uo-Lo+1.0))/((double)(Un-Ln+1.0)); //from prior for cutpoints
       double alpha2=alpha0*alpha1*exp(lmnew-lmold);
@@ -194,8 +205,15 @@ void brt::pertcv(rn& gen)
          pertnode->setv(newv); //because the call to getchgvsuff changes it back to oldv to calc the old lil
          pertnode->setc(newc); //because the call to getchgvsuff changes it back to oldc to calc the old lil
 
-         // Update Lv and Uv for random path
-         if(randpath){pertnode->rgitree(*xi);}
+         // Update Lv and Uv for random path & rand path nids if doing a swap
+         if(randpath){
+            pertnode->rgitree(*xi);
+            if(didswap){
+               if(randpath){
+                  for(size_t i=0;i<randz.size();i++){randz[i] = bnvr[bnvnidmap[randz[i]]]->nid();}  // Get the updated nids after swap
+               }
+            }
+         }
 #ifdef _OPENMPI
          for(size_t i=1; i<=(size_t)tc; i++) {
             MPI_Isend(NULL,0,MPI_PACKED,i,MPI_TAG_PERTCHGV_ACCEPT,MPI_COMM_WORLD,&request[i-1]);

@@ -429,7 +429,8 @@ protected:
 
    // Peturb and change of variables
    void sumlogphix_mpi(double &osum, double &nsum);
-   void getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog);
+   void getchgvsuff_rpath(tree::tree_p pertnode,tree::npv& bnv, std::map<size_t,size_t> bnvnidmap, 
+                           size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog);
    void getpertsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, double &osumlog, double &nsumlog);
    //void update_pertswap(tree::tree_p); // update the random path assignment nids when doing a swap 
 

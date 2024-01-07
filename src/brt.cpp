@@ -1561,10 +1561,12 @@ void brt::drawvec_mpislave(rn& gen)
             unsigned int propcint;
             unsigned int propvint;
             
-            std::map<size_t,tree::tree_p> bnvnidmap; // Used for rpath when performing swap, it keeps track of the old to new ids
-            tree::npv bnvc; //current bnv
-            t.getbots(bnvc);
-            for(size_t i=0;i<bnvc.size();i++){bnvnidmap[bnvc[i]->nid()] = bnvc[i] ;}
+            std::map<size_t, size_t> bnvnidmap; // Used for rpath when performing swap, it keeps track of the old to new ids
+            tree::npv bnvr; // bnv for random path
+            if(randpath){
+               t.getbots(bnvr);
+               for(size_t i=0;i<bnvr.size();i++){bnvnidmap[bnvr[i]->nid()] = i;}
+            }
 
             position=0;
             mpi_update_norm_cormat(rank,tc,pertnode,*xi,(*mi.corv)[oldv],chv_lwr,chv_upr);
@@ -1583,7 +1585,7 @@ void brt::drawvec_mpislave(rn& gen)
             if(!randpath){
                getchgvsuff(pertnode,bnv,oldc,oldv,didswap,sivold,sivnew);
             }else{
-               getchgvsuff_rpath(pertnode,bnv,oldc,oldv,didswap,oldsumlog,newsumlog);
+               getchgvsuff_rpath(pertnode,bnvr,bnvnidmap,oldc,oldv,didswap,oldsumlog,newsumlog);
             }
             MPI_Status status2;
             MPI_Recv(buffer,0,MPI_PACKED,0,MPI_ANY_TAG,MPI_COMM_WORLD,&status2);
@@ -1593,7 +1595,7 @@ void brt::drawvec_mpislave(rn& gen)
                if(didswap){
                   pertnode->swaplr();
                   if(randpath){
-                     for(size_t i=0;i<randz.size();i++){randz[i] = bnvnidmap[randz[i]]->nid();}  // Get the updated nids after swap
+                     for(size_t i=0;i<randz.size();i++){randz[i] = bnvr[bnvnidmap[randz[i]]]->nid();}  // Get the updated nids after swap
                   }
                }
                // Update the cutpoint bounds for this node
@@ -1664,18 +1666,6 @@ void brt::drawvec_mpislave(rn& gen)
                break;  
             }
          }
-         
-         /*
-         get_phix(xx,phix,rbnv,lbmap,ubmap,pathmap); // older
-         // if(phix.sum() != 1){cout << "sum to 1 error..." << phix.sum()<< endl;}
-         for(size_t i=0;i<rbnv.size();i++){
-            prob += phix(i);
-            if((u0<prob)){
-               randz.push_back(rbnv[i]->nid()); 
-               break;  
-            }
-         }
-         */
       }
 
       // Checker
@@ -1699,6 +1689,11 @@ void brt::drawvec_mpislave(rn& gen)
          randz_shuffle.clear();
          //cout << "SHUFFLE ACCEPT" << endl;
       }
+
+      for(bvsz j=0;j<sivold.size();j++) delete sivold[j];
+      for(bvsz j=0;j<sivnew.size();j++) delete sivnew[j];
+      delete &sivold;
+      delete &sivnew;
 
    }
    // Gibbs Step
@@ -3142,13 +3137,21 @@ void brt::sumlogphix_mpi(double &osum, double &nsum){
 
 
 // Change of variable and pert moves - you do not need bnv anymore
-void brt::getchgvsuff_rpath(tree::tree_p pertnode, tree::npv& bnv, size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog){
+void brt::getchgvsuff_rpath(tree::tree_p pertnode, tree::npv &bnv, std::map<size_t,size_t> bnvnidmap, 
+                           size_t oldc, size_t oldv, bool didswap, double &osumlog, double &nsumlog){
    // Update the bounds for all nodes below the pert node
+   std::vector<size_t> randz_temp;
+   if(didswap){
+      for(size_t i=0;i<randz.size();i++){randz_temp.push_back(randz[i]); randz[i] = bnv[bnvnidmap[randz[i]]]->nid();}  // Get the updated nids after swap
+   }  
    pertnode->rgitree(*xi);
    nsumlog = sumlogphix(rpi.gamma,pertnode);
    
    // Go back to original tree
-   if(didswap) pertnode->swaplr();  //undo the swap so we can calculate the suff stats for the original variable, cutpoint.
+   if(didswap){
+      pertnode->swaplr();  //undo the swap so we can calculate the suff stats for the original variable, cutpoint.
+      for(size_t i=0;i<randz.size();i++){randz[i] = randz_temp[i];}  // Get the updated nids after swap
+   } 
    pertnode->setv(oldv);
    pertnode->setc(oldc);
    pertnode->rgitree(*xi);
