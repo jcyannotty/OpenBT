@@ -761,7 +761,10 @@ gammapost.openbtmixing = function(fit){
 
 
 # Variogram for random path mixing
-variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,maxd=999,ncut=100,modelname="model"){
+variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,maxd=999,ncut=100,
+                                  beta = 1, sigma2 = 0, 
+                                  xgrid = NULL, rgrid = NULL, fmean = NULL, rscale = NULL, 
+                                  type = "w" ,modelname="model"){
   # Data and null values
   if(is.null(gam)){
     const_gamma = FALSE
@@ -773,8 +776,20 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   if(!is.matrix(xbnds)){xbnds = matrix(xbnds, ncol = 2)}
   p = nrow(xbnds)
   
-  if(ncol(xbnds)!=2){stop("Error: dimension of xbnds must be px2.")}
+  if(ncol(xbnds)!=2){stop("Error: dimension of xbnds must be p x 2.")}
 
+  # Check for type of vg
+  if(!(type %in% c("w","y"))){stop("Error: select type w for wts varigoram or y for data variogram")}
+  
+  if(type == "y" & is.null(xgrid)){stop("Specify the sampled x values in xgrid.")}
+  if(type == "y" & is.null(rgrid)){stop("Specify the covariance vector at each x in rgrid.")}
+  if(type == "y" & is.null(fmean)){stop("Specify the function mean in fmean.")}
+  if(type == "y" & is.null(rscale)){stop("Specify the covariance function scale in rscale.")}
+  if(type == "y" & sigma2 == 0){warning("Sigma = 0, variogram returned for the mixed prediction and not Y(x).")}
+
+  if(type == "w" & is.null(rscale)){rscale = 0}
+  if(type == "w" & is.null(fmean)){fmean = 0}
+  
   # Compute priors
   tau2 = (1/(2*k*sqrt(m)))^2
   
@@ -793,9 +808,11 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   
   #--------------------------------------------------
   # #write out config file
-  xroot="xvg"
+  xbroot="xvg"
   hroot="hvg"
   xiroot="xi"
+  rroot="ri"
+  xroot="x"
   folder=tempdir(check=TRUE)
   if(!dir.exists(folder)) dir.create(folder)
   tmpsubfolder=tempfile(tmpdir="")
@@ -806,15 +823,21 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   fout=file(paste(folder,"/config.variogram",sep=""),"w")
   writeLines(c(modelname,paste(nd),paste(m),paste(p),paste(tau2),
                paste(base),paste(power),paste(maxd),paste(a1),paste(a2),paste(q),
-               paste(gam),const_gamma,xiroot,xroot,hroot
+               paste(gam),const_gamma,paste(fmean),paste(rscale),paste(beta),paste(sigma2),type,
+               xiroot,xbroot,hroot,xroot,rroot
             ),fout)
   close(fout)
   
   #--------------------------------------------------
   # Write data
-  write(t(xbnds),file=paste(folder,"/",xroot,sep=""))
+  write(t(xbnds),file=paste(folder,"/",xbroot,sep=""))
   write(hgrid,file=paste(folder,"/",hroot,sep=""))
   for(i in 1:p) write(xi[[i]],file=paste(folder,"/",xiroot,i,sep=""))
+  
+  if(type == "y"){
+    write(t(xgrid),file=paste(folder,"/",xroot,sep=""))
+    write(rgrid,file=paste(folder,"/",rroot,sep=""))
+  }
   
   #--------------------------------------------------
   #run variogram program  -- it's not actually parallel so no call to mpirun.

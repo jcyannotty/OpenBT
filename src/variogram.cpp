@@ -87,7 +87,9 @@ int main(int argc, char* argv[])
     double q;
     double gamma0; // fixed value of gamma, used if const_gamma = True
     bool const_gamma = false;
-    std::string const_gamma_str;
+    double fmean, rscale;
+    double beta, sig2;
+    std::string const_gamma_str, type;
     size_t maxd;
 
     conf >> tau2;
@@ -99,16 +101,24 @@ int main(int argc, char* argv[])
     conf >> q;
     conf >> gamma0;
     conf >> const_gamma_str;
+    conf >> fmean;
+    conf >> rscale;
+    conf >> beta;
+    conf >> sig2;
+    conf >> type;
     if(const_gamma_str == "TRUE" || const_gamma_str == "True"){const_gamma_str = true;}
 
     // xcut point and xgrid info
     std::string xicore;
-    std::string xcore;
+    std::string xbcore;
     std::string hcore;
+    std::string xcore;
+    std::string rcore;
     conf >> xicore;
-    conf >> xcore;
+    conf >> xbcore;
     conf >> hcore;
-
+    conf >> xcore;
+    conf >> rcore;
     conf.close();
 
     // Read in x bounds
@@ -118,13 +128,12 @@ int main(int argc, char* argv[])
     std::string xfs;
     //size_t n;
     
-    xfss << folder << xcore;
+    xfss << folder << xbcore;
     xfs=xfss.str();
     std::ifstream xf(xfs);
     while(xf >> xtemp)
         xbnd.push_back(xtemp);
-    //n = x.size()/p;
-
+    
     // Read in cuts and make xinfo
     xinfo xi;
     xi.resize(p);
@@ -158,6 +167,33 @@ int main(int argc, char* argv[])
         h.push_back(htemp);
     }
     nh = h.size();
+
+    // If this a vg for the random process y, read in the x and y values  
+    std::vector<double> xlist, xhlist, rlist;
+    if(type == "y"){
+        double xtemp, xhtemp, rtemp;
+        std::stringstream xfss, xhfss, rfss;
+        std::string xfs, xhfs, rfs;
+        size_t n, nh;
+
+        // x draws
+        xfss << folder << xcore;
+        xfs=xfss.str();
+        std::ifstream xf(xfs);
+        while(xf >> xtemp){
+            xlist.push_back(xtemp);
+        }
+        n = xlist.size()/p;
+
+        // R(h) values
+        rfss << folder << rcore;
+        rfs=rfss.str();
+        std::ifstream rf(rfs);
+        while(rf >> rtemp){
+            rlist.push_back(rtemp);
+        }
+    }
+
 
     // Random Number Generator
     crn gen, gen_gam1, gen_gam2;
@@ -217,9 +253,16 @@ int main(int argc, char* argv[])
 
         // Sample x and set digrid
         x.clear();
-        for(size_t k=0;k<p;k++){
-            xtemp = xbnd[2*k] + gen.uniform()*(xbnd[2*k+1]-xbnd[2*k]);
-            x.push_back(xtemp);
+        if(type == "w"){
+            for(size_t k=0;k<p;k++){
+                xtemp = xbnd[2*k] + gen.uniform()*(xbnd[2*k+1]-xbnd[2*k]);
+                x.push_back(xtemp);
+            }
+        }else{
+            for(size_t k=0;k<p;k++){
+                xtemp = xlist[i*p + k];
+                x.push_back(xtemp);
+            }
         }
         digrid.x = &x[0]; digrid.n = 1; digrid.p = p; digrid.tc = 1; digrid.y = NULL;
 
@@ -237,6 +280,7 @@ int main(int argc, char* argv[])
             // Set the h diter
             xh.clear();
             for(size_t l=0;l<x.size();l++){
+                //xh.push_back(x[l]+h[k]/p);
                 xh.push_back(x[l]+h[k]/pow(p,0.5));
             }
 
@@ -259,7 +303,11 @@ int main(int argc, char* argv[])
 
             // Compute variogram and store for this h
             //vg[i][k] = 2*tau2*m*(1 - phibar.sum()); // average over the x's for numeric integral
-            vg[i][k] = 2*tau2*m*(1 - phibar(0)); // n = 1 now
+            if(type == "w"){
+                vg[i][k] = 2*tau2*m*(1 - phibar(0)); // n = 1 now
+            }else{
+                vg[i][k] = 2*(sig2 + (tau2*m + m*beta*beta)*(rscale - rlist[k]) + (fmean*fmean + rlist[k])*tau2*m*(1 - phibar(0)));
+            }
         }
     }
 
