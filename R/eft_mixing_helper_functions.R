@@ -62,7 +62,7 @@ plot_fit_gg2 = function(data,fitp, title = 'Non-Informative',y_lim = c(1,3),colo
           panel.border = element_blank(),plot.title = element_text(hjust = 0.5),
           legend.position = "bottom", legend.text = element_text(size = 10)) +
     labs(x = "X", y = "F(x)", title = title) +
-    geom_point(data = data.frame(data$x_train,data$y_train),aes(data$x_train,data$y_train), size= 1.0) + 
+    geom_point(data = data.frame(data$x_train,data$y_train),aes(data$x_train,data$y_train), size= 1.2) + 
     coord_cartesian(ylim = y_lim) +
     guides(size = 'none')
   
