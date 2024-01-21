@@ -65,6 +65,17 @@ src/autom4te.cache/*
 autom4te.cache/*
 temp
 __pycache__
+dist
+build
+openbt.egg-info
+*openbtpy/lib/*
+*openbtpy/.libs/*
+*openbtpy/lib/
+*openbtpy/bin/*
+*openbtpy/bin/
+
+# wheels
+*.whl
 
 # Other files
 config.guess
