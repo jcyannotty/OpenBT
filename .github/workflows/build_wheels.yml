@@ -36,6 +36,7 @@ jobs:
           wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
+        shell: bash
 
       - name: Build wheels
         run: |
