@@ -35,7 +35,7 @@ jobs:
 
       - name: Build wheels
         run: |
-          python setup.py sdist bdist_wheel
+          pip wheel .
           cibuildwheel --output-dir wheelhouse
 
       - name: Upload wheels

@@ -36,9 +36,15 @@ for f in src_files:
 # Clone Eigen repository
 eigen_repo_url = "https://gitlab.com/libeigen/eigen.git"
 eigen_clone_path = "src/Eigen"
+eigen_branch = "3.4.0"
 
-subprocess.run(["git", "clone", "--depth=1", eigen_repo_url, eigen_clone_path])
-subprocess.run(["cd", "src/Eigen && git checkout 3.4.0"])
+subprocess.run(["git", "clone", "--depth=1","-b", eigen_branch, eigen_repo_url, eigen_clone_path])
+
+#os.chdir("src/Eigen")
+#subprocess.run(["cd", "src/Eigen", "&& git checkout 3.4.0"])
+#os.chdir("..")
+
+os.chdir("src")
 
 # Run the makefile
 subprocess.run(["make",cwd])
