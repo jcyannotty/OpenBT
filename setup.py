@@ -19,6 +19,8 @@ for f in src_files:
             cppfiles.append("src/"+f)
 
 
+print(len(cppfiles))
+
 # Copy object files to openbtpt/bin
 exec_list = []            
 for f in src_files:
@@ -47,6 +49,10 @@ subprocess.run(["git", "clone", "--depth=1","-b", eigen_branch, eigen_repo_url, 
 os.chdir("src")
 
 # Run the makefile
+subprocess.run(["aclocal",cwd])
+subprocess.run(["automake --add-missing",cwd])
+subprocess.run(["autoconf",cwd])
+subprocess.run(["./configure --with-mpi --with-silent",cwd])
 subprocess.run(["make",cwd])
 
 # Create extensions from list
