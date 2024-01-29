@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 from setuptools import setup, Extension
-from Cython.Build import cythonize
+#from Cython.Build import cythonize
 
 # Get a list of all files in src
 cwd = os.getcwd()
