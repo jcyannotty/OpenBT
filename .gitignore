@@ -58,6 +58,9 @@ src/autom4te.cache/*
 autom4te.cache/*
 temp
 
+openbtpy/.libs/*
+*.whl
+
 # Other files
 config.guess
 config.log

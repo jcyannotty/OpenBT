@@ -79,18 +79,22 @@ int main(int argc, char* argv[])
 
     //number of predictors and number of models
     size_t p, k;
+    double temperature;
     conf >> p;
     conf >> k;
+    conf >> temperature;
 
     // Type of prediction to run
-    std::string domdrawsstr,dosdrawsstr,dopdrawsstr; 
-    bool domdraws, dosdraws, dopdraws; 
+    std::string domdrawsstr,dosdrawsstr,dopdrawsstr,dosoftmaxstr; 
+    bool domdraws, dosdraws, dopdraws, dosoftmax; 
     conf >> domdrawsstr;
     conf >> dosdrawsstr;
     conf >> dopdrawsstr;
+    conf >> dosoftmaxstr;
     if(domdrawsstr == "True" || domdrawsstr == "TRUE"){domdraws = true;}else{domdraws = false;}
     if(dosdrawsstr == "True" || dosdrawsstr == "TRUE"){dosdraws = true;}else{dosdraws = false;}
     if(dopdrawsstr == "True" || dopdrawsstr == "TRUE"){dopdraws = true;}else{dopdraws = false;}
+    if(dosoftmaxstr == "True" || dosoftmaxstr == "TRUE"){dosoftmax = true;}else{dosoftmax = false;}
 
     // Batch size
     size_t batchsize;
@@ -431,7 +435,12 @@ int main(int argc, char* argv[])
                         std::vector<double> w;
                         std::vector<double> wstar;
                         for(size_t l=0;l<k;l++){w.push_back(wts_iter(l,j));}
-                        axb.project_thetavec(w, wstar);
+                        if(dosoftmax){
+                            axb.project_softmax_thetavec(w, wstar, temperature);
+                        }else{
+                            axb.project_thetavec(w, wstar);
+                        }
+                        
 
                         // Store wts and calculate prediction
                         tedrawp[i+b*batchsize][j] = 0;

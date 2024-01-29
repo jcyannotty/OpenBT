@@ -2100,6 +2100,24 @@ void brt::project_thetavec(std::vector<double>& v, std::vector<double>& vstar){
 
 }
 
+//--------------------------------------------------
+// Project thetavec onto the simplex
+void brt::project_softmax_thetavec(std::vector<double>& v, std::vector<double>& vstar, double tmp){
+   std::vector<double>::iterator maxtheta;
+   double denom = 0.0;
+   
+   // Get the max theta
+   maxtheta = std::max_element(v.begin(), v.end());
+   
+   // Project and get denom
+   for (size_t i=0;i<k;i++) {
+      vstar.push_back(exp((v[i]-*maxtheta)/tmp));
+      denom = denom + vstar[i];
+   }
+   for (size_t i=0;i<k;i++) {vstar[i] = vstar[i]/denom;}
+
+}
+
 
 //--------------------------------------------------
 //Get modeling mixing weights per tree

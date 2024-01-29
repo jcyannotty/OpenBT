@@ -168,8 +168,8 @@ void amxbrt::project_thetavec(std::vector<double> &v, std::vector<double>& vstar
     // Get projection and rescale by 1/m
     brt::project_thetavec(v,vstar);
     //for(size_t i=0;i<k;i++){vstar[i] = vstar[i]/m;}
-    for(size_t i=0;i<k;i++){vstar[i] = vstar[i];}
 }
+
 
 //--------------------------------------------------
 //extract terminal node parameters for a specific point -- remove

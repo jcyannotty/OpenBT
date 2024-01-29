@@ -135,6 +135,14 @@ train.openbtmixing = function(
     base=base[1]
   }
   
+  # BART Addition
+  if(ncol(f.train) == 1){
+    tau = (max(y.train) - min(y.train))/(2*sqrt(m)*k)
+    beta0 = 0
+    overallsd = sqrt((overallsd^2)*overallnu/(overallnu+2))
+    overalllambda = overallsd^2
+  }
+
   #--------------------------------------------------
   # Proposal Distributions
   pbdh=pbd
@@ -281,6 +289,8 @@ predict.openbtmixing = function(
   x.test=NULL,
   f.test=matrix(1,nrow = 1, ncol = 2),
   ptype = "all",
+  proj_type = "softmax",
+  temperature = 0.5,
   tc=2,
   q.lower=0.025,
   q.upper=0.975)
@@ -290,7 +300,7 @@ predict.openbtmixing = function(
   if(is.null(fit)) stop("No fitted model specified!\n")
   if(is.null(x.test)) stop("No prediction points specified!\n")
   if(ptype == "all"){
-    domdraws = TRUE;dosdraws = TRUE;dopdraws = TRUE 
+    domdraws = TRUE;dosdraws = TRUE;dopdraws = TRUE
   }else if(ptype == "mean"){
     domdraws = TRUE;dosdraws = FALSE;dopdraws = FALSE
   }else if(ptype == "sigma"){
@@ -312,7 +322,9 @@ predict.openbtmixing = function(
     cat("ptype='sigma'\n")
     stop("missing model type.\n")      
   }
-    
+
+  if(proj_type == "softmax"){dosoftmax = TRUE}else{dosoftmax = FALSE}
+
   nslv=tc
   x.test=as.matrix(x.test)
   p=ncol(x.test)
@@ -335,8 +347,8 @@ predict.openbtmixing = function(
   fout=file(paste(fit$folder,"/config.pred",sep=""),"w")
   writeLines(c(fit$modelname,fit$modeltype,fit$xiroot,xproot,fproot,
                paste(fit$nd),paste(fit$m),
-               paste(fit$mh),paste(p),paste(k),
-               paste(domdraws),paste(dosdraws),paste(dopdraws),
+               paste(fit$mh),paste(p),paste(k),paste(temperature),
+               paste(domdraws),paste(dosdraws),paste(dopdraws),paste(dosoftmax),
                paste(fit$batchsize),paste(numbatches),paste(tc),
                paste(rpath), gammaroot), fout)
   close(fout)
