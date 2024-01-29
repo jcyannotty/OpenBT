@@ -32,6 +32,14 @@ for f in src_files:
             #exec_list.append(cwd + "/" + f)
             exec_list.append(f)         
 
+
+# Clone Eigen repository
+eigen_repo_url = "https://gitlab.com/libeigen/eigen.git"
+eigen_clone_path = "src/Eigen"
+
+subprocess.run(["git", "clone", "--depth=1", eigen_repo_url, eigen_clone_path])
+subprocess.run(["cd", "src/Eigen && git checkout 3.4.0"])
+
 # Run the makefile
 subprocess.run(["make",cwd])
 

@@ -43,6 +43,7 @@
 
 # Text files
 *.txt
+!requirements.txt
 !Examples/Data/2d_x_test.txt
 !Examples/Data/2d_x_train.txt
 !Examples/Data/2d_y_train.txt
