@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "Current directory: $(pwd)"
           cd src
-          ls -la
+          ls
           cat configure.ac
           autoconf --version
           aclocal --version
