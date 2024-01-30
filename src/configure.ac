@@ -1,6 +1,6 @@
 AC_PREREQ([2.69])
-
-AC_INIT(openbt, m4_esyscmd([git describe --tags | tr -d '\n']), mpratola@gmail.com, openbt)
+dnl AC_INIT(openbt, m4_esyscmd([git describe --tags | tr -d '\n']), mpratola@gmail.com, openbt)
+AC_INIT([openbt], [m4_esyscmd([git describe --tags | tr -d '\n'])], [mpratola@gmail.com])
 AC_CONFIG_MACRO_DIRS([m4])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([tree.h])
