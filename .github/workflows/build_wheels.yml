@@ -40,7 +40,9 @@ jobs:
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
           cd src
+          ls
           aclocal
+          libtoolize
           automake --add-missing
           autoconf
           ./configure --with-mpi --with-silent
