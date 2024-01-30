@@ -32,11 +32,11 @@ jobs:
           python -m pip install -U pip
           pip install cibuildwheel
           pip install -r requirements.txt
-          ls
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
             wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
           else
             curl -O https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
+          fi
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
           cd src
