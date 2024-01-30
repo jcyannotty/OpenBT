@@ -33,9 +33,18 @@ jobs:
           pip install cibuildwheel
           pip install -r requirements.txt
           ls
-          wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
+          if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
+            wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
+          else
+            curl -O https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
+          cd src
+          aclocal
+          automake --add-missing
+          autoconf
+          ./configure --with-mpi --with-silent
+          make
         shell: bash
 
       - name: Build wheels
