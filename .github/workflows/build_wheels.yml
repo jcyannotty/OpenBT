@@ -52,7 +52,7 @@ jobs:
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
           cd src
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
-          git mv eigen Eigen
+          mv eigen Eigen
           ls
           aclocal
           libtoolize
