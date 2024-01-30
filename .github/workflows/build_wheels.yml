@@ -54,6 +54,9 @@ jobs:
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           mv eigen Eigen
           ls
+          cd Eigen
+          ls
+          cd ..
           aclocal
           libtoolize
           automake --add-missing
