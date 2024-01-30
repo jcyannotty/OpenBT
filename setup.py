@@ -36,24 +36,24 @@ for f in src_files:
 
 
 # Clone Eigen repository
-eigen_repo_url = "https://gitlab.com/libeigen/eigen.git"
-eigen_clone_path = "src/Eigen"
-eigen_branch = "3.4.0"
+#eigen_repo_url = "https://gitlab.com/libeigen/eigen.git"
+#eigen_clone_path = "src/Eigen"
+#eigen_branch = "3.4.0"
 
-subprocess.run(["git", "clone", "--depth=1","-b", eigen_branch, eigen_repo_url, eigen_clone_path])
+#subprocess.run(["git", "clone", "--depth=1","-b", eigen_branch, eigen_repo_url, eigen_clone_path])
 
 #os.chdir("src/Eigen")
 #subprocess.run(["cd", "src/Eigen", "&& git checkout 3.4.0"])
 #os.chdir("..")
 
-os.chdir("src")
+#os.chdir("src")
 
 # Run the makefile
-subprocess.run(["aclocal",cwd])
-subprocess.run(["automake --add-missing",cwd])
-subprocess.run(["autoconf",cwd])
-subprocess.run(["./configure --with-mpi --with-silent",cwd])
-subprocess.run(["make",cwd])
+#subprocess.run(["aclocal",cwd])
+#subprocess.run(["automake --add-missing",cwd])
+#subprocess.run(["autoconf",cwd])
+#subprocess.run(["./configure --with-mpi --with-silent",cwd])
+#subprocess.run(["make",cwd])
 
 # Create extensions from list
 cppext = [

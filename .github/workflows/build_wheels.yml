@@ -51,6 +51,7 @@ jobs:
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
           cd src
+          git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           ls
           aclocal
           libtoolize
