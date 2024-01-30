@@ -25,13 +25,15 @@ jobs:
           python-version: 3.8
       - name: Debug
         run: |
-          echo "Current directory: $(pwd)"
-          cd src
-          ls
-          cat configure.ac
-          autoconf --version
-          aclocal --version
-          automake --version
+          if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
+            echo "Current directory: $(pwd)"
+            cd src
+            ls
+            cat configure.ac
+            autoconf --version
+            aclocal --version
+            automake --version
+          fi
       - name: Install dependencies
         run: |
           if [ "${{ matrix.os }}" == "windows-2022" ]; then
