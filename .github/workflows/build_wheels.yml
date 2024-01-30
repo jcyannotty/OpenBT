@@ -23,7 +23,14 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-
+      - name: Debug
+        run: |
+          echo "Current directory: $(pwd)"
+          ls -la
+          cat configure.ac
+          autoconf --version
+          aclocal --version
+          automake --version
       - name: Install dependencies
         run: |
           if [ "${{ matrix.os }}" == "windows-2022" ]; then
@@ -40,6 +47,12 @@ jobs:
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
           cd src
+          ls
+          aclocal
+          libtoolize
+          automake --add-missing
+          autoconf
+          ./configure --with-mpi --with-silent
           make
         shell: bash
 
