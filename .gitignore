@@ -83,4 +83,5 @@ config.guess
 config.log
 config.status
 config.sub
+!/src/configure
 .DS_Store
