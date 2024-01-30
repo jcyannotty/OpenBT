@@ -26,6 +26,7 @@ jobs:
       - name: Debug
         run: |
           echo "Current directory: $(pwd)"
+          cd src
           ls -la
           cat configure.ac
           autoconf --version
