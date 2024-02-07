@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2022, macos-11]
+        os: [ubuntu-20.04]
 
     steps:
       - name: Checkout code
@@ -49,16 +49,16 @@ jobs:
             curl -O https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
           fi
           tar -xvf ./openmpi-4.0.2.tar.gz
-          ./openmpi-4.0.2/configure --prefix="/home/runner/work/OpenBT/OpenBT/src"
-          cd ..
-          cd ompi
-          cd mpi
-          ls -F
-          cd ..
-          cd ..
+          ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
+          make -j
+          make install
           cd src
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           mv eigen/Eigen Eigen
+          export PATH=${PATH}:/home/${USER}/.openmpi/bin/
+          export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/home/${USER}/.openmpi/lib/
+          echo ${PATH}
+          echo ${LD_LIBRARY_PATH}
           aclocal
           libtoolize
           automake --add-missing
