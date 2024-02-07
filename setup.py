@@ -36,8 +36,11 @@ for f in src_files:
 
 
 # Get libraries
-lib_list = os.popen("ls " + cwd + "/.libs/").read()
-lib_list = lib_list.split("\n")
+lib_list = []
+lib_files = os.popen("ls " + cwd + "/.libs/").read()
+lib_files = lib_files.split("\n")
+for lb in lib_files:
+    lib_list.append(cwd+"/.libs/"+lb) 
 
 
 # Clone Eigen repository
