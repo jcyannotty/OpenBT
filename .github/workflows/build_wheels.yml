@@ -48,9 +48,10 @@ jobs:
           else
             curl -O https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
           fi
-          tar -xvf ./openmpi-4.0.2.tar.gz
-          ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
+          pwd
           cd src
+          tar -xvf ./openmpi-4.0.2.tar.gz
+          ./openmpi-4.0.2/configure --prefix="."
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           mv eigen/Eigen Eigen
           ls
