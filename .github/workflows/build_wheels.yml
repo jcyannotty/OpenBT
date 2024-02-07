@@ -50,8 +50,8 @@ jobs:
           fi
           tar -xvf ./openmpi-4.0.2.tar.gz
           ./openmpi-4.0.2/configure --prefix="/home/runner/work/OpenBT/OpenBT/src"
-          ls
           cd src
+          cd openmpi-4.0.2
           ls
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           mv eigen/Eigen Eigen
