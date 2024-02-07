@@ -69,7 +69,7 @@ jobs:
 
       - name: Build wheels
         run: |
-          pip wheel .
+          pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheels
 
       - name: Upload wheels
         uses: actions/upload-artifact@v2
