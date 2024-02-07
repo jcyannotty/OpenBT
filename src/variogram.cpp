@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
 
         // Sample x and set digrid
         x.clear();
-        if(type == "w"){
+        if(type == "w" || type == "b"){
             for(size_t k=0;k<p;k++){
                 xtemp = xbnd[2*k] + gen.uniform()*(xbnd[2*k+1]-xbnd[2*k]);
                 x.push_back(xtemp);
@@ -303,8 +303,8 @@ int main(int argc, char* argv[])
 
             // Compute variogram and store for this h
             //vg[i][k] = 2*tau2*m*(1 - phibar.sum()); // average over the x's for numeric integral
-            if(type == "w"){
-                vg[i][k] = 2*tau2*m*(1 - phibar(0)); // n = 1 now
+            if(type == "w" || type == "b"){
+                vg[i][k] = 2*tau2*m*(1 - phibar(0)) + 2*sig2; // n = 1 now
             }else{
                 vg[i][k] = 2*(sig2 + (tau2*m + m*beta*beta)*(rscale - rlist[k]) + (fmean*fmean + rlist[k])*tau2*m*(1 - phibar(0)));
             }

@@ -775,8 +775,8 @@ gammapost.openbtmixing = function(fit){
 # Variogram for random path mixing
 variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL,maxd=999,ncut=100,
                                   beta = 1, sigma2 = 0, 
-                                  xgrid = NULL, rgrid = NULL, fmean = NULL, rscale = NULL, 
-                                  type = "w" ,modelname="model"){
+                                  xgrid = NULL, rgrid = NULL, fmean = NULL, rscale = NULL, ymin = 0, ymax = 1,
+                                  type = "y" ,modelname="model"){
   # Data and null values
   if(is.null(gam)){
     const_gamma = FALSE
@@ -791,7 +791,8 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   if(ncol(xbnds)!=2){stop("Error: dimension of xbnds must be p x 2.")}
 
   # Check for type of vg
-  if(!(type %in% c("w","y"))){stop("Error: select type w for wts varigoram or y for data variogram")}
+  if(!(type %in% c("w","y","b"))){stop("Error: select type w for wts varigoram, y for model mixing data variogram,
+                                        or b for bart variogram")}
   
   if(type == "y" & is.null(xgrid)){stop("Specify the sampled x values in xgrid.")}
   if(type == "y" & is.null(rgrid)){stop("Specify the covariance vector at each x in rgrid.")}
@@ -801,9 +802,18 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
 
   if(type == "w" & is.null(rscale)){rscale = 0}
   if(type == "w" & is.null(fmean)){fmean = 0}
-  
+
+  if(type == "b" & is.null(rscale)){rscale = 0}
+  if(type == "b" & is.null(fmean)){fmean = 0}
+  if(type == "b" & sigma2 == 0){warning("Sigma = 0, variogram returned for the mean function and not Y(x).")}
+
   # Compute priors
-  tau2 = (1/(2*k*sqrt(m)))^2
+  if(type == "b"){
+    tau2 = ((ymax - ymin)/(2*k*sqrt(m)))^2
+  }else{
+    tau2 = (1/(2*k*sqrt(m)))^2
+  }
+  
   
   #--------------------------------------------------
   # Cut points
