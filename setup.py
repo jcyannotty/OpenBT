@@ -35,6 +35,11 @@ for f in src_files:
             exec_list.append(f)         
 
 
+# Get libraries
+lib_list = os.popen("ls " + cwd + "/.libs/").read()
+lib_list = lib_list.split("\n")
+
+
 # Clone Eigen repository
 #eigen_repo_url = "https://gitlab.com/libeigen/eigen.git"
 #eigen_clone_path = "src/Eigen"
@@ -65,7 +70,7 @@ setup(
     name='openbtpy',
     version='0.1',
     packages=["openbtpy"],
-    package_data={'openbtpy': ['*.o',"*.lo","*.la",".libs/*"]+exec_list},  # Include compiled shared libraries
+    package_data={'openbtpy': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
     zip_safe=False,
 )
 
