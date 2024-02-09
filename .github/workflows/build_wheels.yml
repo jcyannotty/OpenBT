@@ -40,18 +40,21 @@ jobs:
           if [ "${{ matrix.os }}" == "windows-2022" ]; then
             choco install -y make
           fi
+          if [ "${{ matrix.os }}" == "macos-11" ]; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          fi
           python -m pip install -U pip
           pip install cibuildwheel
           pip install -r requirements.txt
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
             wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
+            tar -xvf ./openmpi-4.0.2.tar.gz
+            ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
+            make -j
+            make install
           else
-            curl -O https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.2.tar.gz
+            brew install open-mpi
           fi
-          tar -xvf ./openmpi-4.0.2.tar.gz
-          ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
-          make -j
-          make install
           cd src
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           mv eigen/Eigen Eigen
