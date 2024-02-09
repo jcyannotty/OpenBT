@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-20.04, macos-11]
 
     steps:
       - name: Checkout code
@@ -69,8 +69,12 @@ jobs:
 
       - name: Build wheels
         run: |
-          pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheelhouse
-
+          if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
+            pip wheel . --build-option="--dist-name=openbtmixing-0.1-py3-ubuntu20.04.whl" -w /home/runner/work/OpenBT/OpenBT/wheelhouse
+          else
+            pip wheel . --build-option="--dist-name=openbtmixing-0.1-py3-macos11.whl" -w /home/runner/work/OpenBT/OpenBT/wheelhouse 
+          fi
+        shell: bash 
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:

@@ -27,10 +27,10 @@ for f in src_files:
     if len(f.split("."))>1:
         end = f.split(".")[1]
         #if end in ["o","lo","la"]:
-        #    os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtpy/"+f)
+        #    os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
     else:
         if "openbt" in f:
-            os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtpy/"+f)
+            os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
             #exec_list.append(cwd + "/" + f)
             exec_list.append(f)         
 
@@ -70,18 +70,18 @@ cppext = [
 
 # Setup
 setup(
-    name='openbtpy',
+    name='openbtmixing',
     version='0.1',
-    packages=["openbtpy"],
-    package_data={'openbtpy': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
+    packages=["openbtmixing"],
+    package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
     zip_safe=False,
 )
 
 # Setup step
 # setup(
-#     name="openbtpy",
+#     name="openbtmixing",
 #     version="1.0",
-#     packages=["openbtpy"],
+#     packages=["openbtmixing"],
 #     ext_modules=cythonize(cppext),
 #     include_dirs=["/src"],
 #     zip_safe = False
@@ -105,12 +105,12 @@ setup(
 
 
 # setup(
-#     name="openbtpy",
+#     name="openbtmixing",
 #     version="1.0",
-#     packages=["openbtpy"],
+#     packages=["openbtmixing"],
 #     ext_modules=[
 #         Extension(
-#             "openbtpy",
+#             "openbtmixing",
 #             include_dirs=[cwd],
 #             sources=get_cpp_sources(cwd, include_headers=False),
 #         ),
