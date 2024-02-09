@@ -57,7 +57,8 @@ jobs:
           fi
           cd src
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
-          mv eigen/Eigen Eigen
+          mv eigen/Eigen Eigentemp
+          mv Eigentemp Eigen
           export PATH=${PATH}:/home/${USER}/.openmpi/bin/
           export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/home/${USER}/.openmpi/lib/
           echo ${PATH}
