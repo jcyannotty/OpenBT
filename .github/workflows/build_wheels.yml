@@ -74,7 +74,7 @@ jobs:
           else
             cd m4
             echo "Current directory: $(pwd)"
-            ls
+            ls -l
             cd ..
             aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4 --verbose
           fi
