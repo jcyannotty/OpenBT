@@ -34,7 +34,7 @@ jobs:
             aclocal --version
             automake --version
           fi
-          if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
+          if [ "${{ matrix.os }}" == "macos-11" ]; then
             echo "Current directory: $(pwd)"
             cd src
             ls
