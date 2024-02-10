@@ -75,6 +75,7 @@ jobs:
             mkdir -p /usr/share/aclocal
             cp /usr/local/share/aclocal/* /usr/share/aclocal/
             ls /usr/share/aclocal/
+            ln -sf /usr/local/share/aclocal/lt~obsolete.m4 /usr/share/aclocal/lt~obsolete.m4
             cd m4
             echo "Current directory: $(pwd)"
             ls -l
