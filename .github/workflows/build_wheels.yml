@@ -45,7 +45,7 @@ jobs:
           if [ "${{ matrix.os }}" == "windows-2022" ]; then
             choco install -y make
           fi
-          if [ "${{ matrix.os }}" == "macos-debug" ]; then
+          if [ "${{ matrix.os }}" == "macos-11" ]; then
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           fi
           python -m pip install -U pip
@@ -72,12 +72,12 @@ jobs:
             echo ${LD_LIBRARY_PATH}
             aclocal
           else
+            brew install autoconf automake libtool
             cd m4
             echo "Current directory: $(pwd)"
             ls -l
             cd ..
-            export ACLOCAL_PATH="/usr/share/aclocal/:$ACLOCAL_PATH"
-            aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4 --verbose
+            aclocal
           fi
           libtoolize
           automake --add-missing
