@@ -35,8 +35,8 @@ jobs:
             automake --version
           fi
           if [ "${{ matrix.os }}" == "macos-11" ]; then
-            echo "Current directory: $(pwd)"
             cd src/m4
+            echo "Current directory: $(pwd)"
             ls
           fi
         shell: bash
@@ -72,6 +72,10 @@ jobs:
             echo ${LD_LIBRARY_PATH}
             aclocal
           else
+            cd m4
+            echo "Current directory: $(pwd)"
+            ls
+            cd ..
             aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4
           fi
           libtoolize
