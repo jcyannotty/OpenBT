@@ -63,7 +63,8 @@ jobs:
           fi
           cd src
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
-          mv eigen/Eigen Eigentemp
+          mv eigen eigenall
+          mv eigenall/Eigen Eigentemp
           mv Eigentemp Eigen
           ls -F
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
