@@ -71,6 +71,7 @@ jobs:
             echo ${PATH}
             echo ${LD_LIBRARY_PATH}
             aclocal
+            libtoolize
           else
             ln -sf /usr/local/share/aclocal/lt~obsolete.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/lt~obsolete.m4
             ln -sf /usr/local/share/aclocal/ltsugar.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/ltsugar.m4
@@ -82,8 +83,9 @@ jobs:
             ls -l
             cd ..
             aclocal
+            brew install libtool
+            libtoolize
           fi
-          libtoolize
           automake --add-missing
           autoconf
           ./configure --with-mpi --with-silent
