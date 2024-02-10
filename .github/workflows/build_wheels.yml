@@ -72,7 +72,7 @@ jobs:
             echo ${LD_LIBRARY_PATH}
             aclocal
           else
-            ln -sf /usr/local/share/aclocal/lt~obsolete.m4 /usr/share/aclocal/lt~obsolete.m4
+            ln -sf /usr/local/share/aclocal/lt~obsolete.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/lt~obsolete.m4
             cd m4
             echo "Current directory: $(pwd)"
             ls -l
@@ -93,7 +93,7 @@ jobs:
             mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-ubuntu-20.04.whl
           else
             pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheelhouse
-            mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-macos11.whl 
+            mv /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-macos11.whl 
           fi
         shell: bash 
       - name: Upload wheels
