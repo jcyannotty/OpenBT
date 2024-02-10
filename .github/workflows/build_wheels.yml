@@ -76,7 +76,7 @@ jobs:
             echo "Current directory: $(pwd)"
             ls
             cd ..
-            aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4
+            aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4 --verbose
           fi
           libtoolize
           automake --add-missing
