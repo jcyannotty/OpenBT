@@ -67,11 +67,9 @@ jobs:
           mv Eigentemp Eigen
           export PATH=${PATH}:/home/${USER}/.openmpi/bin/
           export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/home/${USER}/.openmpi/lib/
-          export ACLOCAL_PATH=/home/runner/work/OpenBT/OpenBT/src/m4
           echo ${PATH}
           echo ${LD_LIBRARY_PATH}
-          echo "ACLOCAL_PATH: $ACLOCAL_PATH"
-          aclocal
+          aclocal -I /home/runner/work/OpenBT/OpenBT/src/m4
           libtoolize
           automake --add-missing
           autoconf
