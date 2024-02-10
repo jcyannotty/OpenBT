@@ -76,6 +76,7 @@ jobs:
             echo "Current directory: $(pwd)"
             ls -l
             cd ..
+            export ACLOCAL_PATH="/usr/share/aclocal/:$ACLOCAL_PATH"
             aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4 --verbose
           fi
           libtoolize
