@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [macos-11]
 
     steps:
       - name: Checkout code
@@ -34,13 +34,18 @@ jobs:
             aclocal --version
             automake --version
           fi
+          if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
+            echo "Current directory: $(pwd)"
+            cd src
+            ls
+          fi
         shell: bash
       - name: Install dependencies
         run: |
           if [ "${{ matrix.os }}" == "windows-2022" ]; then
             choco install -y make
           fi
-          if [ "${{ matrix.os }}" == "macos-11" ]; then
+          if [ "${{ matrix.os }}" == "macos-debug" ]; then
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           fi
           python -m pip install -U pip
@@ -52,7 +57,8 @@ jobs:
             ./openmpi-4.0.2/configure --prefix="/home/${USER}/.openmpi"
             make -j
             make install
-          else
+          fi
+          if [ "${{ matrix.os }}" == "macos-debug" ]; then
             brew install open-mpi
           fi
           cd src
@@ -74,9 +80,11 @@ jobs:
       - name: Build wheels
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
-            pip wheel . --build-option="--dist-name=openbtmixing-0.1-py3-ubuntu20.04.whl" -w /home/runner/work/OpenBT/OpenBT/wheelhouse
+            pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheelhouse
+            mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-ubuntu-20.04.whl
           else
-            pip wheel . --build-option="--dist-name=openbtmixing-0.1-py3-macos11.whl" -w /home/runner/work/OpenBT/OpenBT/wheelhouse 
+            pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheelhouse
+            mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-macos11.whl 
           fi
         shell: bash 
       - name: Upload wheels
