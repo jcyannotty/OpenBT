@@ -73,7 +73,7 @@ jobs:
             aclocal
           else
             brew install autoconf automake libtool
-            ls /usr/share/aclocal/
+            ls /usr/local/share/aclocal/
             cd m4
             echo "Current directory: $(pwd)"
             ls -l
