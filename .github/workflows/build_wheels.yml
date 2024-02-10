@@ -65,11 +65,15 @@ jobs:
           git clone --branch 3.4 --depth 1 https://gitlab.com/libeigen/eigen.git
           mv eigen/Eigen Eigentemp
           mv Eigentemp Eigen
-          export PATH=${PATH}:/home/${USER}/.openmpi/bin/
-          export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/home/${USER}/.openmpi/lib/
-          echo ${PATH}
-          echo ${LD_LIBRARY_PATH}
-          aclocal -I /home/runner/work/OpenBT/OpenBT/src/m4
+          if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
+            export PATH=${PATH}:/home/${USER}/.openmpi/bin/
+            export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/home/${USER}/.openmpi/lib/
+            echo ${PATH}
+            echo ${LD_LIBRARY_PATH}
+            aclocal
+          else
+            aclocal -I /Users/runner/work/OpenBT/OpenBT/src/m4
+          fi
           libtoolize
           automake --add-missing
           autoconf

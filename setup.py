@@ -5,8 +5,8 @@ from setuptools import setup, Extension
 #from Cython.Build import cythonize
 
 # Get a list of all files in src
-cwd = os.getcwd()
-cwd = cwd+"/src"
+startwd = os.getcwd()
+cwd = startwd+"/src"
 src_files = os.popen("ls " + cwd).read()
 src_files = src_files.split("\n")
 
@@ -39,8 +39,11 @@ for f in src_files:
 lib_list = []
 lib_files = os.popen("ls " + cwd + "/.libs/").read()
 lib_files = lib_files.split("\n")
+os.system("mkdir " + startwd + "/openbtmixing/.libs")
 for lb in lib_files:
-    lib_list.append(cwd+"/.libs/"+lb) 
+    os.system("cp " + cwd + "/.libs/"+lb+ " " + startwd + "/openbtmixing/.libs")
+    #lib_list.append(cwd+"/.libs/"+lb)
+    lib_list.append(startwd+"/openbtmixing/.libs/"+lb) 
 
 
 # Clone Eigen repository
