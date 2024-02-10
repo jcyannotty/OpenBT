@@ -80,7 +80,8 @@ jobs:
             ln -sf /usr/local/share/aclocal/libtool.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/libtool.m4
             aclocal
             brew install libtool
-            libtool
+            ln -s /usr/local/bin/glibtoolize /usr/local/bin/libtoolize
+            libtoolize
           fi
           automake --add-missing
           autoconf
