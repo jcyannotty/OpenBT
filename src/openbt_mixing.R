@@ -290,7 +290,7 @@ predict.openbtmixing = function(
   f.test=matrix(1,nrow = 1, ncol = 2),
   ptype = "all",
   proj_type = "softmax",
-  temperature = 0.5,
+  temperature = NULL,
   tc=2,
   q.lower=0.025,
   q.upper=0.975)
@@ -324,6 +324,8 @@ predict.openbtmixing = function(
   }
 
   if(proj_type == "softmax"){dosoftmax = TRUE}else{dosoftmax = FALSE}
+  if(proj_type == "softmax" & is.null(temperature)){temperature = 0.5}
+  if(proj_type == "euclidean" & is.null(temperature)){temperature = 0}
 
   nslv=tc
   x.test=as.matrix(x.test)

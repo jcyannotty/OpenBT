@@ -32,7 +32,7 @@ public:
    void drawvec(rn& gen);
    void drawvec_mpislave(rn& gen);
    void adapt();
-   void project_thetavec(std::vector<double> &v, std::vector<double>& vstar);
+   void project_thetavec(std::vector<double> &v, std::vector<double>& vstar, double tmp);
    void setmpirank(int rank) { this->rank = rank; for(size_t j=0;j<m;j++) mb[j].setmpirank(rank); }  //only needed for MPI
    void setmpicvrange(int* lwr, int* upr) { this->chv_lwr=lwr; this->chv_upr=upr; for(size_t j=0;j<m;j++) mb[j].setmpicvrange(lwr,upr); } //only needed for MPI
    void setci(double tau, double beta0, double* sigma) { ci.tau=tau; ci.sigma=sigma; ci.beta0=beta0; for(size_t j=0;j<m;j++) mb[j].setci(tau,beta0,sigma); }

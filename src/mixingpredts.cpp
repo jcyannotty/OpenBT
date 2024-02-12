@@ -438,7 +438,7 @@ int main(int argc, char* argv[])
                         if(dosoftmax){
                             axb.project_softmax_thetavec(w, wstar, temperature);
                         }else{
-                            axb.project_thetavec(w, wstar);
+                            axb.project_thetavec(w, wstar,temperature);
                         }
                         
 
