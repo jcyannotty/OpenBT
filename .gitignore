@@ -86,3 +86,4 @@ config.status
 config.sub
 !/src/configure
 .DS_Store
+!LICENSE
