@@ -94,9 +94,10 @@ jobs:
       - name: Build wheels
         run: |
           mkdir dist
+          pip install auditwheel
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
             pip wheel . -w /home/runner/work/OpenBT/OpenBT/dist
-            mv /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-manylinux2014_x86_64.whl
+            auditwheel repair /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl -w /home/runner/work/OpenBT/OpenBT/dist
           else
             pip wheel . -w /Users/runner/work/OpenBT/OpenBT/dist
             mv /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-macos11.whl 
