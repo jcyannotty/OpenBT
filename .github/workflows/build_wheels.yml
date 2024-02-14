@@ -99,7 +99,7 @@ jobs:
             mv /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-cp38-manylinux2014_x86_64.whl
           else
             pip wheel . -w /Users/runner/work/OpenBT/OpenBT/dist
-            mv /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-macos11.whl 
+            mv /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-cp38-macos11.whl 
           fi
         shell: bash 
       - name: Upload wheels
