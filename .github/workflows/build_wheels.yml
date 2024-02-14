@@ -95,7 +95,7 @@ jobs:
         run: |
           mkdir dist
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
-            pip wheel . -w /home/runner/work/OpenBT/OpenBT/dist --plat-name manylinux2014_x86_64
+            pip wheel . -w /home/runner/work/OpenBT/OpenBT/dist
             mv /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/dist/openbtmixinglinux-1.0.0-py3-none-any.whl
           else
             pip wheel . -w /Users/runner/work/OpenBT/OpenBT/dist
