@@ -93,19 +93,20 @@ jobs:
 
       - name: Build wheels
         run: |
+          mkdir dist
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
-            pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheelhouse
-            mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-ubuntu-20.04.whl
+            pip wheel . -w /home/runner/work/OpenBT/OpenBT/dist
+            mv /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-ubuntu-20.04.whl
           else
-            pip wheel . -w /Users/runner/work/OpenBT/OpenBT/wheelhouse
-            mv /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-macos11.whl 
+            pip wheel . -w /Users/runner/work/OpenBT/OpenBT/dist
+            mv /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/dist/openbtmixing-1.0.0-py3-macos11.whl 
           fi
         shell: bash 
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
           name: wheels
-          path: wheelhouse
+          path: dist
   
   build-sdist:
     name: Build source distribution
@@ -135,7 +136,7 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: wheels
-          path: wheelhouse/
+          path: dist/
       - name: Publish distribution 📦 to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
