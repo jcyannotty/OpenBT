@@ -134,7 +134,7 @@ jobs:
       - name: Download all the dists
         uses: actions/download-artifact@v2
         with:
-          name: python-package-wheels
+          name: wheels
           path: wheelhouse/
       - name: Publish distribution 📦 to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
