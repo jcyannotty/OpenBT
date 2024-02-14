@@ -77,7 +77,7 @@ setup(
     version='0.1',
     packages=["openbtmixing"],
     package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
-    zip_safe=False,
+    zip_safe=False
 )
 
 # Setup step
