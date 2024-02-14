@@ -95,10 +95,10 @@ jobs:
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
             pip wheel . -w /home/runner/work/OpenBT/OpenBT/wheelhouse
-            mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-ubuntu-20.04.whl
+            mv /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-none-any.whl /home/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-ubuntu-20.04.whl
           else
             pip wheel . -w /Users/runner/work/OpenBT/OpenBT/wheelhouse
-            mv /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-0.1-py3-macos11.whl 
+            mv /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-none-any.whl /Users/runner/work/OpenBT/OpenBT/wheelhouse/openbtmixing-1.0.0-py3-macos11.whl 
           fi
         shell: bash 
       - name: Upload wheels
