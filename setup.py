@@ -19,15 +19,14 @@ for f in src_files:
             cppfiles.append("src/"+f)
 
 
-print(len(cppfiles))
-
 # Copy object files to openbtpt/bin
 exec_list = []            
 for f in src_files:
     if len(f.split("."))>1:
         end = f.split(".")[1]
-        #if end in ["o","lo","la"]:
-        #    os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
+        if end in ["o","lo","la"]:
+            os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
+            exec_list.append(f)
     else:
         if "openbt" in f:
             os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
