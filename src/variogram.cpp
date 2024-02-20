@@ -106,7 +106,7 @@ int main(int argc, char* argv[])
     conf >> beta;
     conf >> sig2;
     conf >> type;
-    if(const_gamma_str == "TRUE" || const_gamma_str == "True"){const_gamma_str = true;}
+    if(const_gamma_str == "TRUE" || const_gamma_str == "True"){const_gamma = true;}
 
     // xcut point and xgrid info
     std::string xicore;

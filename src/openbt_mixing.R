@@ -78,7 +78,8 @@ train.openbtmixing = function(
   n = length(y.train)
   p = ncol(x.train)
   x = t(x.train)
-  
+  ymean = mean(y.train)
+
   #Set mix discrepancy to FALSE if we use a different model
   eftprior = FALSE
   #Check to see if any discrepancy data has been passed into the function -- if so, we will use the discrepancy model mixing
@@ -141,6 +142,7 @@ train.openbtmixing = function(
     beta0 = 0
     overallsd = sqrt((overallsd^2)*overallnu/(overallnu+2))
     overalllambda = overallsd^2
+    y.train = y.train - ymean
   }
 
   #--------------------------------------------------
@@ -264,6 +266,7 @@ train.openbtmixing = function(
   res=list()
   res$modeltype=modeltype
   res$model=model
+  res$ymean = ymean
   res$xroot=xroot; res$yroot=yroot;res$m=m; res$mh=mh; res$nd=nd; res$burn=burn
   res$nadapt=nadapt; res$adaptevery=adaptevery; res$tau=tau;res$beta0=beta0;res$overalllambda=overalllambda
   res$overallnu=overallnu; res$k=k; res$base=base; res$power=power; res$baseh=baseh; res$powerh=powerh; res$maxd = maxd;
@@ -430,12 +433,19 @@ predict.openbtmixing = function(
     }
     
     # Store results
-    res$mmean=apply(res$mdraws,2,mean)
-    res$msd=apply(res$mdraws,2,sd)
-    res$m.5=apply(res$mdraws,2,quantile,0.5)
-    res$m.lower=apply(res$mdraws,2,quantile,q.lower)
-    res$m.upper=apply(res$mdraws,2,quantile,q.upper)
-  
+    if(k == 1){
+      res$mmean=apply(res$mdraws + fit$ymean,2,mean)
+      res$msd=apply(res$mdraws + fit$ymean,2,sd)
+      res$m.5=apply(res$mdraws + fit$ymean,2,quantile,0.5)
+      res$m.lower=apply(res$mdraws + fit$ymean,2,quantile,q.lower)
+      res$m.upper=apply(res$mdraws + fit$ymean,2,quantile,q.upper)
+    }else{
+      res$mmean=apply(res$mdraws,2,mean)
+      res$msd=apply(res$mdraws,2,sd)
+      res$m.5=apply(res$mdraws,2,quantile,0.5)
+      res$m.lower=apply(res$mdraws,2,quantile,q.lower)
+      res$m.upper=apply(res$mdraws,2,quantile,q.upper)
+    }  
     #Save the list of posterior draws -- each list element is an npost X n dataframe 
     res$wdraws = wt_list 
     
@@ -885,6 +895,10 @@ variogram.openbtmixing = function(xbnds,hgrid,nd,m,k,base,power,a1,a2,q,gam=NULL
   #res$vdraws=read.table(paste(folder,"/",modelname,".variogram",sep=""))
   res$vdraws = matrix(res$vdraws, ncol = length(hgrid), byrow = TRUE) 
   res$vmean = apply(res$vdraws,2,mean)
+  res$const_gamma = const_gamma
+  res$params = list(tau2 = tau2, k = k, a1 = a1, a2 = a2, power = power,
+                    base = base, sigma2 = sigma2, q = q)
+
   return(res)
 }
 
