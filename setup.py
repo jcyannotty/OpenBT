@@ -77,6 +77,9 @@ dist_name = distutils.util.get_platform()
 dist_name = dist_name.replace("-","_")
 dist_name = dist_name.replace(".","_")
 
+if "linux_x86_64" in dist_name:
+    dist_name = "manylinux2014_x86_64"
+
 setup(
     name='openbtmixing',
     version='0.1.1',
