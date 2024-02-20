@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 from setuptools import setup, Extension
+import platform
+import distutils
 #from Cython.Build import cythonize
 
 # Get a list of all files in src
@@ -71,12 +73,17 @@ cppext = [
 ]
 
 # Setup
+dist_name = distutils.util.get_platform()
+dist_name = dist_name.replace("-","_")
+dist_name = dist_name.replace(".","_")
+
 setup(
     name='openbtmixing',
-    version='0.1',
+    version='0.1.1',
     packages=["openbtmixing"],
     package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
-    zip_safe=False
+    zip_safe=False,
+    options={'bdist_wheel':{'plat_name':dist_name}}
 )
 
 # Setup step
