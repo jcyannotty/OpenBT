@@ -61,6 +61,7 @@ temp
 openbtmixing/.libs/*
 *.whl
 dist/
+build/
 
 # Other files
 config.guess
