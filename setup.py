@@ -80,6 +80,10 @@ dist_name = dist_name.replace(".","_")
 if "linux_x86_64" in dist_name:
     dist_name = "manylinux2014_x86_64"
 
+
+if "macosx" in dist_name:
+    dist_name = "macosx_10_9_x86_64"
+
 setup(
     name='openbtmixing',
     version='0.1.1',
