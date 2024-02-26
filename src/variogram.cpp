@@ -233,7 +233,7 @@ int main(int argc, char* argv[])
     // Sampling procedure for the variogram
     for(size_t i=0;i<nd;i++){        
         // Print progress
-        if(i%500 == 0) cout << "Step: " << i << endl;
+        if(i%5000 == 0) cout << "Step: " << i << endl;
                 
         // Sample tree
         axb.sample_tree_prior(gen);
