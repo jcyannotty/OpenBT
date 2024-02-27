@@ -306,7 +306,7 @@ int main(int argc, char* argv[])
             if(type == "w" || type == "b"){
                 vg[i][k] = 2*tau2*m*(1 - phibar(0)) + 2*sig2; // n = 1 now
             }else{
-                vg[i][k] = 2*(sig2 + (tau2*m + m*beta*beta)*(rscale - rlist[k]) + (fmean*fmean + rlist[k])*tau2*m*(1 - phibar(0)));
+                vg[i][k] = 2*(sig2 + (tau2*m + m*m*beta*beta)*(rscale - rlist[k]) + (fmean*fmean + rlist[k])*tau2*m*(1 - phibar(0)));
             }
         }
     }
