@@ -1,6 +1,6 @@
 [project]
 name = "openbtmixing"
-version = "1.0.2"
+version = "1.0.0"
 authors = [
   { name="John Yannotty", email="yannotty.1@buckeyemail.osu.edu" },
 ]
@@ -13,6 +13,3 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-[project.urls]
-Homepage = "https://github.com/pypa/openbtmixing"
-Issues = "https://github.com/pypa/openbtmixing"

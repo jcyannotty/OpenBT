@@ -1,11 +1,19 @@
 # Open Bayesian Trees Project
 This repository includes new developments with Bayesian Additive Regression Trees and extends the original OpenBT repository created by Matt Pratola (https://bitbucket.org/mpratola/openbt/src/master/).
-Such extensions include Bayesian Model Mixing and Bayesian Calibration. The first version of the Bayesian Model Mixing software using BART is available for download via the Debian package in this repository.
-
+Such extensions include Bayesian Model Mixing and Bayesian Calibration. 
 All of the Bayesian Tree code is written in C++. User interfaces constructed in R and Python allow one to easily run the software. The OpenBT project is also included in the Bayesian Model Mixing python package, *Taweret*, which is included in the Bayesian Analysis of Nuclear Dynamics sotware (see https://bandframework.github.io/). 
 
 
-# Installation
+# Installation for Python Users
+
+You can work with the BART-based model mixing method via the Taweret python package. Simply install Taweret and you can begin working. 
+
+**Windows Users**: 
+
+OpenBT relies on OpenMPI, which is not compatible with Windows. Thus you can work with Taweret by using Windows Subsystem for Linux (WSL). See instructions below for installing WSL.
+
+
+# Installation for R Users:
 
 The Trees module is a Python interface which calls and executes a Ubuntu package in order to fit the mixing model and obtain the resulting predictions. This package is developed as a part of the Open Bayesian Trees Project (OpenBT). To install the Ubuntu package, please follow the steps below based on the operating system of choice.
 

@@ -47,31 +47,6 @@ for lb in lib_files:
     lib_list.append(startwd+"/openbtmixing/.libs/"+lb) 
 
 
-# Clone Eigen repository
-#eigen_repo_url = "https://gitlab.com/libeigen/eigen.git"
-#eigen_clone_path = "src/Eigen"
-#eigen_branch = "3.4.0"
-
-#subprocess.run(["git", "clone", "--depth=1","-b", eigen_branch, eigen_repo_url, eigen_clone_path])
-
-#os.chdir("src/Eigen")
-#subprocess.run(["cd", "src/Eigen", "&& git checkout 3.4.0"])
-#os.chdir("..")
-
-#os.chdir("src")
-
-# Run the makefile
-#subprocess.run(["aclocal",cwd])
-#subprocess.run(["automake --add-missing",cwd])
-#subprocess.run(["autoconf",cwd])
-#subprocess.run(["./configure --with-mpi --with-silent",cwd])
-#subprocess.run(["make",cwd])
-
-# Create extensions from list
-cppext = [
-    Extension('openbtcpp',sources = cppfiles)
-]
-
 # Setup
 dist_name = distutils.util.get_platform()
 dist_name = dist_name.replace("-","_")
@@ -82,12 +57,12 @@ if "linux_x86_64" in dist_name:
 
 
 if "macosx" in dist_name:
-    #dist_name = "macosx_10_9_x86_64"
-    dist_name = "macosx_10_9_arm64"
+    dist_name = "macosx_10_9_x86_64"
+    #dist_name = "macosx_10_9_arm64"
 
 setup(
     name='openbtmixing',
-    version='0.1.1',
+    version='1.0.0',
     packages=["openbtmixing"],
     package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
     zip_safe=False,
@@ -95,6 +70,12 @@ setup(
 )
 
 # Setup step
+
+# Create extensions from list
+# cppext = [
+#     Extension('openbtcpp',sources = cppfiles)
+# ]
+
 # setup(
 #     name="openbtmixing",
 #     version="1.0",
