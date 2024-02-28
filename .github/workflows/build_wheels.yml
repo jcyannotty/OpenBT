@@ -34,7 +34,7 @@ jobs:
             aclocal --version
             automake --version
           fi
-          if [ "${{ matrix.os }}" == "macos-11" ]; then
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
             cd src/m4
             echo "Current directory: $(pwd)"
             ls
@@ -45,7 +45,7 @@ jobs:
           if [ "${{ matrix.os }}" == "windows-2022" ]; then
             choco install -y make
           fi
-          if [ "${{ matrix.os }}" == "macos-11" ]; then
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
           fi
           python -m pip install -U pip
@@ -58,7 +58,7 @@ jobs:
             make -j
             make install
           fi
-          if [ "${{ matrix.os }}" == "macos-11" ]; then
+          if [ "${{ matrix.os }}" == "macos-latest" ]; then
             brew install open-mpi
           fi
           cd src
