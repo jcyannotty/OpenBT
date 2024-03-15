@@ -1749,7 +1749,7 @@ void brt::bd_vec(rn& gen)
          //cout << "lalpha = " << lalpha << endl;
          //cout << "lprop = " << rpi.logproppr << endl;
          
-         if(randpath){lalpha = lalpha-rpi.logproppr;}
+         if(randpath){lalpha = lalpha+rpi.logproppr;} // edit here
          
          //if(randpath){cout << "lprop = " << rpi.logproppr << endl;}
          //std::cout << "lml" << lml << std::endl;
@@ -1834,7 +1834,7 @@ void brt::bd_vec(rn& gen)
       lml=lm(sil); lmr=lm(sir); lmt=lm(sit);
       double lalpha = log(pr) + (lmt - lml - lmr);
       //cout << "death lalpha = " << lalpha << endl;;
-      if(randpath){lalpha = lalpha+rpi.logproppr;}
+      if(randpath){lalpha = lalpha-rpi.logproppr;} // edit here
       lalpha = std::min(0.0,lalpha);
 
       //--------------------------------------------------
@@ -2984,7 +2984,6 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             // compute psi(x), the prob of moving right
             xx = diter.getxp();
             /*
-            psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);
             if(gen.uniform()<psi0){
                // Rightrandz_p
                randz_bdp.push_back(2);
@@ -2998,6 +2997,7 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             // Deterministic proposal
             
             if(xx[v]<cx){ psi0 = 0;}else{psi0 = 1;}
+            psi0 = t.calcpsix(rpi.gamma,xx[v],cx,lb,ub,rpi.q); // Used for the prior
             if(xx[v]>=cx){
                // Rightrandz_p
                randz_bdp.push_back(2);
@@ -3019,15 +3019,15 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
          if((nx->r)==t.getptr(randz[*diter])){
             // compute psi(x), the prob of moving right
             xx = diter.getxp();      
-            //psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
-            psi0 = 1;
+            psi0 = t.calcpsix(rpi.gamma,xx[v],cx,lb,ub,rpi.q); // Used for the prior   
+            //psi0 = 1;
             rpi.logproppr+=log(psi0);      
             randz_bdp.push_back(2);
          }else if((nx->l)==t.getptr(randz[*diter])){
             // compute 1-psi(x), the prob of moving left
             xx = diter.getxp();      
-            //psi0 = psix(rpi.gamma,xx[v],cx,lb,ub);   
-            psi0 = 0;
+            psi0 = t.calcpsix(rpi.gamma,xx[v],cx,lb,ub,rpi.q); // Used for the prior
+            //psi0 = 0;
             rpi.logproppr+=log((1-psi0));
             randz_bdp.push_back(1);
          }else{
