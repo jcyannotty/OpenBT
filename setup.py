@@ -62,7 +62,7 @@ if "macosx" in dist_name:
 
 setup(
     name='openbtmixing',
-    version='1.0.0',
+    version='1.0.1',
     packages=["openbtmixing"],
     package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
     zip_safe=False,
