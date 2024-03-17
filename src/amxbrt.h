@@ -40,9 +40,9 @@ public:
       ci.invtau2_matrix=invtau2_matrix; ci.beta_vec=beta_vec; ci.sigma=sigma,ci.diffpriors = true; for(size_t j=0;j<m;j++) mb[j].setci(invtau2_matrix,beta_vec,sigma);} //Set when using prior's that differ by function
    void sethpi(size_t sz){this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);for(size_t j=0;j<m;j++) mb[j].sethpi(sz);}
    void setbi(size_t ik){ci.randbeta=true; ci.beta_vec = ci.beta0*vxd::Ones(ik); this->betaset = mxd::Identity(ik,ik);for(size_t j=0;j<m;j++) mb[j].setbi(ik);}
-   void setrpi(double gam, double q,double shp1, double shp2,size_t n){
-      this->randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2);
-      for(size_t j=0;j<m;j++){mb[j].setrpi(gam,q,shp1,shp2,n);}
+   void setrpi(double gam, double q,double shp1, double shp2,size_t n, bool modbd){
+      this->randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2); rpi.modular = modbd;
+      for(size_t j=0;j<m;j++){mb[j].setrpi(gam,q,shp1,shp2,n,modbd);}
    }
    void setloss(mxd iloss){this->loss.resize(iloss.rows(),iloss.cols()); this->loss = iloss; for(size_t j=0;j<m;j++) mb[j].setloss(iloss);} // Remove
    void settc(int tc) { this->tc = tc; for(size_t j=0;j<m;j++) mb[j].settc(tc); }

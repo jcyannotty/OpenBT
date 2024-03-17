@@ -143,14 +143,18 @@ int main(int argc, char* argv[])
 
    // Random path arguments
    std::string randpath_str;
+   std::string modbd_str;
    double gam, q, sh1, sh2;
    bool randpath = false;
+   bool modbd = false;
    conf >> randpath_str;
    conf >> gam;
    conf >> q;
    conf >> sh1;
    conf >> sh2;
+   conf >> modbd_str;
    if(randpath_str == "TRUE" || randpath_str == "True"){ randpath = true; }
+   if(modbd_str == "TRUE" || modbd_str == "True"){ modbd = true; }
 
    //control
    double pbd;

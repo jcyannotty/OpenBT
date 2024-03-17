@@ -149,12 +149,13 @@ public:
    // random path info class
    class rpinfo{
       public:
-         rpinfo(): gamma(0.5),q(2.0),shp1(1.0),shp2(1.0),accept(0),reject(0),propwidth(0.25){}
+         rpinfo(): gamma(0.5),q(2.0),shp1(1.0),shp2(1.0),accept(0),reject(0),propwidth(0.25),modular(false){}
          double gamma;
          double q;
          double shp1, shp2; // Shape parameters for beta prior
          double accept, reject, propwidth;
          double logproppr; // proposal probability
+         bool modular; // Switch to a modularization b/d proposal (this ignores the affect of pi(Z'j)/pi(Zj) in the MH update...seems to result in better mixing in LARGE sample sizes)
          mxd phix;
 
    };
@@ -186,7 +187,7 @@ public:
    void resetstats() { mi.tavgd=0.0; mi.tmaxd=0; mi.tmind=0; for(size_t i=0;i<xi->size();i++) mi.varcount[i]=0; }
    void setci() {}
    void sethpi(size_t sz) {this->randhp = true; this->kp=sz; this->t.thetahyper.resize(sz,0);} // set random hyperparameter info
-   void setrpi(double gam, double q,double shp1, double shp2,size_t n){randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2);} // set random path information
+   void setrpi(double gam, double q,double shp1, double shp2,size_t n,bool modbd){randpath = true; rpi.q = q, rpi.gamma = gam; set_randz(n); set_gamma_prior(shp1,shp2); rpi.modular = modbd;} // set random path information
    void draw(rn& gen);
    void draw_mpislave(rn& gen);
    void mpislave_bd(rn& gen);

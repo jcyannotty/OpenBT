@@ -2995,16 +2995,17 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             }
             */
             // Deterministic proposal
-            
             if(xx[v]<cx){ psi0 = 0;}else{psi0 = 1;}
             psi0 = t.calcpsix(rpi.gamma,xx[v],cx,lb,ub,rpi.q); // Used for the prior
             if(xx[v]>=cx){
                // Rightrandz_p
                randz_bdp.push_back(2);
+               if(rpi.modular){psi0 = 1;}
                rpi.logproppr+=log(psi0);      
             } else {
                // Left
                randz_bdp.push_back(1);
+               if(rpi.modular){psi0 = 0;}
                rpi.logproppr+=log((1-psi0));
             }  
             
@@ -3021,6 +3022,7 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             xx = diter.getxp();      
             psi0 = t.calcpsix(rpi.gamma,xx[v],cx,lb,ub,rpi.q); // Used for the prior   
             //psi0 = 1;
+            if(rpi.modular){psi0 = 1;}
             rpi.logproppr+=log(psi0);      
             randz_bdp.push_back(2);
          }else if((nx->l)==t.getptr(randz[*diter])){
@@ -3028,6 +3030,7 @@ void brt::randz_proposal(tree::tree_p nx, size_t v, size_t c, rn& gen, bool birt
             xx = diter.getxp();      
             psi0 = t.calcpsix(rpi.gamma,xx[v],cx,lb,ub,rpi.q); // Used for the prior
             //psi0 = 0;
+            if(rpi.modular){psi0 = 0;}
             rpi.logproppr+=log((1-psi0));
             randz_bdp.push_back(1);
          }else{
