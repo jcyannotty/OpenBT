@@ -469,7 +469,7 @@ int main(int argc, char* argv[])
                 
                 for(size_t i=0;i<ind;i++) {
                     for(size_t j=0;j<np;j++)
-                        omf << std::scientific << tedraw[i][j] << " ";
+                        omf << std::scientific << tedraw[i+b*batchsize][j] << " ";
                     omf << endl;
                 }
                 omf.close();
@@ -513,7 +513,7 @@ int main(int argc, char* argv[])
                 
                 for(size_t i=0;i<ind;i++) {
                     for(size_t j=0;j<np;j++)
-                        opmf << std::scientific << tedrawp[i][j] << " ";
+                        opmf << std::scientific << tedrawp[i+b*batchsize][j] << " ";
                     opmf << endl;
                 }
                 opmf.close();

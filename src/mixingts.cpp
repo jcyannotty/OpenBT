@@ -471,7 +471,7 @@ int main(int argc, char* argv[])
    if(eftprior) {axb.setfsd(&fsd);}
    // Random path setter (must be before data right now...)
    if(randpath){
-      axb.setrpi(gam,q,sh1,sh2,n);
+      axb.setrpi(gam,q,sh1,sh2,n,modbd);
    }
    //data objects
    axb.setdata_vec(&di);  //set the data

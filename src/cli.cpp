@@ -1016,7 +1016,7 @@ return 0;
       axb.setloss(loss);
    }
    if(randpath){
-      axb.setrpi(gam,q,sh1,sh2,n);
+      axb.setrpi(gam,q,sh1,sh2,n,false);
    }
    /*
    //Set prior information

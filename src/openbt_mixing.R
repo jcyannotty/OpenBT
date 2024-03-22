@@ -207,7 +207,7 @@ train.openbtmixing = function(
                paste(nadapt),paste(adaptevery),paste(tau),paste(beta0),paste(overalllambda),
                paste(overallnu),paste(base),paste(power),paste(baseh),paste(powerh),paste(maxd),
                paste(tc),paste(sroot),paste(chgvroot),paste(froot),paste(fsdroot),paste(eftprior),
-               paste(rpath),paste(gam),paste(q),paste(rshp1),paste(rshp2),paste(modularbd) 
+               paste(rpath),paste(gam),paste(q),paste(rshp1),paste(rshp2),paste(modularbd), 
                paste(pbd),paste(pb),paste(pbdh),paste(pbh),paste(stepwpert),paste(stepwperth),
                paste(probchv),paste(probchvh),paste(minnumbot),paste(minnumboth),
                paste(printevery),paste(batchsize),

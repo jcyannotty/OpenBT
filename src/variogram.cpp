@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
     axb.setxi(&xi);
     axb.settp(base, power);
     axb.setmaxd(maxd);
-    axb.setrpi(gamma0,q,shape1,shape2,1);
+    axb.setrpi(gamma0,q,shape1,shape2,1,false);
 
     dinfo digrid, dihgrid;
     
