@@ -1129,7 +1129,7 @@ return 0;
       dips -= faxb;
       if((i+1)%adaptevery==0 && mpirank==0) axb.adapt();
       if((i+1)%adaptevery==0 && mpirank==0 && randpath) axb.rpath_adapt();
-      if(selectp){axb.l2norm(fi);}
+      //if(selectp){axb.l2norm(fi);}
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
 #else
@@ -1160,7 +1160,7 @@ return 0;
       // Update the which are fed into resiudals the variance model
       dips = di;
       dips -= faxb;
-      if(selectp){axb.l2norm(fi);}
+      //if(selectp){axb.l2norm(fi);}
       // Draw sigma
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);
@@ -1192,7 +1192,7 @@ return 0;
 #endif
       dips = di;
       dips -= faxb;
-      if(selectp){axb.l2norm(fi);}
+      //if(selectp){axb.l2norm(fi);}
       //if(i==100){cout << "loss = \n" << axb.loss << endl;}
 #ifdef _OPENMPI
       if(mpirank==0) psbm.draw(gen); else psbm.draw_mpislave(gen);

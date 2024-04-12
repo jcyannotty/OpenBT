@@ -568,13 +568,15 @@ double tree::calcpsix(double gam, double x, double c, double L, double U, double
       }
    }else{
       psi = 1-0.5*std::pow(std::max(1-d2,0.0),q);
-      if(psi>1){   
+      /*
+      if(psi<0){   
          std::cout << "L = " << L << std::endl;
          std::cout << "U = " << U << std::endl;
          std::cout << "b = " << b << std::endl;
          std::cout << "c = " << c << std::endl;
          std::cout << "d2 = " << d2 << std::endl;
       }
+      */
    }
    return(psi);
 }

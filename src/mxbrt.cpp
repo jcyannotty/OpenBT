@@ -133,6 +133,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
         betavec = ci.beta_vec;
         Prior_Sig_Inv = (1/t2)*I;
         Sig = covmatrix; // saved from drawnodehypervec step, no need to recalculate
+        cout << "randhp" << endl;
     }else{
         // No random hyper parameters, need to compute covariance
         Sig_inv = mxsi.sumffw + Prior_Sig_Inv; //Get inverse covariance matrix
@@ -174,7 +175,7 @@ vxd mxbrt::drawnodethetavec(sinfo& si, rn& gen){
     std::cout << "\n Sp = \n" << Sp << std::endl;
     std::cout << "\n thetavec = " << std::endl;
     */
-        
+
     //--Generate the MVN vector
     return muhat + Sp*stdnorm;
 }
@@ -292,6 +293,8 @@ double mxbrt::lmmix(sinfo& si){
     std::vector<double> qvec; // quadratic term vector
     I = mxd::Identity(k,k); //Set identity matrix
 
+    cout << "lmmix" << endl;
+
     // Get matrix inversion steps
     Prior_Sig_Inv = (1/t2)*I;
     
@@ -376,6 +379,7 @@ void mxbrt::add_observation_to_suff(diterator& diter, sinfo& si){
         pv = vxd::Zero(k);
         for(size_t l = 0; l<k; l++){pv(l) = loss(*diter,l);}
         mxsi.sump+=pv;
+        cout << "randhp" << endl;
     }else{
         //Set as 1's by default when no discrepancy is used
         mxsi.sump = vxd::Ones(k);

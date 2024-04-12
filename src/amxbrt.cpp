@@ -320,6 +320,7 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
     for(;diter<diter.until();diter++){
         thetavec_temp = vxd::Zero(k);   
         double *xx = diter.getxp(); 
+        //double sumphi = 0;
 
         for(size_t j=0;j<m;j++){
             std::map<tree::tree_p,double> phixmap;
@@ -330,8 +331,11 @@ void amxbrt::local_predict_vec_rpath(diterator& diter, finfo& fipred){
             mb[j].t.calcphix(xx,*xi,phixmap,logpathprob,mb[j].get_gamma(),rpi.q); 
             //std::map<tree::tree_p,double>::iterator pit;
             for(auto i = phixmap.begin(); i != phixmap.end();i++){
-                thetavec_temp = thetavec_temp + ((i->first)->getthetavec())*(i->second);   
+                thetavec_temp = thetavec_temp + ((i->first)->getthetavec())*(i->second);
+                //sumphi += (i->second);
             }
+            //cout << "sumphi = " << sumphi << endl;   
+            //sumphi = 0;
 
             /*
             // Get Bots

@@ -771,6 +771,7 @@ void brt::local_allsuff(diterator& diter, tree::npv& bnv,std::vector<sinfo*>& si
          tbn = t.bn(diter.getxp(),*xi);
          ni = bnmap[tbn];
       }else{
+         //cout << "rpath here... " << endl;
          tbnid = randz[*diter];
          ni = bnmapnid[tbnid];
       }      
@@ -1401,7 +1402,8 @@ void brt::drawthetavec(rn& gen)
    for(size_t i=0;i<bnv.size();i++) {
       // Update random hyperparameters if randhp is true
       if(randhp){
-         bnv[i]->setthetahypervec(drawnodehypervec(*(siv[i]),gen));   
+         bnv[i]->setthetahypervec(drawnodehypervec(*(siv[i]),gen));
+         cout << "randhp" << endl;   
       }
       // Update thetavec
       //cout << bnv[i]->nid() << "; ";
@@ -1663,6 +1665,8 @@ void brt::drawvec_mpislave(rn& gen)
             if((u0<prob)){
                n0 = pit->first;
                randz.push_back(n0->nid()); 
+               //cout << "n0-nid" << n0->nid() << endl;
+               //cout << "prob" << prob << endl;
                break;  
             }
          }
@@ -1672,6 +1676,16 @@ void brt::drawvec_mpislave(rn& gen)
       if(randz.size() != randz_shuffle.size()){
          cout << "ERROR: randz.size() != randz_shuffle.size()..." << randz_shuffle.size() << "---" << randz.size() << endl;
       }
+
+      /*
+      size_t diff = 0;
+      for(size_t i=0;i<randz.size();i++){
+         if(randz[i] != randz_shuffle[i]){
+            diff += 1;
+         }
+      }
+      cout << "diff = " << diff << endl;
+      */
 
       // Apply subsuff to the updated assignments
       subsuff(root,rbnv,sivnew);
@@ -1687,6 +1701,7 @@ void brt::drawvec_mpislave(rn& gen)
          //cout << "SHUFFLE REJCET" << endl;
       }else{
          randz_shuffle.clear();
+         //if(rank == 1) cout << "randz[5] = " << randz[5] << endl;
          //cout << "SHUFFLE ACCEPT" << endl;
       }
 
@@ -1772,7 +1787,7 @@ void brt::bd_vec(rn& gen)
          thetavecr = Eigen::VectorXd:: Zero(k); 
          t.birthp(nx,v,c,thetavecl,thetavecr);
          mi.baccept++;
-         //cout << "ACCEPT & Update" << endl;
+//         cout << "ACCEPT & Update" << endl;
          if(randpath){
             int Lv,Uv; //Upper and Lower bounds for new variable
             Lv=std::numeric_limits<int>::min(); Uv=std::numeric_limits<int>::max();
@@ -1847,6 +1862,7 @@ void brt::bd_vec(rn& gen)
          thetavec = Eigen::VectorXd::Zero(k); 
          t.deathp(nx,thetavec);
          mi.daccept++;
+//         cout << "accept death" << endl;
          if(randpath){
             update_randz_bd(nx, false);
             // Set upper and lower bounds to 0 since nx is now terminal
@@ -2573,7 +2589,8 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
       std::map<tree::tree_p,double> phixmap;
       std::map<tree::tree_p,double> logpathprob;
       double *xx = diter.getxp(); 
-      
+      //double sumphi = 0;
+
       /*
       phix = vxd::Ones(bnv.size())/bnv.size();
       get_phix(xx,phix,bnv,lbmap,ubmap,pathmap);
@@ -2588,9 +2605,10 @@ void brt::local_predict_thetavec_rpath(diterator& diter, mxd& wts){
       std::map<tree::tree_p,double>::iterator pit;
       for(pit = phixmap.begin();pit != phixmap.end();pit++){
          n0 = pit->first;
-         thetavec_temp = thetavec_temp + (n0->getthetavec())*(pit->second);   
+         thetavec_temp = thetavec_temp + (n0->getthetavec())*(pit->second);  
+         //sumphi += (pit->second); 
       }
-      
+      //cout << "sumphi = " << sumphi << endl;
       // Set the theta vector
       wts.col(*diter) = thetavec_temp; //sets the thetavec to be the ith column of the wts eigen matrix. 
    }   
@@ -3217,7 +3235,10 @@ void brt::shuffle_randz(rn &gen){
    std::vector<sinfo*>& snew = newsinfovec();
    tree::npv rbnv;
    tree::tree_p root;
-   double lmold, lmnew;
+   double lmold;
+   double lmnew;
+   double lmold2;
+   double lmnew2;
    bool hardreject = false;
 
    root = t.getptr(t.nid());
@@ -3226,35 +3247,116 @@ void brt::shuffle_randz(rn &gen){
    subsuff(root,rbnv,sold);
    subsuff(root,rbnv,snew);
    
-   // Get lm
-   for(size_t i=0;i<rbnv.size();i++)
-      lmold += lm(*(sold[i]));
 
-   for(size_t i=0;i<rbnv.size();i++) {
-      if((snew[i]->n) >= mi.minperbot)
-         lmnew += lm(*(snew[i]));
-      else 
-         hardreject=true;
+   //cout << "lmnew = " << lmnew +1.0 << endl;
+   //lmold2 += 1.0; 
+   //cout << "lmold2 = " << lmold2 << endl;
+   //lmold = lmold + 1.0;
+   //cout << "lmold = " << lmold  << endl; 
+
+   // Get lm
+   //lmold = 0;
+   //cout << "lmold lm = " << lmold << endl;
+   //cout << "lmnew lm = " << lmnew << endl;
+   //lmold = 0;
+   //if(lmold != 0){cout << "error" << endl;}
+   
+   /*
+   for(size_t i=0;i<rbnv.size();i++){
+      //cout << "lmold lm = " << lm(*(sold[i])) << endl;
+      if(i == 0){
+         lmold = lm(*(sold[i]));
+         lmold2 += lm(*(sold[i]));
+         //if(lmold != lmold2){cout << "HELP" << endl;}
+      }else{
+         lmold = lmold + lm(*(sold[i]));
+         lmold2 += lm(*(sold[i]));
+         //cout << "lmold = " << lmold << endl;
+         //cout << "lmold2 = " << lmold2 << endl;
+      }
+      //cout << "lmold lm= " << lmold << endl;
+      //if(i == 0 & (lmold != lm(*(sold[0])))){cout << "HELP" << endl;}
    }
 
-   // Delete suff stats
-   for(size_t i=0;i<sold.size();i++) delete sold[i];
-   for(size_t i=0;i<snew.size();i++) delete snew[i];
-   delete &sold;
-   delete &snew;
+   if(lmnew != 0){cout << "error" << endl;}
+   //if(lmnew == 0){cout << "yes" << endl;}
+   for(size_t i=0;i<rbnv.size();i++) {
+      if((snew[i]->n) >= mi.minperbot){
+         if(i == 0){
+            lmnew = lm(*(snew[i]));
+            lmnew2 += lm(*(snew[i]));
+            if(lmnew != lmnew2){cout << "New HELP" << endl;}
+         }else{
+            lmnew = lmnew + lm(*(snew[i]));
+            lmnew2 += lm(*(snew[i]));
+            //cout << "lmnew " << lmnew << endl;
+            //cout << "lmnew2 " << lmnew2 << endl;
+         }
+         //cout << "lmnew lm= " << lmnew << endl;
+      }else{ 
+         hardreject=true;
+         cout << "hardreject...." << endl;
+      }
+   }
+   
+   if(lmnew != lmnew2){cout << "New HELP" << endl;}
+   if(lmold != lmold2){cout << "Old HELP" << endl;}
+   cout << "lmold " << lmold << endl;
+   cout << "lmold2 " << lmold2 << endl;
 
-   // MH step
-   double alpha1 = exp(lmnew-lmold);
-   double alpha = std::min(1.0,alpha1);
+   cout << "lmnew " << lmnew << endl;
+   cout << "lmnew2 " << lmnew2 << endl;
+   
+   cout << "newdiff" << lmnew2 - lmnew << endl;
+   */
 
-   if(hardreject)
+   lmold2 = 0.0;
+   for(size_t i=0;i<rbnv.size();i++){
+      //cout << "lmold2 .. " << lmold2 << endl;
+      lmold2 = lmold2 + lm(*(sold[i]));
+      //cout << "lm + " << lm(*(sold[i])) << endl;
+      //cout << "lmold2" << lmold2 << endl;
+   }
+      
+   lmnew2 = 0.0;   
+   //cout << "lmnew2 ... " << lmnew2 << endl;
+   for(size_t i=0;i<rbnv.size();i++) {
+      //cout << "lmnew2 .. " << lmnew2 << endl;
+      if((snew[i]->n) >= mi.minperbot){
+         lmnew2 = lmnew2 + lm(*(snew[i]));
+      }else{ 
+         hardreject=true;
+         //cout << "hardreject..." << endl;
+         //cout << "lm + " << 0 << endl;
+      }
+   }
+   
+   
+
+   // MH step  
+   //cout << "lmnew = " << lmnew << endl;
+   //cout << "lmold = " << lmold << endl;
+   //cout << "lmnew2 = " << lmnew2 << endl;
+   //cout << "lmold2 = " << lmold2 << endl;
+
+
+   //double alpha1 = exp(lmnew2-lmold2);
+   //cout << "alpha1 " << alpha1 << endl;
+   //double alpha = std::min(1.0,(double) alpha1);
+   //double alpha = std::min(0.0,(double) lmnew2 - lmold2); 
+   //cout << "alpha " << alpha << endl;
+
+   double alpha;   
+   if(hardreject){
       alpha=0.0;
+   }else{
+      alpha=1.0;
+   }
 
    // Send accept/reject
 #ifdef _OPENMPI
    MPI_Request *request = new MPI_Request[tc];
 #endif
-
    if(gen.uniform()<alpha) {
 #ifdef _OPENMPI
       for(size_t i=1; i<=(size_t)tc; i++) {
@@ -3262,6 +3364,7 @@ void brt::shuffle_randz(rn &gen){
       }
    }
    else { //transmit reject over MPI
+      //cout << "reject..." << endl;
       for(size_t i=1; i<=(size_t)tc; i++) {
          MPI_Isend(NULL,0,MPI_PACKED,i,MPI_TAG_SHUFFLE_REJECT,MPI_COMM_WORLD,&request[i-1]);
       }
@@ -3269,6 +3372,12 @@ void brt::shuffle_randz(rn &gen){
 #else
    }
 #endif
+   // Delete suff stats
+   for(size_t i=0;i<sold.size();i++) delete sold[i];
+   for(size_t i=0;i<snew.size();i++) delete snew[i];
+   delete &sold;
+   delete &snew;
+
 }
 
 

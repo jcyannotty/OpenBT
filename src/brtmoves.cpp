@@ -188,6 +188,7 @@ void brt::pertcv(rn& gen)
          }
       }else{
          // No need to use suff stats because the z(x)'s are fixed -- so changing v has no effect on the residuals!
+         //cout << "rpath" << endl;
          getchgvsuff_rpath(pertnode,bnvr,bnvnidmap,oldc,oldv,didswap,lmold,lmnew);
       }
       double alpha1 = ((double)(Uo-Lo+1.0))/((double)(Un-Ln+1.0)); //from prior for cutpoints
