@@ -68,12 +68,8 @@ temp
 __pycache__
 dist
 build
-openbt.egg-info
-*openbtmixing/lib/*
 *openbtmixing/.libs/*
-*openbtmixing/lib/
-*openbtmixing/bin/*
-*openbtmixing/bin/
+*openbtmixing/mpi
 
 # wheels
 *.whl

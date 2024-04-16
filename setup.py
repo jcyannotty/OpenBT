@@ -1,51 +1,68 @@
 import os
-import sys
-import subprocess
-from setuptools import setup, Extension
-import platform
+import shutil
+from setuptools import setup
 import distutils
-#from Cython.Build import cythonize
 
-# Get a list of all files in src
-startwd = os.getcwd()
-cwd = startwd+"/src"
-src_files = os.popen("ls " + cwd).read()
-src_files = src_files.split("\n")
-
-# Pull the .cpp and .h files
-cppfiles = []
-for f in src_files:
-    if len(f.split("."))>1:
-        end = f.split(".")[1]
-        if end == "h" or end == "cpp":
-            cppfiles.append("src/"+f)
+from pathlib import Path
 
 
-# Copy object files to openbtpt/bin
-exec_list = []            
-for f in src_files:
-    if len(f.split("."))>1:
-        end = f.split(".")[1]
-        if end in ["o","lo","la"]:
-            os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
-            exec_list.append(f)
-    else:
-        if "openbt" in f:
-            os.system("cp " + cwd +"/" + f + " " + os.getcwd() + "/openbtmixing/"+f)
-            #exec_list.append(cwd + "/" + f)
-            exec_list.append(f)         
+# ----- HARDCODED VALUES
+CLONE_ROOT = Path(__file__).parent.resolve()
+SRC_PATH = CLONE_ROOT.joinpath("src")
+LIBS_PATH = SRC_PATH.joinpath(".libs")
+INSTALL_PATH = CLONE_ROOT.joinpath("openbtmixing")
+MPI_INSTALL_PATH = INSTALL_PATH.joinpath("mpi")
+MPI_BIN_INSTALL_PATH = MPI_INSTALL_PATH.joinpath("bin")
 
+# Names of OpenBT command line tools (CLT)
+CLT_NAMES = [
+    "openbtcli",
+    "openbtmixing", "openbtmixingpred", "openbtmixingwts",
+    "openbtmopareto",
+    "openbtpred",
+    "openbtsobol",
+    "openbtvartivity"
+]
 
-# Get libraries
-lib_list = []
-lib_files = os.popen("ls " + cwd + "/.libs/").read()
-lib_files = lib_files.split("\n")
-os.system("mkdir " + startwd + "/openbtmixing/.libs")
-for lb in lib_files:
-    os.system("cp " + cwd + "/.libs/"+lb+ " " + startwd + "/openbtmixing/.libs")
-    #lib_list.append(cwd+"/.libs/"+lb)
-    lib_list.append(startwd+"/openbtmixing/.libs/"+lb) 
+# ----- COPY PRE-BUILT C++ OpenBT RESULTS INTO INSTALL PATH
+# Always start with a clean installation folder
+if MPI_INSTALL_PATH.exists():
+    assert MPI_INSTALL_PATH.is_dir()
+    shutil.rmtree(MPI_INSTALL_PATH)
+os.mkdir(MPI_INSTALL_PATH)
+os.mkdir(MPI_BIN_INSTALL_PATH)
 
+for name in CLT_NAMES:
+    clt_path = INSTALL_PATH.joinpath(name)
+    if clt_path.exists():
+        assert clt_path.is_file()
+        os.remove(str(clt_path))
+
+# Copy in CLI programs (not the temporary libtool-generated wrappers)
+for name in CLT_NAMES:
+    shutil.copy(str(LIBS_PATH.joinpath(name)), str(INSTALL_PATH))
+
+# Copy across all MPI binaries since we don't know a priori across all MPI
+# implementations and their versions which are needed to run mpiexec.
+#
+# Assume that all library external dependencies of the CLT and the MPI binaries
+# will be added into wheels retroactively using a tool such as auditwheel or
+# delocate to get the correct RPATHs.  Presently assuming that those will
+# complete the minimal MPI installation that we are putting into the package.
+#
+# TODO: Can we get this in a correct and acceptable way from here?  How would
+# we know that what we are getting is what was used to build OpenBT?  If we
+# build OpenBT here, then maybe we can get these with some certainty.
+# TODO: Is it really a good idea to presume that we can know what MPI goods
+# need to be included in the installation?
+MPICC_PATH = Path(shutil.which("mpicc")).parent.resolve()
+mpi_bins = list(MPICC_PATH.glob("*"))
+for each in mpi_bins:
+    # TODO: Is this preserving or resolving symlinks?
+    shutil.copy(str(each), str(MPI_BIN_INSTALL_PATH))
+
+rel_path = MPI_BIN_INSTALL_PATH.relative_to(INSTALL_PATH)
+mpi_bins_rel_path = [str(rel_path.joinpath(e)) for e in mpi_bins]
 
 # Setup
 dist_name = distutils.util.get_platform()
@@ -55,64 +72,11 @@ dist_name = dist_name.replace(".","_")
 if "linux_x86_64" in dist_name:
     dist_name = "manylinux2014_x86_64"
 
-
-if "macosx" in dist_name:
-    dist_name = "macosx_10_9_x86_64"
-    #dist_name = "macosx_10_9_arm64"
-
 setup(
     name='openbtmixing',
     version='1.0.0',
     packages=["openbtmixing"],
-    package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
+    package_data={'openbtmixing': CLT_NAMES + mpi_bins_rel_path},
     zip_safe=False,
     options={'bdist_wheel':{'plat_name':dist_name}}
 )
-
-# Setup step
-
-# Create extensions from list
-# cppext = [
-#     Extension('openbtcpp',sources = cppfiles)
-# ]
-
-# setup(
-#     name="openbtmixing",
-#     version="1.0",
-#     packages=["openbtmixing"],
-#     ext_modules=cythonize(cppext),
-#     include_dirs=["/src"],
-#     zip_safe = False
-# )
-
-
-# THIS RUNS BUT THERE IS A COMPILATION ERROR ON PIPS END
-
-# def get_cpp_sources(folder, include_headers=False):
-#     """Find all C/C++ source files in the `folder` directory."""
-#     allowed_extensions = [".c", ".C", ".cc", ".cpp", ".cxx", ".c++"]
-#     if include_headers:
-#         allowed_extensions.extend([".h", ".hpp"])
-#     sources = []
-#     for root, dirs, files in os.walk(folder):
-#         for name in files:
-#             ext = os.path.splitext(name)[1]
-#             if ext in allowed_extensions:
-#                 sources.append(os.path.join(root, name))
-#     return sources
-
-
-# setup(
-#     name="openbtmixing",
-#     version="1.0",
-#     packages=["openbtmixing"],
-#     ext_modules=[
-#         Extension(
-#             "openbtmixing",
-#             include_dirs=[cwd],
-#             sources=get_cpp_sources(cwd, include_headers=False),
-#         ),
-#     ],
-#     zip_safe = False
-# )
-
