@@ -104,7 +104,7 @@ mpicxx -show
 echo
 
 # ----- CLEAN-UP LEFTOVERS FROM PREVIOUS BUILDS
-pushd $clone_root/src &> /dev/null || exit 1
+pushd $clone_root &> /dev/null || exit 1
 
 echo
 echo "Clean-up build environment"
