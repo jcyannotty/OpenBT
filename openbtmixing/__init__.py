@@ -1,3 +1,1 @@
-from .constants import (
-    MPIRUN, MPIEXEC
-)
+from .mpirun import mpirun

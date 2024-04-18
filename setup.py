@@ -115,8 +115,10 @@ mpi_bins = list(MPIEXEC_PATH.glob("*"))
 mpi_bins_rel_path = []
 for each in mpi_bins:
     if each.name not in MPI_BIN_EXCLUDE:
-        # TODO: Is this preserving or resolving symlinks?
-        shutil.copy(str(each), str(MPI_BIN_INSTALL_PATH))
+        # Some symlinks might lead out of this folder.  By doing this, we 
+        # assume that copying those here will not ultimately break any
+        # dependencies of the target.
+        shutil.copy(str(each), str(MPI_BIN_INSTALL_PATH), follow_symlinks=True)
         mpi_bins_rel_path.append(str(rel_path.joinpath(each.name)))
 
 # Setup
