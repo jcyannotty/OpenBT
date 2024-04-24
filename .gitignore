@@ -87,3 +87,6 @@ config.sub
 !/src/configure
 .DS_Store
 !LICENSE
+
+# For testing
+!openbtmixing/test/bart_bmm_test_data/*
