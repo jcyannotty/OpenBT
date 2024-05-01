@@ -39,6 +39,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
+        python -m pip install wheel
     - name: Install eigen dependency
       run: |
         # C++ Header only => no build here! 
@@ -49,6 +50,7 @@ jobs:
     # local clone alone
     - name: Build OpenBTMixing binary wheel
       run: |
+        echo " "
         echo "Log Software Environment"
         echo "-------------------------------------------------"
         echo "CC=$CC"
@@ -66,11 +68,12 @@ jobs:
         which pip
         python --version
         pip list
-        echo
+        echo " "
         glibtoolize --version
         aclocal --version
         automake --version
         autoconf --version
+        echo " "
         echo "Setting up build system"
         echo "-------------------------------------------------"
         pushd src
@@ -82,8 +85,17 @@ jobs:
         automake --add-missing
         echo "autoconfing ..."
         autoconf
+        echo " "
         echo "Configure OpenBT"
         echo "-------------------------------------------------"
         ./configure --with-mpi --with-silent
+        echo " "
+        echo "Make & install OpenBT CLTs"
+        echo "-------------------------------------------------"
+        make clean install
         popd
-        echo
+        echo " "
+        echo "Building binary wheel"
+        echo "-------------------------------------------------"
+        pip wheel .
+        echo " "
