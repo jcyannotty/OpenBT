@@ -65,6 +65,7 @@ setup(
     version='1.0.1',
     packages=["openbtmixing"],
     package_data={'openbtmixing': ['*.o',"*.lo","*.la",".libs/*"]+exec_list+lib_list},  # Include compiled shared libraries
+    install_requires=["numpy", "matplotlib"],
     zip_safe=False,
     options={'bdist_wheel':{'plat_name':dist_name}}
 )
