@@ -57,6 +57,7 @@ jobs:
         echo "CXX=$CXX"
         echo "MPICC=$MPICC"
         echo "MPICXX=$MPICXX"
+        ls ${{ github.workspace }}
         echo " "
         which mpicc
         mpicc -show
