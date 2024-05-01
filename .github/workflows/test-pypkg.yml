@@ -11,6 +11,8 @@ jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
   test_pypkg:
     runs-on: ${{ matrix.os }}
+    env:
+      EIGEN_PATH: ${{ github.workspace }}/eigen
     strategy:
       matrix:
         os: [macos-latest]
@@ -43,14 +45,14 @@ jobs:
     - name: Install eigen dependency
       run: |
         # C++ Header only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git ${{ github.workspace }}
+        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     # Prefer full end-to-end test of binary wheels rather than testing in
     # local clone alone
     - name: Build OpenBTMixing binary wheel
       run: |
-        export CPATH=${{ github.workspace }}/eigen
+        export CPATH=$EIGEN_PATH
         echo " "
         echo "Log Software Environment"
         echo "-------------------------------------------------"
@@ -59,7 +61,7 @@ jobs:
         echo "MPICC=$MPICC"
         echo "MPICXX=$MPICXX"
         echo "CPATH=$CPATH"
-        ls ${{ github.workspace }}/eigen
+        ls $EIGEN_PATH
         echo " "
         which mpicc
         mpicc -show
