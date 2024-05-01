@@ -13,6 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       EIGEN_PATH: ${{ github.workspace }}/eigen
+      INSTALL_PATH: ${{ github.workspace }}/local
     strategy:
       matrix:
         os: [macos-latest]
@@ -61,7 +62,6 @@ jobs:
         echo "MPICC=$MPICC"
         echo "MPICXX=$MPICXX"
         echo "CPATH=$CPATH"
-        ls $EIGEN_PATH
         echo " "
         which mpicc
         mpicc -show
@@ -93,7 +93,7 @@ jobs:
         echo " "
         echo "Configure OpenBT"
         echo "-------------------------------------------------"
-        ./configure --with-mpi --with-silent
+        ./configure --with-mpi --with-silent --prefix=$INSTALL_PATH
         echo " "
         echo "Make & install OpenBT CLTs"
         echo "-------------------------------------------------"
