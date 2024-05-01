@@ -43,6 +43,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
         python -m pip install wheel
+        python -m pip install pytest
     - name: Install eigen dependency
       run: |
         # C++ Header only => no build here! 
@@ -106,3 +107,14 @@ jobs:
         echo " "
         python -m pip install openbtmixing-*.whl
         pip list
+
+    ##-- Run full test suite
+    - name: Run full OpenBtMixing test suite
+      run: |
+        echo " "
+        which python
+        which pip
+        python --version
+        pip list
+        echo " "
+        pytest .
