@@ -43,13 +43,14 @@ jobs:
     - name: Install eigen dependency
       run: |
         # C++ Header only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git ${{ github.workspace }}/Eigen
+        git clone https://gitlab.com/libeigen/eigen.git ${{ github.workspace }}
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     # Prefer full end-to-end test of binary wheels rather than testing in
     # local clone alone
     - name: Build OpenBTMixing binary wheel
       run: |
+        export CPATH=${{ github.workspace }}/eigen
         echo " "
         echo "Log Software Environment"
         echo "-------------------------------------------------"
@@ -57,7 +58,8 @@ jobs:
         echo "CXX=$CXX"
         echo "MPICC=$MPICC"
         echo "MPICXX=$MPICXX"
-        ls ${{ github.workspace }}
+        echo "CPATH=$CPATH"
+        ls ${{ github.workspace }}/eigen
         echo " "
         which mpicc
         mpicc -show
@@ -89,7 +91,7 @@ jobs:
         echo " "
         echo "Configure OpenBT"
         echo "-------------------------------------------------"
-        CPATH=${{ github.workspace }}/eigen ./configure --with-mpi --with-silent
+        ./configure --with-mpi --with-silent
         echo " "
         echo "Make & install OpenBT CLTs"
         echo "-------------------------------------------------"
