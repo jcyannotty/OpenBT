@@ -21,8 +21,16 @@ jobs:
     #####----- SETUP TESTING ENVIRONMENT
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
+    - name: Install autotools
+      run: |
+        brew install autoconf
+        brew install autoconf-archive
+        brew install automake
+        brew install libtool
     - name: Install ${{ matrix.mpi_impl }}
       uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: ${{ matrix.mpi_impl }}
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
