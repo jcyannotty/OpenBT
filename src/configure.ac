@@ -56,8 +56,9 @@ cpp_flags="$cpp_flags -pipe"
 cpp_flags="$cpp_flags -g"
 cpp_flags="$cpp_flags -O3"
 
+dnl TODO: Can we remove this?  We insist on c++14 below to make Eigen happy.
 dnl check for c++0x (c++11) is performed below
-cpp_flags="$cpp_flags -std=c++0x"
+dnl cpp_flags="$cpp_flags -std=c++0x"
 
 cpp_flags="$cpp_flags -DNOR"
 
@@ -85,7 +86,8 @@ dnl ---------------------Checks for header files-----------------------------
 dnl Checks for typedefs, structures, and compiler characteristics.
 dnl - Require -std=c++0x support.  Uses ax_cxx_compile_stdcxx_11.m4 macro.
 dnl   Run aclocal before autoconf to enable macro.
-AX_CXX_COMPILE_STDCXX_11([noext], [mandatory])
+dnl - Install autoconf-archive to get ax_cxx_compile_stdcxx_14.m4
+AX_CXX_COMPILE_STDCXX_14([noext], [mandatory])
 
 AC_CHECK_HEADER_STDBOOL
 AC_TYPE_SIZE_T
