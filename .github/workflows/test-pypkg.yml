@@ -66,12 +66,12 @@ jobs:
         pip list
         echo
         pushd src
-        libtoolize --version
+        glibtoolize --version
         aclocal --version
         automake --version
         autoconf --version
         echo
-        libtoolize
+        glibtoolize
         aclocal
         automake --add-missing
         autoconf
