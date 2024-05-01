@@ -76,7 +76,7 @@ jobs:
         echo " "
         echo "Setting up build system"
         echo "-------------------------------------------------"
-        pushd src
+        pushd ${{ github.workspace }}/src
         echo "libtoolizing ..."
         glibtoolize
         echo "aclocalizing ..."
@@ -88,7 +88,7 @@ jobs:
         echo " "
         echo "Configure OpenBT"
         echo "-------------------------------------------------"
-        ./configure --with-mpi --with-silent
+        CPATH=${{ github.workspace }}/eigen ./configure --with-mpi --with-silent
         echo " "
         echo "Make & install OpenBT CLTs"
         echo "-------------------------------------------------"
