@@ -1,0 +1,59 @@
+name: Test OpenBTMixing Python Package
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  #####----- FULL TESTING WITHOUT COVERAGE
+  test_pypkg:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.9"]
+
+    steps:
+      #####----- SETUP TESTING ENVIRONMENT
+      - name: Checkout OpenBTMixing
+        uses: actions/checkout@v4
+      - name: Install ${{ matrix.mpi_impl }}
+        uses: mpi4py/setup-mpi@v1
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        python-version: ${{ matrix.python-version }}
+      - name: Setup Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools
+      - name: Install eigen dependency
+        run: |
+          # C++ Header only => no build here! 
+          git clone https://gitlab.com/libeigen/eigen.git
+
+      #####----- BUILD WHEEL FROM SCRATCH & INSTALL
+      # Prefer full end-to-end test of binary wheels rather than testing in
+      # local clone alone
+      - name: Build OpenBTMixing binary wheel
+        run: |
+          # Log software environment
+          echo
+          pushd src
+          autoconf --version
+          aclocal --version
+          automake --version
+          popd
+          echo
+          which mpicc
+          mpicc -show
+          echo
+          which mpicxx
+          mpicxx -show
+          echo
+          which python
+          which pip
+          pip list
