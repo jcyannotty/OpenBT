@@ -104,3 +104,5 @@ jobs:
         echo "-------------------------------------------------"
         pip wheel .
         echo " "
+        python -m pip install openbtmixing-*.whl
+        pip list
