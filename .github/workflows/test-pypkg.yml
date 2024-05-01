@@ -50,19 +50,30 @@ jobs:
     - name: Build OpenBTMixing binary wheel
       run: |
         # Log software environment
-        echo
-        pushd src
-        autoconf --version
-        aclocal --version
-        automake --version
-        popd
-        echo
+        echo "CC=$CC"
+        echo "CXX=$CXX"
+        echo "MPICC=$MPICC"
+        echo "MPICXX=$MPICXX"
+        echo ""
         which mpicc
         mpicc -show
-        echo
+        echo ""
         which mpicxx
         mpicxx -show
         echo
         which python
         which pip
         pip list
+        echo
+        pushd src
+        libtoolize --version
+        aclocal --version
+        automake --version
+        autoconf --version
+        echo
+        libtoolize
+        aclocal
+        automake --add-missing
+        autoconf
+        popd
+        echo
