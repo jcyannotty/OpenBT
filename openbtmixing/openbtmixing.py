@@ -13,6 +13,9 @@ from pathlib import Path
 
 import openbtmixing.interface_helpers as ih
 
+#from importlib import reload
+#reload(ih)
+
 class Openbtmix():
     def __init__(self,**kwargs):
         '''
@@ -45,7 +48,7 @@ class Openbtmix():
         self.adaptevery = 100
 
         # Cutpoints
-        self.xicuts = "None"
+        self.xicuts = None
 
         # Set the prior defaults
         self.nummodels = 2
@@ -109,10 +112,21 @@ class Openbtmix():
         out["lam"] = self.lam
         out["base"] = self.base
         out["power"] = self.power
+        return out
 
 
     def get_mcmc_info(self):
-        pass
+        out = {}
+        out["pbd"] = self.pbd
+        out["pb"] = self.pb
+        out["stepwpert"] = self.stepwpert
+        out["probchv"] = self.probchv
+        out["nadapt"] = self.nadapt
+        out["adaptevery"] = self.adaptevery
+        out["nskip"] = self.nskip
+        out["ndpost"] = self.ndpost
+        return out
+
     
     
     def set_cutpoints(self, xmax, xmin, numcut):
@@ -120,7 +134,7 @@ class Openbtmix():
         self.numcut = numcut
         for j in range(len(xmax)):
             xinc = (xmax[j] - xmin[j]) / (self.numcut + 1)
-            self.xi[j] = [np.arange(1, (numcut) + 1) * xinc + xmax[j]]
+            self.xi[j] = [np.arange(1, (numcut) + 1) * xinc + xmin[j]]
 
 
     def set_mcmc_info(self, mcmc_dict):
@@ -131,11 +145,14 @@ class Openbtmix():
             "nadapt",
             "adaptevery",
             "tc",
+            "minnumbot",
             "printevery"]
         
         for (key, value) in mcmc_dict.items():
             if key in valid_mcmc_args:
                 self.__dict__.update({key: value})
+            else:
+                print((key,value))
 
 
     def set_prior(
@@ -257,8 +274,9 @@ class Openbtmix():
         if x_train.shape[0] != f_train.shape[0]:
             raise ValueError("Number of rows in x_train does not match length of f_train.")
         
-        if f_train.shape != s_train.shape and self.inform_prior:
-            raise ValueError("Shape of f_train does not match shape of s_train.")
+        if self.inform_prior:
+            if f_train.shape != s_train.shape:
+                raise ValueError("Shape of f_train does not match shape of s_train.")
         
         # Store n and p
         n = x_train.shape[0]
@@ -281,7 +299,7 @@ class Openbtmix():
 
 
         # Set the mcmc properties from kwargs
-        ih.set_mcmc_info(kwargs)
+        self.set_mcmc_info(kwargs)
 
         # Create path
         f = tempfile.mkdtemp(prefix="openbtmixing_")
@@ -298,7 +316,7 @@ class Openbtmix():
 
 
         # Write config file
-        ih.write_config_file(run_params, self.fpath)
+        ih.write_config_file(run_params, self.fpath, tag = "")
         if self.inform_prior:
             ih.write_train_data(self.fpath, self.xi, x_train, y_train, f_train, s_train = s_train, tc = self.tc)
         else:
@@ -372,11 +390,11 @@ class Openbtmix():
                        self.xiroot, self.xproot, self.fproot,
                        self.ndpost, self.ntree, self.ntreeh,
                        p_test, self.nummodels, self.tc, self.fmean_out]
-        ih.write_config_file(pred_params, self.fpath)
+        ih.write_config_file(pred_params, self.fpath, tag = ".pred")
 
         # Run prediction
         cmd = "openbtpred"
-        ih.run_model(self.fpath, self.tc, cmd, local_openbt_path = self.local_openbt_path, google_colab = self.google_colab)
+        ih.run_model(fpath = self.fpath, tc = self.tc, cmd = cmd, local_openbt_path = self.local_openbt_path, google_colab = self.google_colab)
         
         res = ih.read_in_preds(self.fpath, self.modelname, self.nummodels, q_upper, q_lower, True, True, False)        
         return res
@@ -438,7 +456,7 @@ class Openbtmix():
                        self.ndpost, self.ntree, self.ntreeh,
                        p_test, self.nummodels, self.tc]
         
-        ih.write_config_file(pred_params, self.fpath)
+        ih.write_config_file(pred_params, self.fpath, tag = ".mxwts")
         
         # run the program
         cmd = "openbtmixingwts"
@@ -446,7 +464,4 @@ class Openbtmix():
 
         res = ih.read_in_preds(self.fpath, self.modelname, self.nummodels, q_upper, q_lower, False, False, True)        
         return res
-
-
-
 

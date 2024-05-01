@@ -23,17 +23,18 @@ sys.path.append(openbt_wd)
 from Python.polynomial_models import sin_cos_exp
 from openbtmixing.openbtmixing import Openbtmix
 
+mix = Openbtmix(local_openbt_path = "/home/johnyannotty/Documents/openbt/src")
+
+
 # ---------------------------------------------
 # Define the test functions
 # ---------------------------------------------
 # Test the mixing fun
 def test_mixing():
-    x_train = np.loadtxt(
-        openbt_wd + 'test/bart_bmm_test_data/2d_x_train.txt').reshape(80, 2)
+    x_train = np.loadtxt(openbt_wd + 'test/bart_bmm_test_data/2d_x_train.txt').reshape(80, 2)
     x_train = x_train.reshape(2, 80).transpose()
 
-    y_train = np.loadtxt(
-        openbt_wd + 'test/bart_bmm_test_data/2d_y_train.txt').reshape(80, 1)
+    y_train = np.loadtxt(openbt_wd + 'test/bart_bmm_test_data/2d_y_train.txt').reshape(80, 1)
 
     f_train = np.concatenate([f1.evaluate(x_train)[0],f2.evaluate(x_train)[0]], axis = 1)
 
@@ -81,12 +82,10 @@ def test_predict():
     x2_test = x1_test.copy().transpose()
     x_test = np.array([x1_test.reshape(x1_test.size,),
                       x2_test.reshape(x1_test.size,)]).transpose()
-    f_test = np.concatenate([f1.evaluate(x_test),f2.evaluate(x_test)], axis = 1)
+    f_test = np.concatenate([f1.evaluate(x_test)[0],f2.evaluate(x_test)[0]], axis = 1)
 
     # Read in test results
-    pmean_test = np.loadtxt(
-        openbt_wd +
-        'test/bart_bmm_test_data/2d_pmean.txt')
+    pmean_test = np.loadtxt(openbt_wd +'test/bart_bmm_test_data/2d_pmean.txt')
     eps = 0.10
 
     # Get predictions
@@ -106,13 +105,11 @@ def test_predict_wts():
     x_test = np.array([x1_test.reshape(x1_test.size,),
                       x2_test.reshape(x1_test.size,)]).transpose()
 
-    res = mix.predict_weights(X=x_test, ci=0.95)
+    res = mix.predict_weights(x_test=x_test, ci=0.95)
 
     # Read in test results
     wteps = 0.05
-    wmean_test = np.loadtxt(
-        openbt_wd +
-        'test/bart_bmm_test_data/2d_wmean.txt')
+    wmean_test = np.loadtxt(openbt_wd + 'test/bart_bmm_test_data/2d_wmean.txt')
 
     # Test the values
     werr = np.mean(np.abs(res["wts"]["mean"] - wmean_test))
@@ -127,10 +124,10 @@ def test_sigma():
     x2_test = x1_test.copy().transpose()
     x_test = np.array([x1_test.reshape(x1_test.size,),
                       x2_test.reshape(x1_test.size,)]).transpose()
-    f_test = np.concatenate([f1.evaluate(x_test),f2.evaluate(x_test)],axis = 1)
+    f_test = np.concatenate([f1.evaluate(x_test)[0],f2.evaluate(x_test)[0]],axis = 1)
 
     res = mix.predict(x_test=x_test, f_test = f_test, ci=0.95)
-    assert np.abs((res["sigma"]["mean"] - 0.1)) < sig_eps, "Inaccurate sigma calculation."
+    assert np.abs((res["sigma"]["mean"][0] - 0.1)) < sig_eps, "Inaccurate sigma calculation."
 
 
 # ---------------------------------------------

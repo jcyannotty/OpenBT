@@ -21,13 +21,12 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
     wdraws = {}
     out = {}
     if readmean:
-        mdraw_files = sorted(
-            list(fpath.glob(modelname + ".mdraws*")))
+        mdraw_files = sorted(list(fpath.glob(modelname + ".mdraws*")))
         
         for f in mdraw_files:
             read = open(f, "r")
             lines = read.readlines()
-            if lines[0] != '\n' and lines[1] != '\n':  # If it's nonempty
+            if lines[0] != '\n' and lines[1] != '\n':  
                 mdraws.append(np.loadtxt(f))
 
         # print(mdraws[0].shape); print(len(mdraws))
@@ -39,10 +38,6 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
         pred_med = np.empty(n_test)
         pred_lower = np.empty(n_test)
         pred_upper = np.empty(n_test)
-        out_pred = {"draws":mdraws,"mean":pred_mean,"sd":pred_sd,
-                    "med":pred_med,"lb":pred_lower,"ub":pred_upper}
-        out["pred"] = out_pred
-        del out_pred
     
     if readstd:
         sdraw_files = sorted(list(fpath.glob(modelname + ".sdraws*")))
@@ -62,27 +57,23 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
         sigma_med = np.empty(n_test)
         sigma_lower = np.empty(n_test)
         sigma_upper = np.empty(n_test)
-        out_sigma = {"draws":sdraws,"mean":sigma_mean,"sd":sigma_sd,
-                    "med":sigma_med,"lb":sigma_lower,"ub":sigma_upper}
-        out["sigma"] = out_sigma
-        del out_sigma 
 
     # Initialize the wdraws dictionary
     if readwts:
         # Get the weight files
         for k in range(nummodels):
             wdraw_files = sorted(list(fpath.glob(modelname + ".w" + str(k + 1) + "draws*")))
-            wdraws = []
+            wdraws_temp = []
             for f in wdraw_files:
                 read = open(f, "r")
                 lines = read.readlines()
                 if lines[0] != '\n' and lines[1] != '\n':  # If it's nonempty
-                    wdraws.append(np.loadtxt(f))
+                    wdraws_temp.append(np.loadtxt(f))
 
             # Store the wdraws array in the self.wdraws dictionary under the
             # key wtname
             wtname = "w" + str(k + 1)
-            wdraws[wtname] = np.concatenate(wdraws, axis=1) 
+            wdraws[wtname] = np.concatenate(wdraws_temp, axis=1) 
 
         # Initialize summary statistic matrices for the wts
         n_test = len(wdraws[wtname][0])
@@ -116,9 +107,21 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
                 wts_med[j][k] = np.quantile(wdraws[wtname][:, j], 0.50)
                 wts_lower[j][k] = np.quantile(wdraws[wtname][:, j],q_lower)
                 wts_upper[j][k] = np.quantile(wdraws[wtname][:, j], q_upper)
-            out_wts = {"draws":wdraws,"mean":wts_mean,"sd":wts_sd,
+            
+    if readmean:
+        out_pred = {"draws":mdraws,"mean":pred_mean,"sd":pred_sd,
+                    "med":pred_med,"lb":pred_lower,"ub":pred_upper}
+        out["pred"] = out_pred
+
+    if readstd:
+        out_sigma = {"draws":sdraws,"mean":sigma_mean,"sd":sigma_sd,
+                "med":sigma_med,"lb":sigma_lower,"ub":sigma_upper}
+        out["sigma"] = out_sigma
+
+    if readwts:
+        out_wts = {"draws":wdraws,"mean":wts_mean,"sd":wts_sd,
                         "med":wts_med,"lb":wts_lower,"ub":wts_upper}
-            out["wts"] = out_wts
+        out["wts"] = out_wts
 
     return out
 
@@ -206,27 +209,34 @@ def write_data_to_txt(data, tc, fpath, root, fmt):
     """
     Private function, write data to text file.
     """
-    # set number of helpers, which is always thread count minus one
-    nh = tc - 1
-    if (tc - int(tc) == 0):
-        splitted_data = np.array_split(data, nh)
-    else:
+    # Thread count checker
+    if (tc - int(tc) != 0):
         sys.exit('Fit: Invalid tc input - exiting process')
+
+    # Writing data for predictions (if true) or training (if false)
+    if root in ["xp", "fp", "xw"]:
+        nh = tc
+        int_added = 0
+    else:
+        nh = tc - 1
+        int_added = 1
+    
+    # Check splitted data
+    splitted_data = np.array_split(data, nh)
     
     # save to text (accounting for thread number when needed with int_added)
     # Use int_added = 0 when writing prediction grid
-    int_added = 0 if root in ["xp", "fp", "xw"] else 1
     for i, ch in enumerate(splitted_data):
         np.savetxt(str(fpath / Path(root + str(i + int_added))),ch, fmt=fmt)
 
 
 
 # Need to generalize -- this is only used in fit
-def write_config_file(self, run_params, fpath):
+def write_config_file(run_params, fpath, tag):
     """
     UPDATE
     """
-    configfile = Path(fpath / "config")
+    configfile = Path(fpath / ("config"+tag) )
     with configfile.open("w") as tfile:
         for param in run_params:
             tfile.write(str(param) + "\n")
