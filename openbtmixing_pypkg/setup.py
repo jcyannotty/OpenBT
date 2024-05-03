@@ -47,8 +47,12 @@ PROJECT_URLS = {
 DIST_NAME = distutils.util.get_platform()
 DIST_NAME = DIST_NAME.replace("-", "_")
 DIST_NAME = DIST_NAME.replace(".", "_")
+
+bdist_wheel = {}
+bdist_wheel["plat_name"] = DIST_NAME
+bdist_wheel["universal"] = False
 if "linux_x86_64" in DIST_NAME:
-    DIST_NAME = "manylinux2014_x86_64"
+    bdist_wheel["plat_name"] = "manylinux2014_x86_64"
 
 # ----- START CLEAN WITH EVERY DISTRIBUTION
 if BIN_INSTALL_PATH.exists():
@@ -93,7 +97,7 @@ setup(
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     zip_safe=False,
-    options={'bdist_wheel': {'plat_name': DIST_NAME}},
+    options={'bdist_wheel': bdist_wheel},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License"
