@@ -47,9 +47,6 @@ fi
 echo
 echo "MPI wrappers"
 echo "---------------------------------------------"
-echo "CC=$CC"
-echo "CXX=$CXX"
-echo
 which mpicc
 mpicc -show
 echo
@@ -58,7 +55,7 @@ mpicxx -show
 echo
 
 # These are required by configure on my system
-# - macOS with MPICH installed via homebrew
+# - macOS with OpenMPI installed via homebrew
 export CC=$(which mpicc)
 export CXX=$(which mpicxx)
 
