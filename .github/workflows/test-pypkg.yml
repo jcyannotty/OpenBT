@@ -43,7 +43,7 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install --upgrade setuptools
         # For building wheel only
-        python -m pip install wheel
+        python -m pip install build
         python -m pip install delocate
     - name: Install eigen dependency
       run: |

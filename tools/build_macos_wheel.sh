@@ -16,6 +16,9 @@
 # working directory and all *.whl files in the openbtmixing_pypkg folder before
 # it builds the wheel.
 #
+# Users must first install the build package to use this script
+#                    https://pypi.org/project/build/
+#
 
 #####----- EXTRACT BUILD INFO FROM COMMAND LINE ARGUMENT
 if [[ "$#" -ne 0 ]]; then
@@ -28,27 +31,29 @@ fi
 script_path=$(dirname -- "${BASH_SOURCE[0]}")
 clone_root=$script_path/..
 pypkg_path=$clone_root/openbtmixing_pypkg
+dist_path=$pypkg_path/dist
 
 echo
 echo "Clean-up $pypkg_path"
 echo "---------------------------------------------"
 rm openbtmixing-*.whl
+rm $dist_path/openbtmixing-*.whl
 
 pushd $pypkg_path &> /dev/null
-ls -la
-cat VERSION
 
 rm *.whl
 
 echo
 echo "Build binary wheel"
 echo "---------------------------------------------"
-pip wheel . || exit 1
+python -m build -w || exit 1
 echo
+popd &> /dev/null
 
 echo
 echo "delocate binary wheel"
 echo "---------------------------------------------"
+pushd $dist_path &> /dev/null
 delocate-listdeps --all openbtmixing-*.whl
 echo
 # This presupposes that we know what all the MPI-related external dependencies
@@ -59,8 +64,7 @@ delocate-listdeps --all openbtmixing-*.whl
 echo
 popd &> /dev/null
 
-mv $pypkg_path/openbtmixing-*.whl .
-rm $pypkg_path/*.whl
+mv $dist_path/openbtmixing-*.whl .
 
 tar tvfz openbtmixing-*.whl
 echo
