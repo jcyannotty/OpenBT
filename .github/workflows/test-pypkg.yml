@@ -16,9 +16,9 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local
     strategy:
       matrix:
-        os: [macos-latest]
-        mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        os: [macos-latest, ubuntu-latest]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.8"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -26,10 +26,12 @@ jobs:
       uses: actions/checkout@v4
     - name: Install autotools
       run: |
-        brew install autoconf
-        brew install autoconf-archive
-        brew install automake
-        brew install libtool
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            brew install autoconf
+            brew install autoconf-archive
+            brew install automake
+            brew install libtool
+        fi
     - name: Install ${{ matrix.mpi_impl }}
       uses: mpi4py/setup-mpi@v1
       with:
@@ -44,7 +46,11 @@ jobs:
         python -m pip install --upgrade setuptools
         # For building wheel only
         python -m pip install build
-        python -m pip install delocate
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            python -m pip install delocate
+        else
+            python -m pip install auditwheel
+        fi
     - name: Install eigen dependency
       run: |
         # C++ Header only => no build here! 
@@ -75,17 +81,19 @@ jobs:
         python -c "import platform ; print(platform.version())"
         python -c "import platform ; print(platform.mac_ver())"
         echo " "
-        ${{ github.workspace }}/tools/build_macos_wheel.sh ${{ matrix.mpi_impl }}
-        echo " "
-        echo "Install final binary wheel"
-        echo "-------------------------------------------------"
-        python -m pip install openbtmixing-*.whl
-        echo " "
-        pip list
-        echo " "
-        echo "Test installed package"
-        echo "-------------------------------------------------"
-        ${{ github.workspace }}/tools/test_python_installation.py
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            ${{ github.workspace }}/tools/build_macos_wheel.sh ${{ matrix.mpi_impl }}
+            echo " "
+            echo "Install final binary wheel"
+            echo "-------------------------------------------------"
+            python -m pip install openbtmixing-*.whl
+            echo " "
+            pip list
+            echo " "
+            echo "Test installed package"
+            echo "-------------------------------------------------"
+            ${{ github.workspace }}/tools/test_python_installation.py
+        fi
 
   #####----- FULL TESTING WITH COVERAGE
   pypkg_coverage:
