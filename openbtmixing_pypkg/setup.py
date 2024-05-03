@@ -51,7 +51,15 @@ if platform.system().lower().startswith("darwin"):
     ver, _, arch = platform.mac_ver()
     assert arch in ["x86_64", "arm64"]
     ver = ver.split('.')
-    bdist_wheel["plat_name"] = f"macosx_{ver[0]}_{ver[1]}_{arch}"
+    major = int(ver[0])
+    minor = int(ver[1])
+    if major >= 11:
+        # TODO: Ideally we will create wheels with version 10_9 in the name.  I
+        # need this to get macOS 14.4 to work in GitHub and it looks like
+        # Python is setting mine to 12_0 despite my OS being 12.3.  Is this
+        # correct?
+        minor = 0
+    bdist_wheel["plat_name"] = f"macosx_{major}_{minor}_{arch}"
 else:
     raise NotImplementedError("Only working on macOS for now")
 
