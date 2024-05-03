@@ -35,6 +35,8 @@ echo "---------------------------------------------"
 rm openbtmixing-*.whl
 
 pushd $pypkg_path &> /dev/null
+ls -la
+cat VERSION
 
 rm *.whl
 

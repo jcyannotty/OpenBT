@@ -107,8 +107,6 @@ jobs:
         which pip
         python --version
         echo " "
-        echo "Build binary wheel & delocate"
-        echo "-------------------------------------------------"
         ${{ github.workspace }}/tools/build_macos_wheel.sh
         echo " "
         echo "Install final binary wheel"
