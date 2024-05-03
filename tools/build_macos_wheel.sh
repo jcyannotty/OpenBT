@@ -21,12 +21,15 @@
 #
 
 #####----- EXTRACT BUILD INFO FROM COMMAND LINE ARGUMENT
-if [[ "$#" -ne 0 ]]; then
+if [[ "$#" -ne 1 ]]; then
     echo
-    echo "build_macos_wheel.sh"
+    echo "build_macos_wheel.sh <MPI implementation>"
+    echo
+    echo "   where <MPI implementation> is mpich or openmpi" 
     echo
     exit 1
 fi
+mpi_impl=$1
 
 script_path=$(dirname -- "${BASH_SOURCE[0]}")
 clone_root=$script_path/..
@@ -58,7 +61,18 @@ delocate-listdeps --all openbtmixing-*.whl
 echo
 # This presupposes that we know what all the MPI-related external dependencies
 # are => human in the loop that reviews this output.
-delocate-wheel -e open-mpi -e libevent -e hwloc -e pmix -v openbtmixing-*.whl
+if   [[ "$mpi_impl" = "mpich" ]]; then
+    delocate-wheel -e mpich -e hwloc -v openbtmixing-*.whl
+elif [[ "$mpi_impl" = "openmpi" ]]; then
+    delocate-wheel -e open-mpi -e libevent -e hwloc -e pmix -v openbtmixing-*.whl
+else
+    echo
+    echo "build_macos_wheel.sh <MPI implementation>"
+    echo
+    echo "   where <MPI implementation> is mpich or openmpi" 
+    echo
+    exit 1
+fi
 echo
 delocate-listdeps --all openbtmixing-*.whl
 echo

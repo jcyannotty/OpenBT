@@ -75,7 +75,7 @@ jobs:
         python -c "import platform ; print(platform.version())"
         python -c "import platform ; print(platform.mac_ver())"
         echo " "
-        ${{ github.workspace }}/tools/build_macos_wheel.sh
+        ${{ github.workspace }}/tools/build_macos_wheel.sh ${{ matrix.mpi_impl }}
         echo " "
         echo "Install final binary wheel"
         echo "-------------------------------------------------"
