@@ -50,6 +50,7 @@ bdist_wheel = {}
 if platform.system().lower().startswith("darwin"):
     ver, _, arch = platform.mac_ver()
     assert arch in ["x86_64", "arm64"]
+    ver = ver.split('.')
     bdist_wheel["plat_name"] = f"macosx_{ver[0]}_{ver[1]}_{arch}"
 else:
     raise NotImplementedError("Only working on macOS for now")
