@@ -54,46 +54,7 @@ jobs:
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
         export CPATH=$EIGEN_PATH
-        echo " "
-        echo "Log Software Environment"
-        echo "-------------------------------------------------"
-        echo "CC=$CC"
-        echo "CXX=$CXX"
-        echo "MPICC=$MPICC"
-        echo "MPICXX=$MPICXX"
-        echo "CPATH=$CPATH"
-        echo " "
-        which mpicc
-        mpicc -show
-        echo " "
-        which mpicxx
-        mpicxx -show
-        echo " "
-        glibtoolize --version
-        aclocal --version
-        automake --version
-        autoconf --version
-        echo " "
-        echo "Setting up build system"
-        echo "-------------------------------------------------"
-        pushd ${{ github.workspace }}/src
-        echo "libtoolizing ..."
-        glibtoolize
-        echo "aclocalizing ..."
-        aclocal
-        echo "automaking ..."
-        automake --add-missing
-        echo "autoconfing ..."
-        autoconf
-        echo " "
-        echo "Configure OpenBT"
-        echo "-------------------------------------------------"
-        ./configure --with-mpi --with-silent --prefix=$INSTALL_PATH
-        echo " "
-        echo "Make & install OpenBT CLTs"
-        echo "-------------------------------------------------"
-        make clean install
-        popd
+        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
 
     ##-- Run full test suite
     # Prefer full end-to-end test of binary wheels rather than testing in

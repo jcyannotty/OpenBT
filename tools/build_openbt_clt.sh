@@ -32,6 +32,45 @@ prefix=$1
 script_path=$(dirname -- "${BASH_SOURCE[0]}")
 clone_root=$script_path/..
 
+if ! command -v mpicc &> /dev/null; then
+    echo
+    echo "Please install MPI with mpicc C compiler wrapper"
+    echo
+    exit 1
+elif ! command -v mpic++ &> /dev/null; then
+    echo
+    echo "Please install MPI with mpic++ C++ compiler wrapper"
+    echo
+    exit 1
+fi
+
+echo
+echo "MPI wrappers"
+echo "---------------------------------------------"
+echo "CC=$CC"
+echo "CXX=$CXX"
+echo
+which mpicc
+mpicc -show
+echo
+which mpicxx
+mpicxx -show
+echo
+
+# These are required by configure on my system
+# - macOS with MPICH installed via homebrew
+export CC=$(which mpicc)
+export CXX=$(which mpicxx)
+
+echo
+echo "CC=$CC"
+echo "CXX=$CXX"
+echo "MPICC=$MPICC"
+echo "MPICXX=$MPICXX"
+echo "CPATH=$CPATH"
+echo "LIBRARY_PATH=$LIBRARY_PATH"
+echo
+
 if ! command -v autoconf &> /dev/null; then
     echo
     echo "Please install autoconf"
@@ -60,22 +99,6 @@ else
     exit 1
 fi
 
-if ! command -v mpicc &> /dev/null; then
-    echo
-    echo "Please install MPI with mpicc C compiler wrapper"
-    echo
-    exit 1
-elif ! command -v mpic++ &> /dev/null; then
-    echo
-    echo "Please install MPI with mpic++ C++ compiler wrapper"
-    echo
-    exit 1
-fi
-# These are required by configure on my system
-# - macOS with MPICH installed via homebrew
-export CC=$(which mpicc)
-export CXX=$(which mpicxx)
-
 # ----- LOG IMPORTANT DATA
 echo
 echo "Autotools version information"
@@ -88,19 +111,6 @@ aclocal  --version
 echo
 $libtoolize_exe --version
 
-echo
-echo "MPI wrappers"
-echo "---------------------------------------------"
-echo "CC=$CC"
-echo "CXX=$CXX"
-echo
-which mpicc
-mpicc -show
-echo
-which mpicxx
-mpicxx -show
-echo
-
 # ----- CLEAN-UP LEFTOVERS FROM PREVIOUS BUILDS
 pushd $clone_root &> /dev/null || exit 1
 
@@ -108,8 +118,6 @@ echo
 echo "Clean-up build environment"
 echo "---------------------------------------------"
 rm -rf $prefix
-rm -rf build
-rm -rf openbtmixing.egg-info
 
 popd &> /dev/null
 
