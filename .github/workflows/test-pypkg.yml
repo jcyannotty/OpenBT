@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       EIGEN_PATH: ${{ github.workspace }}/eigen
-      INSTALL_PATH: ${{ github.workspace }}/local
+      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -59,6 +59,7 @@ jobs:
       run: |
         export CPATH=$EIGEN_PATH
         ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+        export PATH=$PATH:$INSTALL_PATH/bin
 
     ##-- Run full test suite
     # Prefer full end-to-end test of binary wheels rather than testing in
@@ -102,7 +103,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       EIGEN_PATH: ${{ github.workspace }}/eigen
-      INSTALL_PATH: ${{ github.workspace }}/local
+      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -140,6 +141,7 @@ jobs:
       run: |
         export CPATH=$EIGEN_PATH
         ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+        export PATH=$PATH:$INSTALL_PATH/bin
 
     ##-- Run full test suite
     # Run this from local clone since we have already tested packages.
