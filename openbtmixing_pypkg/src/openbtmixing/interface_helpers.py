@@ -145,23 +145,15 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
     if google_colab:
         raise NotImplementedError("google_colab not supported")
 
-    BIN_PATH = Path(__file__).parent.joinpath(".bin").resolve()
-    if not BIN_PATH.is_dir():
-        msg = "{} does not exist or is not a folder.\n"
-        msg += "Please check your installation."
-        raise RuntimeError(msg.format(BIN_PATH))
-
-    clt = BIN_PATH.joinpath(cmd)
-    if not clt.is_file():
-        msg = "{} does not exist or is not a file.\n"
-        msg += "Please check your installation."
-        raise RuntimeError(msg.format(clt))
+    if shutil.which("mpirun") is None:
+        msg = "Add to PATH the folder that contains the mpirun\n"
+        msg += "of the MPI implementation used to build OpenBT CLTs"
+        raise RuntimeError(msg)
+    elif shutil.which(cmd) is None:
+        raise RuntimeError(f"Add to PATH the folder that contains {cmd}")
 
     # MPI with local program
-    sp = subprocess.run(["mpirun",
-                         "-np", str(tc),
-                         str(clt),
-                         str(fpath)],
+    sp = subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
                         stdin=subprocess.DEVNULL,
                         capture_output=True)
 
