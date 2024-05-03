@@ -31,6 +31,9 @@ jobs:
             brew install autoconf-archive
             brew install automake
             brew install libtool
+        else
+            sudo apt-get update
+            sudo apt-get -y install autoconf-archive
         fi
     - name: Install ${{ matrix.mpi_impl }}
       uses: mpi4py/setup-mpi@v1
@@ -92,7 +95,7 @@ jobs:
             echo " "
             echo "Test installed package"
             echo "-------------------------------------------------"
-            ${{ github.workspace }}/tools/test_python_installation.py
+            ${{ github.workspace }}/tools/test_python_installation.py -v 2
         fi
 
   #####----- FULL TESTING WITH COVERAGE
