@@ -130,80 +130,40 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
     """
     Private function, run the cpp program via the command line using
     a subprocess.
+
+    This assumes that mpirun is in the path and that it is from the MPI
+    implementation compatible with the build of the OpenBT C++ command line
+    tools.
+
+    .. todo::
+        * Error check all arguments
+        * Error check subprocess call
     """
-    # Check to see if executable is installed via debian
-    sh = shutil.which(cmd)
+    if local_openbt_path != "":
+        print(f"local_openbt_path = {local_openbt_path}")
+        raise NotImplementedError("local_openbt_path not supported")
+    if google_colab:
+        raise NotImplementedError("google_colab not supported")
 
-    # Check to see if installed via wheel
-    pyinstall = False
-    if sh is None:
-        pywhl_path = os.popen("pip show openbtmixing").read()
-        pywhl_path = pywhl_path.split("Location: ")
-        if len(pywhl_path)>1:
-            pywhl_path = pywhl_path[1].split("\n")[0] + "/openbtmixing"
-            sh = shutil.which(cmd, path=pywhl_path)
-            pyinstall = True
+    BIN_PATH = Path(__file__).parent.joinpath(".bin").resolve()
+    if not BIN_PATH.is_dir():
+        msg = "{} does not exist or is not a folder.\n"
+        msg += "Please check your installation."
+        raise RuntimeError(msg.format(BIN_PATH))
 
-    # Execute the subprocess, changing directory when needed
-    if sh is None:
-        # openbt exe were not found in the current directory -- try the
-        # local directory passed in
-        sh = shutil.which(cmd, path=local_openbt_path)
-        if sh is None:
-            raise FileNotFoundError(
-                "Cannot find openbt executables. Please specify the path using the argument local_openbt_path in the constructor.")
-        else:
-            cmd = sh
-            if not google_colab:
-                # MPI with local program
-                sp = subprocess.run(["mpirun",
-                                        "-np",
-                                        str(tc),
-                                        cmd,
-                                        str(fpath)],
-                                    stdin=subprocess.DEVNULL,
-                                    capture_output=True)
-            else:
-                # Shell command for MPI with google colab
-                full_cmd = "mpirun --allow-run-as-root --oversubscribe -np " + \
-                    str(tc) + " " + cmd + " " + str(fpath)
-                os.system(full_cmd)
-    else:
-        if pyinstall:
-            # MPI with local program
-            #os.system("ldd /home/johnyannotty/Documents/Taweret/test_env/lib/python3.8/site-packages/openbtmixing/.libs/openbtcli")
-            #os.environ['LD_LIBRARY_PATH'] = "/home/johnyannotty/Documents/Taweret/test_env/lib/python3.8/site-packages/openbtmixing/.libs/"
-            libdir = "/".join(sh.split("/")[:-1]) + "/.libs/"
-            os.environ['LD_LIBRARY_PATH'] = libdir
-            os.environ['DYLD_LIBRARY_PATH'] = libdir
-            cmd = sh
-            print(libdir)
-            print(cmd)
-            sp = subprocess.run(["mpirun",
-                                    "-np",
-                                    str(tc),
-                                    cmd,
-                                    str(fpath)],
-                                stdin=subprocess.DEVNULL,
-                                capture_output=True)
-            print(sp)
-        else:
-            if not google_colab:
-                # MPI with installed .exe
-                sp = subprocess.run(["mpirun",
-                                    "-np",
-                                    str(tc),
-                                    cmd,
-                                    str(fpath)],
-                                    stdin=subprocess.DEVNULL,
-                                    capture_output=True)
-            else:
-                # Google colab with installed program
-                full_cmd = "mpirun --allow-run-as-root --oversubscribe -np " + \
-                    str(tc) + " " + cmd + " " + str(fpath)
-                os.system(full_cmd)
+    clt = BIN_PATH.joinpath(cmd)
+    if not clt.is_file():
+        msg = "{} does not exist or is not a file.\n"
+        msg += "Please check your installation."
+        raise RuntimeError(msg.format(clt))
 
-
+    # MPI with local program
+    sp = subprocess.run(["mpirun",
+                         "-np", str(tc),
+                         str(clt),
+                         str(fpath)],
+                        stdin=subprocess.DEVNULL,
+                        capture_output=True)
 
 def write_data_to_txt(data, tc, fpath, root, fmt):
     """

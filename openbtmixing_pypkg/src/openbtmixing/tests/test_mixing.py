@@ -12,18 +12,13 @@ import os
 import sys
 import numpy as np
 
+from pathlib import Path
 
-# Set Taweret Path
-print(os.getcwd())
-dirname = os.popen("find $PWD -type f -name test_mixing.py").read()
-openbt_wd = dirname.split("test")[0]
-sys.path.append(openbt_wd)
+from openbtmixing.tests.polynomial_models import sin_cos_exp
+from openbtmixing import Openbtmix
 
 
-from Python.polynomial_models import sin_cos_exp
-from openbtmixing.openbtmixing import Openbtmix
-
-mix = Openbtmix(local_openbt_path = "/home/johnyannotty/Documents/openbt/src")
+_TEST_DATA = Path(__file__).parent.joinpath("bart_bmm_test_data").resolve()
 
 
 # ---------------------------------------------
@@ -31,10 +26,10 @@ mix = Openbtmix(local_openbt_path = "/home/johnyannotty/Documents/openbt/src")
 # ---------------------------------------------
 # Test the mixing fun
 def test_mixing():
-    x_train = np.loadtxt(openbt_wd + 'test/bart_bmm_test_data/2d_x_train.txt').reshape(80, 2)
+    x_train = np.loadtxt(_TEST_DATA.joinpath('2d_x_train.txt')).reshape(80, 2)
     x_train = x_train.reshape(2, 80).transpose()
 
-    y_train = np.loadtxt(openbt_wd + 'test/bart_bmm_test_data/2d_y_train.txt').reshape(80, 1)
+    y_train = np.loadtxt(_TEST_DATA.joinpath('2d_y_train.txt')).reshape(80, 1)
 
     f_train = np.concatenate([f1.evaluate(x_train)[0],f2.evaluate(x_train)[0]], axis = 1)
 
@@ -85,7 +80,7 @@ def test_predict():
     f_test = np.concatenate([f1.evaluate(x_test)[0],f2.evaluate(x_test)[0]], axis = 1)
 
     # Read in test results
-    pmean_test = np.loadtxt(openbt_wd +'test/bart_bmm_test_data/2d_pmean.txt')
+    pmean_test = np.loadtxt(_TEST_DATA.joinpath('2d_pmean.txt'))
     eps = 0.10
 
     # Get predictions
@@ -109,7 +104,7 @@ def test_predict_wts():
 
     # Read in test results
     wteps = 0.05
-    wmean_test = np.loadtxt(openbt_wd + 'test/bart_bmm_test_data/2d_wmean.txt')
+    wmean_test = np.loadtxt(_TEST_DATA.joinpath('2d_wmean.txt'))
 
     # Test the values
     werr = np.mean(np.abs(res["wts"]["mean"] - wmean_test))
@@ -137,4 +132,4 @@ def test_sigma():
 f1 = sin_cos_exp(7, 10, np.pi, np.pi)
 f2 = sin_cos_exp(13, 6, -np.pi, -np.pi)
 
-mix = Openbtmix(local_openbt_path = "/home/johnyannotty/Documents/openbt/src")
+mix = Openbtmix()
