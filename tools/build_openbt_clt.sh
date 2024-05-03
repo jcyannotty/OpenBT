@@ -49,9 +49,11 @@ echo "MPI wrappers"
 echo "---------------------------------------------"
 which mpicc
 mpicc -show
+mpicc --version
 echo
 which mpicxx
 mpicxx -show
+mpicxx --version
 echo
 
 # These are required by configure on my system
