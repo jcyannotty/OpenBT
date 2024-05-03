@@ -47,7 +47,8 @@ PROJECT_URLS = {
 # contains the C++ CLTs/libraries, which have been built for a particular
 # system.  Therefore, we alter the name to reflect the correct limitations.
 bdist_wheel = {}
-if platform.system().lower().startswith("darwin"):
+system = platform.system().lower()
+if system.startswith("darwin"):
     ver, _, arch = platform.mac_ver()
     assert arch in ["x86_64", "arm64"]
     ver = ver.split('.')
@@ -60,8 +61,12 @@ if platform.system().lower().startswith("darwin"):
         # correct?
         minor = 0
     bdist_wheel["plat_name"] = f"macosx_{major}_{minor}_{arch}"
+elif system.startswith("linux"):
+    # TODO: No idea what to do here for now.
+    arch = platform.machine()
+    bdist_wheel["plat_name"] = f"manylinux2014_{arch}"
 else:
-    raise NotImplementedError("Only working on macOS for now")
+    raise NotImplementedError(f"Cannot create wheels for {system} yet")
 
 # ----- START CLEAN WITH EVERY DISTRIBUTION
 if BIN_INSTALL_PATH.exists():

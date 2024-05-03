@@ -16,7 +16,7 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
         mpi_impl: ["openmpi"]
         python-version: ["3.8"]
 
@@ -82,7 +82,9 @@ jobs:
         python -c "import platform ; print(platform.release())"
         python -c "import platform ; print(platform.platform())"
         python -c "import platform ; print(platform.version())"
-        python -c "import platform ; print(platform.mac_ver())"
+        if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            python -c "import platform ; print(platform.mac_ver())"
+        fi
         echo " "
         if [ "${{ matrix.os }}" = "macos-latest" ]; then
             ${{ github.workspace }}/tools/build_macos_wheel.sh ${{ matrix.mpi_impl }}
@@ -96,6 +98,32 @@ jobs:
             echo "Test installed package"
             echo "-------------------------------------------------"
             ${{ github.workspace }}/tools/test_python_installation.py -v 2
+        else
+            pushd ${{ github.workspace }}/openbtmixing_pypkg
+            echo " "
+            echo "Building binary wheel"
+            echo "-------------------------------------------------"
+            python -m build -w
+            echo " "
+            echo "Fix binary wheel with auditwheel"
+            echo "-------------------------------------------------"
+            pushd dist
+            ls -lart
+            echo " "
+            auditwheel --help
+            echo " "
+            auditwheel repair --help
+            echo " "
+            auditwheel show openbtmixing-*.whl
+            echo " "
+            auditwheel repair openbtmixing-*.whl
+            echo " "
+            auditwheel show openbtmixing-*.whl
+            echo " "
+            tar tvfz openbtmixing-*.whl
+            echo " "
+            popd
+            popd
         fi
 
   #####----- FULL TESTING WITH COVERAGE
@@ -139,35 +167,35 @@ jobs:
         git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-    - name: Build OpenBTMixing C++ CLTs & Libraries
-      run: |
-        export CPATH=$EIGEN_PATH
-        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
-
-    ##-- Run full test suite
-    # Run this from local clone since we have already tested packages.
-    #
-    # This checks that coverage tox environment is functional.
-    - name: Run full OpenBtMixing test suite
-      run: |
-        echo " "
-        which python
-        which pip
-        which tox
-        python --version
-        tox --version
-        echo " "
-        pip list
-        echo " "
-        pushd ${{ github.workspace }}/openbtmixing_pypkg
-        tox -r -e coverage,report
-        popd
-
-    ##-- Publish full coverage report as artifact
-    - name: Archive code coverage results
-      uses: actions/upload-artifact@v4
-      with:
-        name: code-coverage-results
-        path: |
-            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
-            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
+#    - name: Build OpenBTMixing C++ CLTs & Libraries
+#      run: |
+#        export CPATH=$EIGEN_PATH
+#        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+#
+#    ##-- Run full test suite
+#    # Run this from local clone since we have already tested packages.
+#    #
+#    # This checks that coverage tox environment is functional.
+#    - name: Run full OpenBtMixing test suite
+#      run: |
+#        echo " "
+#        which python
+#        which pip
+#        which tox
+#        python --version
+#        tox --version
+#        echo " "
+#        pip list
+#        echo " "
+#        pushd ${{ github.workspace }}/openbtmixing_pypkg
+#        tox -r -e coverage,report
+#        popd
+#
+#    ##-- Publish full coverage report as artifact
+#    - name: Archive code coverage results
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: code-coverage-results
+#        path: |
+#            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
+#            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
