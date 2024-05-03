@@ -42,8 +42,10 @@ PROJECT_URLS = {
     "Tracker": "https://github.com/jcyannotty/OpenBT/issues",
 }
 
-# TODO: Why do we have to do this?  Address this once we have a GitHub action
-# producing wheels with our final design.
+# ----- FIX BINARY TYPE
+# In terms of Python, this package is a pure Python distribution.  However, it
+# contains the C++ CLTs/libraries, which have been built for a particular
+# system.  Therefore, we alter the name to reflect the correct limitations.
 DIST_NAME = distutils.util.get_platform()
 DIST_NAME = DIST_NAME.replace("-", "_")
 DIST_NAME = DIST_NAME.replace(".", "_")

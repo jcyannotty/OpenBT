@@ -107,6 +107,14 @@ jobs:
         which pip
         python --version
         echo " "
+        python -c "import platform ; print(platform.machine())"
+        python -c "import platform ; print(platform.system())"
+        python -c "import platform ; print(platform.release())"
+        python -c "import platform ; print(platform.platform())"
+        python -c "import platform ; print(platform.version())"
+        echo " "
+        python -c "import distutils; print(distutils.util.get_platform())"
+        echo " "
         ${{ github.workspace }}/tools/build_macos_wheel.sh
         echo " "
         echo "Install final binary wheel"
