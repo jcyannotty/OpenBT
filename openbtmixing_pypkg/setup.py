@@ -1,7 +1,7 @@
 import os
 import shutil
 import codecs
-import distutils
+import platform
 
 from pathlib import Path
 from setuptools import setup
@@ -46,15 +46,13 @@ PROJECT_URLS = {
 # In terms of Python, this package is a pure Python distribution.  However, it
 # contains the C++ CLTs/libraries, which have been built for a particular
 # system.  Therefore, we alter the name to reflect the correct limitations.
-DIST_NAME = distutils.util.get_platform()
-DIST_NAME = DIST_NAME.replace("-", "_")
-DIST_NAME = DIST_NAME.replace(".", "_")
-
 bdist_wheel = {}
-bdist_wheel["plat_name"] = DIST_NAME
-bdist_wheel["universal"] = False
-if "linux_x86_64" in DIST_NAME:
-    bdist_wheel["plat_name"] = "manylinux2014_x86_64"
+if platform.system().lower().startswith("darwin"):
+    ver, _, arch = platform.mac_ver()
+    assert arch in ["x86_64", "arm64"]
+    bdist_wheel["plat_name"] = f"macosx_{ver[0]}_{ver[1]}_{arch}"
+else:
+    raise NotImplementedError("Only working on macOS for now")
 
 # ----- START CLEAN WITH EVERY DISTRIBUTION
 if BIN_INSTALL_PATH.exists():

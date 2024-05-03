@@ -112,8 +112,7 @@ jobs:
         python -c "import platform ; print(platform.release())"
         python -c "import platform ; print(platform.platform())"
         python -c "import platform ; print(platform.version())"
-        echo " "
-        python -c "import distutils; print(distutils.util.get_platform())"
+        python -c "import platform ; print(platform.mac_ver())"
         echo " "
         ${{ github.workspace }}/tools/build_macos_wheel.sh
         echo " "
