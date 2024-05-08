@@ -78,7 +78,7 @@ jobs:
             brew install automake
             brew install libtool
             ln -s /usr/local/bin/glibtoolize /usr/local/bin/libtoolize
-            libtoolize
+            glibtoolize
             ln -sf /usr/local/share/aclocal/lt~obsolete.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/lt~obsolete.m4
             ln -sf /usr/local/share/aclocal/ltsugar.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/ltsugar.m4
             ln -sf /usr/local/share/aclocal/ltoptions.m4 /Users/runner/work/OpenBT/OpenBT/src/m4/ltoptions.m4
