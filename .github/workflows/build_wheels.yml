@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-latest]
+        os: [macos-latest]
 
     steps:
       - name: Checkout code
@@ -120,23 +120,23 @@ jobs:
         with:
           path: dist/*.tar.gz
 
-#  publish-to-testpypi:
-#    name: Publish Python 🐍 distribution 📦 to PyPI
-#    needs:
-#       - build-wheels
-#     runs-on: ubuntu-latest
-#     environment:
-#       name: pypi
-#       url: https://pypi.org/p/openbtmixing
-#     permissions:
-#       id-token: write  # IMPORTANT: mandatory for trusted publishing
-#     steps:
-#       - name: Download all the dists
-#         uses: actions/download-artifact@v2
-#         with:
-#           name: wheels
-#           path: dist/
-#       - name: Publish distribution 📦 to PyPI
-#         uses: pypa/gh-action-pypi-publish@release/v1
-#         with:
-#           repository-url: https://upload.pypi.org/legacy/      
+ publish-to-testpypi:
+   name: Publish Python 🐍 distribution 📦 to PyPI
+   needs:
+      - build-wheels
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/openbtmixing
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+    steps:
+      - name: Download all the dists
+        uses: actions/download-artifact@v2
+        with:
+          name: wheels
+          path: dist/
+      - name: Publish distribution 📦 to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/      
