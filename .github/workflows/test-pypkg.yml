@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-12, macos-13]
-        mpi_impl: ["openmpi"]
+        mpi_impl: ["mpich"]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
