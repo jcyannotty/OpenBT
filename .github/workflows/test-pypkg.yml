@@ -7,19 +7,17 @@ on:
     branches:
       - main
 
-env:
-  CLONE_PATH:   ${{ github.workspace }}
-  EIGEN_PATH:   ${{ github.workspace }}/eigen
-  INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
-
 jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
   test_pypkg:
     runs-on: ${{ matrix.os }}
+    env:
+      EIGEN_PATH: ${{ github.workspace }}/eigen
+      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
-        os: [macos-latest]
-        mpi_impl: ["openmpi", "mpich"]
+        os: [ubuntu-latest, macos-latest]
+        mpi_impl: ["openmpi"]
         python-version: ["3.8"]
 
     steps:
@@ -38,20 +36,9 @@ jobs:
             sudo apt-get -y install autoconf-archive
         fi
     - name: Install ${{ matrix.mpi_impl }}
-      run: |
-        if   [ "${{ runner.os }}" == "Linux" ]; then
-           sudo apt-get update
-           sudo apt-get -y install openmpi-bin
-        elif [ "${{ runner.os }}" == "macOS" ]; then
-           if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
-              brew install open-mpi
-           elif [ "${{ matrix.mpi_impl }}" == "mpich" ]; then
-              brew install mpich
-           else
-              echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
-              exit 1
-           fi
-        fi
+      uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: ${{ matrix.mpi_impl }}
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -71,7 +58,7 @@ jobs:
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
         export CPATH=$EIGEN_PATH
-        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
         if [ "${{ matrix.os }}" = "macos-latest" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
         else
@@ -86,8 +73,6 @@ jobs:
     - name: Run full OpenBtMixing test suite
       run: |
         export PATH=$PATH:$INSTALL_PATH/bin
-        ls -la $INSTALL_PATH/bin
-        which openbtcli
         echo " "
         which python
         which pip
@@ -101,7 +86,7 @@ jobs:
         if [ "${{ matrix.os }}" = "macos-latest" ]; then
             python -c "import platform ; print(platform.mac_ver())"
         fi
-        pushd $CLONE_PATH/openbtmixing_pypkg
+        pushd ${{ github.workspace }}/openbtmixing_pypkg
         echo " "
         echo "Building source and binary wheels"
         echo "-------------------------------------------------"
@@ -116,11 +101,14 @@ jobs:
         echo " "
         echo "Test installed package"
         echo "-------------------------------------------------"
-        $CLONE_PATH/tools/test_python_installation.py -v 2
+        ${{ github.workspace }}/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
   pypkg_coverage:
     runs-on: ${{ matrix.os }}
+    env:
+      EIGEN_PATH: ${{ github.workspace }}/eigen
+      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -136,14 +124,9 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install autoconf-archive
     - name: Install ${{ matrix.mpi_impl }}
-      run: |
-        if   [ "${{ runner.os }}" == "Linux" ]; then
-           sudo apt-get update
-           sudo apt-get -y install openmpi-bin
-        elif [ "${{ runner.os }}" == "macOS" ]; then
-           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-           brew install open-mpi
-        fi
+      uses: mpi4py/setup-mpi@v1
+      with:
+        mpi: ${{ matrix.mpi_impl }}
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -162,7 +145,7 @@ jobs:
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
         export CPATH=$EIGEN_PATH
-        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
 
     ##-- Run full test suite
     # Run this from local clone since we have already tested packages.
@@ -180,7 +163,7 @@ jobs:
         echo " "
         pip list
         echo " "
-        pushd $CLONE_PATH/openbtmixing_pypkg
+        pushd ${{ github.workspace }}/openbtmixing_pypkg
         tox -r -e coverage,report
         popd
 
@@ -190,5 +173,5 @@ jobs:
       with:
         name: code-coverage-results
         path: |
-            $CLONE_PATH/openbtmixing_pypkg/.coverage
-            $CLONE_PATH/openbtmixing_pypkg/htmlcov
+            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
+            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
