@@ -17,15 +17,13 @@ jobs:
     strategy:
       matrix:
         # For arm64/macOS, presently
-        # * OpenMPI fails due to too few processors
+        # * OpenMPI fails due to too few processors (3) when the test asks for
+        #   4 MPI processes
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
-#        os: [macos-12, macos-13]
-#        mpi_impl: ["mpich"]
-#        python-version: ["3.9", "3.10", "3.11", "3.12"]
-        os: [macos-14-xlarge]
-        mpi_impl: ["openmpi"]
-        python-version: ["3.9"]
+        os: [macos-12, macos-13]
+        mpi_impl: ["openmpi", "mpich"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
