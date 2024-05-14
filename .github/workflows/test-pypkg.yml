@@ -18,8 +18,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        mpi_impl: ["openmpi"]
+        os: [macos-latest]
+        mpi_impl: ["openmpi", "mpich"]
         python-version: ["3.8"]
 
     steps:
@@ -43,8 +43,12 @@ jobs:
            sudo apt-get update
            sudo apt-get -y install openmpi-bin
         elif [ "${{ runner.os }}" == "macOS" ]; then
-           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-           brew install open-mpi
+           if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
+              brew install open-mpi
+           else
+              echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
+              exit 1
+           fi
         fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
