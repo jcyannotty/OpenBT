@@ -21,9 +21,12 @@ jobs:
         #   4 MPI processes
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [macos-12, macos-13]
-        mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        os: [ubuntu-22.04]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.9"]
+        #os: [macos-12, macos-13]
+        #mpi_impl: ["openmpi", "mpich"]
+        #python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -44,7 +47,12 @@ jobs:
       run: |
           if   [ "${{ runner.os }}" == "Linux" ]; then
              sudo apt-get update
-             sudo apt-get -y install openmpi-bin
+             if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
+                sudo apt-get -y install openmpi-bin
+             else
+                echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
+                exit 1
+             fi
           elif [ "${{ runner.os }}" == "macOS" ]; then
              if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
                 brew install open-mpi
@@ -54,8 +62,6 @@ jobs:
                 echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
                 exit 1
              fi
-             which brew
-             brew list
           fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -77,9 +83,9 @@ jobs:
       run: |
         export CPATH=$EIGEN_PATH
         ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
-        if [ "${{ runner.os }}" = "macOS" ]; then
+        if   [ "${{ runner.os }}" = "macOS" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
-        else
+        elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             ldd $INSTALL_PATH/bin/openbtcli
             # For 22.04/OpenMPI 4.1.2,
             # mpicxx uses -L/usr/lib/x86_64-linux-gnu/openmpi/lib.
@@ -105,6 +111,8 @@ jobs:
             echo " "
             ls -la /lib/x86_64-linux-gnu/openmpi/lib/openmpi3
             echo " "
+        else
+            echo "Invalid OS ${{ matrix.os }}"
         fi
         echo " "
         objdump -p $INSTALL_PATH/bin/openbtcli
@@ -118,6 +126,9 @@ jobs:
     - name: Run full OpenBtMixing test suite
       run: |
         export PATH=$PATH:$INSTALL_PATH/bin
+        echo " "
+        which mpirun
+        which openbtcli
         echo " "
         which python
         which pip
@@ -145,11 +156,11 @@ jobs:
         fi
         pushd ${{ github.workspace }}/openbtmixing_pypkg
         echo " "
-        echo "Building source and binary wheels"
+        echo "Building source and wheels"
         echo "-------------------------------------------------"
         python -m build
         echo " "
-        echo "Install binary wheel"
+        echo "Install wheel"
         echo "-------------------------------------------------"
         python -m pip install dist/openbtmixing-*-py3-none-any.whl
         echo " "
@@ -158,8 +169,6 @@ jobs:
         echo " "
         echo "Test installed package"
         echo "-------------------------------------------------"
-        which openbtcli
-        which mpirun
         ${{ github.workspace }}/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
