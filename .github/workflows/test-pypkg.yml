@@ -16,6 +16,15 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
+        # For Ubuntu20.04, presently
+        # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
+        #   core) when the test asks for 4 MPI processes
+        #
+        # For Ubuntu22.04, presently
+        # * configure fails to build with mpicxx because it sets -L to an
+        #   OpenMPI installation folder that does not have the libraries.  It
+        #   appears that the libraries go to the system lib folder.
+        #
         # For arm64/macOS, presently
         # * OpenMPI fails due to too few processors (3) when the test asks for
         #   4 MPI processes
