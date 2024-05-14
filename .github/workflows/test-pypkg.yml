@@ -136,7 +136,7 @@ jobs:
             echo " "
             sysctl hw.ncpu
             sysctl hw.physicalcpu
-            sysclt hw.logicalcpu
+            sysctl hw.logicalcpu
         fi
         pushd ${{ github.workspace }}/openbtmixing_pypkg
         echo " "
