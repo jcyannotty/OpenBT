@@ -16,7 +16,7 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
-        os: [macos-12, macos-13, macos-14-large]
+        os: [macos-12, macos-13]
         mpi_impl: ["openmpi"]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
 
