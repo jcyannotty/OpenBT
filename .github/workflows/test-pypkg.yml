@@ -46,7 +46,6 @@ jobs:
     - name: Install ${{ matrix.mpi_impl }}
       run: |
           if   [ "${{ runner.os }}" == "Linux" ]; then
-             sudo apt-get update
              if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
                 sudo apt-get -y install openmpi-bin
              else
@@ -93,7 +92,7 @@ jobs:
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            export LIBRARY_PATH=/lib/x86_64-linux-gnu
+            export LDFLAGS=-L/lib/x86_64-linux-gnu
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
             # For 22.04/OpenMPI 4.1.2,

@@ -66,6 +66,7 @@ echo "CC=$CC"
 echo "CXX=$CXX"
 echo "MPICC=$MPICC"
 echo "MPICXX=$MPICXX"
+echo "LDFLAGS=$LDFLAGS"
 echo "CPATH=$CPATH"
 echo "LIBRARY_PATH=$LIBRARY_PATH"
 echo
