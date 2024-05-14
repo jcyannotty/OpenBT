@@ -134,7 +134,7 @@ autoconf               || exit 1
 echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
-./configure --with-mpi --with-silent --prefix=$prefix || exit 1
+./configure --with-mpi --with-silent --prefix=$prefix || { cat config.log; exit 1; }
 
 # We need to install the libraries so that they are in the location provided in
 # the RPATH of the CLI programs.  Then tools like auditwheel and delocate can

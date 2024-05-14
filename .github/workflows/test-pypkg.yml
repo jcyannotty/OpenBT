@@ -86,6 +86,8 @@ jobs:
     - name: Run full OpenBtMixing test suite
       run: |
         export PATH=$PATH:$INSTALL_PATH/bin
+        ls -la $INSTALL_PATH/bin
+        which openbtcli
         echo " "
         which python
         which pip
