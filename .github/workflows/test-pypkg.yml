@@ -139,6 +139,8 @@ jobs:
         echo " "
         echo "Test installed package"
         echo "-------------------------------------------------"
+        which openbtcli
+        which mpirun
         ${{ github.workspace }}/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE

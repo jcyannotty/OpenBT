@@ -20,8 +20,15 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
     sdraws = []
     wdraws = {}
     out = {}
+    print()
+    print(fpath)
+    print(modelname)
+    print()
     if readmean:
         mdraw_files = sorted(list(fpath.glob(modelname + ".mdraws*")))
+        print()
+        print(mdraw_files)
+        print()
         
         for f in mdraw_files:
             read = open(f, "r")
@@ -152,10 +159,32 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
     elif shutil.which(cmd) is None:
         raise RuntimeError(f"Add to PATH the folder that contains {cmd}")
 
+    print()
+    print(shutil.which("mpirun"))
+    print(shutil.which(cmd))
+    print()
+
     # MPI with local program
-    sp = subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
-                        stdin=subprocess.DEVNULL,
-                        capture_output=True)
+    try:
+        output = subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
+                                stdin=subprocess.DEVNULL,
+                                check=True, capture_output=True)
+    except subprocess.CalledProcessError as err:
+        stdout = err.stdout.decode()
+        stderr = err.stderr.decode()
+        print()
+        msg = "[openbtmixing.mpirun] Unable to run command (Return code {})"
+        print(msg.format(err.returncode))
+        print("[openbtmixing.mpirun] " + " ".join(err.cmd))
+        if stdout != "":
+            print("[openbtmixing.mpirun] stdout")
+            for line in stdout.split("\n"):
+                print(f"\t{line}")
+        if stderr != "":
+            print("[openbtmixing.mpirun] stderr")
+            for line in stderr.split("\n"):
+                print(f"\t{line}")
+        raise
 
 def write_data_to_txt(data, tc, fpath, root, fmt):
     """
