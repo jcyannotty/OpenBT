@@ -100,7 +100,7 @@ jobs:
             echo " "
         fi
         echo " "
-        objdump -p openbtcli
+        objdump -p $INSTALL_PATH/bin/openbtcli
         echo " "
 
     ##-- Run full test suite
