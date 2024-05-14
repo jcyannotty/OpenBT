@@ -63,13 +63,6 @@ jobs:
                 echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
                 exit 1
              fi
-             echo " "
-             ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
-             echo " "
-             ls -la /lib/x86_64-linux-gnu/libmpi*
-             echo " "
-             ls -la /lib/x86_64-linux-gnu/openmpi/lib
-             echo " "
           elif [ "${{ runner.os }}" == "macOS" ]; then
              if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
                 brew install open-mpi
@@ -120,13 +113,13 @@ jobs:
             #
             # These lines can be used to confirm that OpenMPI is being used
             # correctly at build and execution time.
-            echo " "
-            ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
-            echo " "
-            ls -la /lib/x86_64-linux-gnu/libmpi*
-            echo " "
-            ls -la /lib/x86_64-linux-gnu/openmpi/lib
-            echo " "
+            #echo " "
+            #ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
+            #echo " "
+            #ls -la /lib/x86_64-linux-gnu/libmpi*
+            #echo " "
+            #ls -la /lib/x86_64-linux-gnu/openmpi/lib
+            #echo " "
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             # mpicxx lists many libraries for linking, but didn't put the full
             # set of -L folders before the list.
@@ -151,13 +144,13 @@ jobs:
             #
             # These lines can be used to confirm that OpenMPI is being used
             # correctly at build and execution time.
-            echo " "
-            ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3
-            echo " "
-            ls -la /lib/x86_64-linux-gnu/libmpi*
-            echo " "
-            ls -la /lib/x86_64-linux-gnu/openmpi/lib/openmpi3
-            echo " "
+            #echo " "
+            #ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3
+            #echo " "
+            #ls -la /lib/x86_64-linux-gnu/libmpi*
+            #echo " "
+            #ls -la /lib/x86_64-linux-gnu/openmpi/lib/openmpi3
+            #echo " "
         else
             echo "Invalid OS ${{ matrix.os }}"
         fi
