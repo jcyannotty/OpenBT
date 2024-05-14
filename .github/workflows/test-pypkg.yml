@@ -16,24 +16,27 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
-        # For Ubuntu20.04, presently
-        # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
-        #   core) when the test asks for 4 MPI processes
-        #
-        # For Ubuntu22.04, presently
-        # * configure fails to build with mpicxx because it sets -L to an
-        #   OpenMPI installation folder that does not have the libraries.  It
-        #   appears that the libraries go to the system lib folder.
-        #
-        # For arm64/macOS, presently
+        # For macos-14 (i.e., arm64/macOS), presently
         # * OpenMPI fails due to too few processors (3) when the test asks for
         #   4 MPI processes
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
         os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
-        mpi_impl: ["mpich"]
+        mpi_impl: ["openmpi", "mpich"]
         python-version: ["3.9", "3.10", "3.11", "3.12"]
-        #mpi_impl: ["openmpi", "mpich"]
+        exclude:
+          # For Ubuntu20.04, presently
+          # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
+          #   core) when the test asks for 4 MPI processes
+          - os: ubuntu-20.04
+            mpi_impl: "openmpi"
+          # For Ubuntu22.04, presently
+          # * configure fails to build with mpicxx because it sets -L to an
+          #   OpenMPI installation folder that does not have the libraries.  It
+          #   appears that the libraries go to the system lib folder.  MPICH 
+          #   sets -L to the system library folder.
+          - os: ubuntu-22.04
+            mpi_impl: "openmpi"
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -96,28 +99,6 @@ jobs:
         elif [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli 
-            # For 20.04/OpenMPI 4.0.3,
-            # mpicxx uses -L/usr/lib/x86_64-linux-gnu/openmpi/lib.
-            # However ldd uses /lib/x86_64-linux-gnu/libmpi.so.40.
-            # Ultimately, it looks like we use
-            # /lib/x86_64-linux-gnu/openmpi/lib/libmpi.so.40.20.3
-            # Note that there is a
-            # /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so.40.20.3
-            # that has the same size (1124440) as the system version.
-            #
-            # My best guess is that the OpenMPI install is going to both
-            # /lib and /usr/lib.  Indeed, if you don't install OpenMPI Taweret
-            # fails, which suggests no system MPI.
-            #
-            # These lines can be used to confirm that OpenMPI is being used
-            # correctly at build and execution time.
-            #echo " "
-            #ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
-            #echo " "
-            #ls -la /lib/x86_64-linux-gnu/libmpi*
-            #echo " "
-            #ls -la /lib/x86_64-linux-gnu/openmpi/lib
-            #echo " "
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             # mpicxx lists many libraries for linking, but didn't put the full
             # set of -L folders before the list.
@@ -125,30 +106,6 @@ jobs:
             ls -la $LIBRARY_PATH
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
-            # For 22.04/OpenMPI 4.1.2,
-            # mpicxx uses -L/usr/lib/x86_64-linux-gnu/openmpi/lib.
-            # However ldd uses /lib/x86_64-linux-gnu/libmpi.so.40.
-            # Ultimately, it looks like we use
-            # /lib/x86_64-linux-gnu/libmpi.so.40.30.2
-            # and I don't find any general MPI libraries in the locations
-            # specified by mpicxx.
-            #
-            # My best guess is that the OpenMPI install is going to just
-            # /lib and that there are being found by the compiler
-            # automatically.  Indeed, if you don't install OpenMPI Taweret
-            # fails, which suggests no system MPI.  This would imply that
-            # mpicxx is assuming that the system install will be found but it
-            # needs to identify where the (mostly) mca libs are.  
-            #
-            # These lines can be used to confirm that OpenMPI is being used
-            # correctly at build and execution time.
-            #echo " "
-            #ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3
-            #echo " "
-            #ls -la /lib/x86_64-linux-gnu/libmpi*
-            #echo " "
-            #ls -la /lib/x86_64-linux-gnu/openmpi/lib/openmpi3
-            #echo " "
         else
             echo "Invalid OS ${{ matrix.os }}"
         fi
@@ -210,74 +167,72 @@ jobs:
         ${{ github.workspace }}/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
-#  pypkg_coverage:
-#    runs-on: ${{ matrix.os }}
-#    env:
-#      EIGEN_PATH: ${{ github.workspace }}/eigen
-#      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
-#    strategy:
-#      matrix:
-#        os: [ubuntu-latest]
-#        mpi_impl: ["openmpi"]
-#        python-version: ["3.11"]
-#
-#    steps:
-#    #####----- SETUP TESTING ENVIRONMENT
-#    - name: Checkout OpenBTMixing
-#      uses: actions/checkout@v4
-#    - name: Install autotools
-#      run: |
-#        sudo apt-get update
-#        sudo apt-get -y install autoconf-archive
-#    - name: Install ${{ matrix.mpi_impl }}
-#      uses: mpi4py/setup-mpi@v1
-#      with:
-#        mpi: ${{ matrix.mpi_impl }}
-#    - name: Set up Python ${{ matrix.python-version }}
-#      uses: actions/setup-python@v5
-#      with:
-#        python-version: ${{ matrix.python-version }}
-#    - name: Setup Python dependencies
-#      run: |
-#        python -m pip install --upgrade pip
-#        python -m pip install --upgrade setuptools
-#        python -m pip install tox
-#    - name: Install eigen dependency
-#      run: |
-#        # C++ template only => no build here! 
-#        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
-#
-#    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-#    - name: Build OpenBTMixing C++ CLTs & Libraries
-#      run: |
-#        export CPATH=$EIGEN_PATH
-#        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
-#
-#    ##-- Run full test suite
-#    # Run this from local clone since we have already tested packages.
-#    #
-#    # This checks that coverage tox environment is functional.
-#    - name: Run full OpenBtMixing test suite
-#      run: |
-#        export PATH=$PATH:$INSTALL_PATH/bin
-#        echo " "
-#        which python
-#        which pip
-#        which tox
-#        python --version
-#        tox --version
-#        echo " "
-#        pip list
-#        echo " "
-#        pushd ${{ github.workspace }}/openbtmixing_pypkg
-#        tox -r -e coverage,report
-#        popd
-#
-#    ##-- Publish full coverage report as artifact
-#    - name: Archive code coverage results
-#      uses: actions/upload-artifact@v4
-#      with:
-#        name: code-coverage-results
-#        path: |
-#            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
-#            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
+  pypkg_coverage:
+    runs-on: ${{ matrix.os }}
+    env:
+      EIGEN_PATH: ${{ github.workspace }}/eigen
+      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        mpi_impl: ["mpich"]
+        python-version: ["3.12"]
+
+    steps:
+    #####----- SETUP TESTING ENVIRONMENT
+    - name: Checkout OpenBTMixing
+      uses: actions/checkout@v4
+    - name: Install autotools
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install autoconf-archive
+    - name: Install ${{ matrix.mpi_impl }}
+      run: sudo apt-get -y install mpich
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Setup Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools
+        python -m pip install tox
+    - name: Install eigen dependency
+      run: |
+        # C++ template only => no build here! 
+        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
+
+    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
+    - name: Build OpenBTMixing C++ CLTs & Libraries
+      run: |
+        export CPATH=$EIGEN_PATH
+        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+
+    ##-- Run full test suite
+    # Run this from local clone since we have already tested packages.
+    #
+    # This checks that coverage tox environment is functional.
+    - name: Run full OpenBtMixing test suite
+      run: |
+        export PATH=$PATH:$INSTALL_PATH/bin
+        echo " "
+        which python
+        which pip
+        which tox
+        python --version
+        tox --version
+        echo " "
+        pip list
+        echo " "
+        pushd ${{ github.workspace }}/openbtmixing_pypkg
+        tox -r -e coverage,report
+        popd
+
+    ##-- Publish full coverage report as artifact
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage-results
+        path: |
+            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
+            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
