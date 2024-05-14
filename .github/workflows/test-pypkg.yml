@@ -93,6 +93,7 @@ jobs:
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             export LDFLAGS=-L/lib/x86_64-linux-gnu
+            ls -la /lib/x86_64-linux-gnu
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
             # For 22.04/OpenMPI 4.1.2,
