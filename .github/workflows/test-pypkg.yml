@@ -16,9 +16,9 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
-        os: [macos-12]
+        os: [macos-12, macos-13, macos-14-large]
         mpi_impl: ["openmpi"]
-        python-version: ["3.9"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -123,8 +123,20 @@ jobs:
         python -c "import platform ; print(platform.release())"
         python -c "import platform ; print(platform.platform())"
         python -c "import platform ; print(platform.version())"
-        if [ "${{ runner.os }}" = "macOS" ]; then
+        if   [ "${{ runner.os }}" = "Linux" ]; then
+            echo " "
+            # Get information on number of cores & hardware threads, which sets
+            # limit on number of "slots" available for MPI processes in
+            # OpenMPI.
+            lscpu
+        elif [ "${{ runner.os }}" = "macOS" ]; then
             python -c "import platform ; print(platform.mac_ver())"
+            # Get information on number of processors, which sets limit on
+            # number of "slots" available for MPI processes in OpenMPI.
+            echo " "
+            sysctl hw.ncpu
+            sysctl hw.physicalcpu
+            sysclt hw.logicalcpu
         fi
         pushd ${{ github.workspace }}/openbtmixing_pypkg
         echo " "
