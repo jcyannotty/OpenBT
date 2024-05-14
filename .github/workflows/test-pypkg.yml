@@ -95,7 +95,7 @@ jobs:
             # mpicxx lists many libraries for linking, but didn't put the full
             # set of -L folders before the list.
             export LDFLAGS=-L/lib/x86_64-linux-gnu
-            export LDLIBS="-lmpi_cxx -lmpi -lopen-rte -lopen-pal -lhwloc -levent_core -levent_pthreads"
+            export LIBS="-lmpi_cxx -lmpi -lopen-rte -lopen-pal -lhwloc -levent_core -levent_pthreads"
             ls -la /lib/x86_64-linux-gnu
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
