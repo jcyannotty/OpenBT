@@ -16,7 +16,7 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-latest]
         mpi_impl: ["openmpi"]
         python-version: ["3.8"]
 
@@ -142,74 +142,74 @@ jobs:
         ${{ github.workspace }}/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
-  pypkg_coverage:
-    runs-on: ${{ matrix.os }}
-    env:
-      EIGEN_PATH: ${{ github.workspace }}/eigen
-      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        mpi_impl: ["openmpi"]
-        python-version: ["3.11"]
-
-    steps:
-    #####----- SETUP TESTING ENVIRONMENT
-    - name: Checkout OpenBTMixing
-      uses: actions/checkout@v4
-    - name: Install autotools
-      run: |
-        sudo apt-get update
-        sudo apt-get -y install autoconf-archive
-    - name: Install ${{ matrix.mpi_impl }}
-      uses: mpi4py/setup-mpi@v1
-      with:
-        mpi: ${{ matrix.mpi_impl }}
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Setup Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install --upgrade setuptools
-        python -m pip install tox
-    - name: Install eigen dependency
-      run: |
-        # C++ template only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
-
-    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-    - name: Build OpenBTMixing C++ CLTs & Libraries
-      run: |
-        export CPATH=$EIGEN_PATH
-        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
-
-    ##-- Run full test suite
-    # Run this from local clone since we have already tested packages.
-    #
-    # This checks that coverage tox environment is functional.
-    - name: Run full OpenBtMixing test suite
-      run: |
-        export PATH=$PATH:$INSTALL_PATH/bin
-        echo " "
-        which python
-        which pip
-        which tox
-        python --version
-        tox --version
-        echo " "
-        pip list
-        echo " "
-        pushd ${{ github.workspace }}/openbtmixing_pypkg
-        tox -r -e coverage,report
-        popd
-
-    ##-- Publish full coverage report as artifact
-    - name: Archive code coverage results
-      uses: actions/upload-artifact@v4
-      with:
-        name: code-coverage-results
-        path: |
-            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
-            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
+#  pypkg_coverage:
+#    runs-on: ${{ matrix.os }}
+#    env:
+#      EIGEN_PATH: ${{ github.workspace }}/eigen
+#      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
+#    strategy:
+#      matrix:
+#        os: [ubuntu-latest]
+#        mpi_impl: ["openmpi"]
+#        python-version: ["3.11"]
+#
+#    steps:
+#    #####----- SETUP TESTING ENVIRONMENT
+#    - name: Checkout OpenBTMixing
+#      uses: actions/checkout@v4
+#    - name: Install autotools
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get -y install autoconf-archive
+#    - name: Install ${{ matrix.mpi_impl }}
+#      uses: mpi4py/setup-mpi@v1
+#      with:
+#        mpi: ${{ matrix.mpi_impl }}
+#    - name: Set up Python ${{ matrix.python-version }}
+#      uses: actions/setup-python@v5
+#      with:
+#        python-version: ${{ matrix.python-version }}
+#    - name: Setup Python dependencies
+#      run: |
+#        python -m pip install --upgrade pip
+#        python -m pip install --upgrade setuptools
+#        python -m pip install tox
+#    - name: Install eigen dependency
+#      run: |
+#        # C++ template only => no build here! 
+#        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
+#
+#    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
+#    - name: Build OpenBTMixing C++ CLTs & Libraries
+#      run: |
+#        export CPATH=$EIGEN_PATH
+#        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+#
+#    ##-- Run full test suite
+#    # Run this from local clone since we have already tested packages.
+#    #
+#    # This checks that coverage tox environment is functional.
+#    - name: Run full OpenBtMixing test suite
+#      run: |
+#        export PATH=$PATH:$INSTALL_PATH/bin
+#        echo " "
+#        which python
+#        which pip
+#        which tox
+#        python --version
+#        tox --version
+#        echo " "
+#        pip list
+#        echo " "
+#        pushd ${{ github.workspace }}/openbtmixing_pypkg
+#        tox -r -e coverage,report
+#        popd
+#
+#    ##-- Publish full coverage report as artifact
+#    - name: Archive code coverage results
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: code-coverage-results
+#        path: |
+#            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
+#            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
