@@ -53,6 +53,13 @@ jobs:
                 echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
                 exit 1
              fi
+             echo " "
+             ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3
+             echo " "
+             ls -la /lib/x86_64-linux-gnu/libmpi*
+             echo " "
+             ls -la /lib/x86_64-linux-gnu/openmpi/lib/openmpi3
+             echo " "
           elif [ "${{ runner.os }}" == "macOS" ]; then
              if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
                 brew install open-mpi
