@@ -16,9 +16,16 @@ jobs:
       INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
-        os: [macos-12, macos-13]
-        mpi_impl: ["mpich"]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        # For arm64/macOS, presently
+        # * OpenMPI fails due to too few processors
+        # * MPICH seems to run forever (MPI_Finalize seems to hang on my
+        #   machine)
+#        os: [macos-12, macos-13]
+#        mpi_impl: ["mpich"]
+#        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        os: [macos-14]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.9"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
