@@ -89,10 +89,12 @@ jobs:
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
         export CPATH=$EIGEN_PATH
-        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
         if   [ "${{ runner.os }}" = "macOS" ]; then
+            ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            export LIBRARY_PATH=$LIBRARY_PATH:/lib/x86_64-linux-gnu
+            ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
             # For 22.04/OpenMPI 4.1.2,
             # mpicxx uses -L/usr/lib/x86_64-linux-gnu/openmpi/lib.
