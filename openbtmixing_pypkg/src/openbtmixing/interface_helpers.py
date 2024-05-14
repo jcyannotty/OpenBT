@@ -175,11 +175,11 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
         msg = "[openbtmixing.mpirun] Unable to run command (Return code {})"
         print(msg.format(err.returncode))
         print("[openbtmixing.mpirun] " + " ".join(err.cmd))
-        if stdout != "":
+        if stdout is not None:
             print("[openbtmixing.mpirun] stdout")
             for line in stdout.decode().split("\n"):
                 print(f"\t{line}")
-        if stderr != "":
+        if stderr is not None:
             print("[openbtmixing.mpirun] stderr")
             for line in stderr.decode().split("\n"):
                 print(f"\t{line}")
