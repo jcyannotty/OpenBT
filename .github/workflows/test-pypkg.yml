@@ -45,6 +45,8 @@ jobs:
         elif [ "${{ runner.os }}" == "macOS" ]; then
            if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
               brew install open-mpi
+           elif [ "${{ matrix.mpi_impl }}" == "mpich" ]; then
+              brew install mpich
            else
               echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
               exit 1
