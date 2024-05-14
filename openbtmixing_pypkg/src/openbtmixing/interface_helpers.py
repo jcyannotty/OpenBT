@@ -169,19 +169,19 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
         subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
                        stdin=subprocess.DEVNULL, check=True)
     except subprocess.CalledProcessError as err:
-        stdout = err.stdout.decode()
-        stderr = err.stderr.decode()
+        stdout = err.stdout
+        stderr = err.stderr
         print()
         msg = "[openbtmixing.mpirun] Unable to run command (Return code {})"
         print(msg.format(err.returncode))
         print("[openbtmixing.mpirun] " + " ".join(err.cmd))
         if stdout != "":
             print("[openbtmixing.mpirun] stdout")
-            for line in stdout.split("\n"):
+            for line in stdout.decode().split("\n"):
                 print(f"\t{line}")
         if stderr != "":
             print("[openbtmixing.mpirun] stderr")
-            for line in stderr.split("\n"):
+            for line in stderr.decode().split("\n"):
                 print(f"\t{line}")
         raise
 
