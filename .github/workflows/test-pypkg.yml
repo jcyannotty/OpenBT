@@ -93,7 +93,7 @@ jobs:
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
-            ldd openbtcli
+            ldd $INSTALL_PATH/bin/openbtcli 
             # For 20.04/OpenMPI 4.0.3,
             # mpicxx uses -L/usr/lib/x86_64-linux-gnu/openmpi/lib.
             # However ldd uses /lib/x86_64-linux-gnu/libmpi.so.40.
@@ -119,9 +119,8 @@ jobs:
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             # mpicxx lists many libraries for linking, but didn't put the full
             # set of -L folders before the list.
-            export LDFLAGS=-L/lib/x86_64-linux-gnu
-            export LIBS="-lmpi_cxx -lmpi -lopen-rte -lopen-pal -lhwloc -levent_core -levent_pthreads"
-            ls -la /lib/x86_64-linux-gnu
+            export LIBRARY_PATH=/lib/x86_64-linux-gnu
+            ls -la $LIBRARY_PATH
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
             # For 22.04/OpenMPI 4.1.2,
