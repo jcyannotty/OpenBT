@@ -36,9 +36,20 @@ jobs:
             sudo apt-get -y install autoconf-archive
         fi
     - name: Install ${{ matrix.mpi_impl }}
-      uses: mpi4py/setup-mpi@v1
-      with:
-        mpi: ${{ matrix.mpi_impl }}
+      run: |
+          if   [ "${{ runner.os }}" == "Linux" ]; then
+             sudo apt-get update
+             sudo apt-get -y install openmpi-bin
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+             if   [ "${{ matrix.mpi_impl }}" == "openmpi" ]; then
+                brew install open-mpi
+             elif [ "${{ matrix.mpi_impl }}" == "mpich" ]; then
+                brew install mpich
+             else
+                echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
+                exit 1
+             fi
+          fi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -63,7 +74,34 @@ jobs:
             otool -L $INSTALL_PATH/bin/openbtcli
         else
             ldd $INSTALL_PATH/bin/openbtcli
+            # For 22.04/OpenMPI 4.1.2,
+            # mpicxx uses -L/usr/lib/x86_64-linux-gnu/openmpi/lib.
+            # However ldd uses /lib/x86_64-linux-gnu/libmpi.so.40.
+            # Ultimately, it looks like we use
+            # /lib/x86_64-linux-gnu/libmpi.so.40.30.2
+            # and I don't find any general MPI libraries in the locations
+            # specified by mpicxx.
+            #
+            # My best guess is that the OpenMPI install is going to just
+            # /lib and that there are being found by the compiler
+            # automatically.  Indeed, if you don't install OpenMPI Taweret
+            # fails, which suggests no system MPI.  This would imply that
+            # mpicxx is assuming that the system install will be found but it
+            # needs to identify where the (mostly) mca libs are.  
+            #
+            # These lines can be used to confirm that OpenMPI is being used
+            # correctly at build and execution time.
+            echo " "
+            ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib/openmpi3
+            echo " "
+            ls -la /lib/x86_64-linux-gnu/libmpi*
+            echo " "
+            ls -la /lib/x86_64-linux-gnu/openmpi/lib/openmpi3
+            echo " "
         fi
+        echo " "
+        objdump -p openbtcli
+        echo " "
 
     ##-- Run full test suite
     # Prefer full end-to-end test of binary wheels rather than testing in
