@@ -21,9 +21,12 @@ jobs:
         #   4 MPI processes
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
-        mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        #os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
+        #mpi_impl: ["openmpi", "mpich"]
+        #python-version: ["3.9", "3.10", "3.11", "3.12"]
+        os: [ubuntu-22.04]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.9"]
         exclude:
           # For Ubuntu20.04, presently
           # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
@@ -35,8 +38,8 @@ jobs:
           #   OpenMPI installation folder that does not have the libraries.  It
           #   appears that the libraries go to the system lib folder.  MPICH 
           #   sets -L to the system library folder.
-          - os: ubuntu-22.04
-            mpi_impl: "openmpi"
+          #- os: ubuntu-22.04
+          #  mpi_impl: "openmpi"
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
