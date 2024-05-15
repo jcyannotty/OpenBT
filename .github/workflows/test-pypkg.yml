@@ -108,7 +108,10 @@ jobs:
             # reading online, it appears that autotools ignores LIBRARY_PATH so
             # that LDFLAGS is the appropriate env var to use.
             export LDFLAGS=-L/lib/x86_64-linux-gnu
+            ln -s /lib/x86_64-linux-gnu/libmpi.so.40 /lib/x86_64-linux-gnu/libmpi.so
+            ln -s /lib/x86_64-linux-gnu/libmpi_cxx.so.40 /lib/x86_64-linux-gnu/libmpi_cxx.so
             ls -la /lib/x86_64-linux-gnu
+            ldconfig -p
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
         else
