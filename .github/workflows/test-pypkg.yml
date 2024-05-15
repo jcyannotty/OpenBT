@@ -110,8 +110,11 @@ jobs:
             # reading online, it appears that autotools ignores LIBRARY_PATH so
             # that LDFLAGS is the appropriate env var to use.
             ls -la /lib/x86_64-linux-gnu
+            ls -la /lib/x86_64-linux-gnu/hwloc
+            ls -la /lib/x86_64-linux-gnu/openmpi
             export LDFLAGS=-L$OMPI_PATH
-            mkdir $OMPI_PATH
+            mkdir -p $OMPI_PATH
+            ls -la $OMPI_PATH
             ln -s /lib/x86_64-linux-gnu/libmpi.so.40     $OMPI_PATH/libmpi.so
             ln -s /lib/x86_64-linux-gnu/libmpi_cxx.so.40 $OMPI_PATH/libmpi_cxx.so
             ls -la $OMPI_PATH
