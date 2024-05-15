@@ -104,9 +104,11 @@ jobs:
             ldd $INSTALL_PATH/bin/openbtcli 
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             # mpicxx lists many libraries for linking, but didn't put the full
-            # set of -L folders before the list.
-            export LIBRARY_PATH=/lib/x86_64-linux-gnu
-            ls -la $LIBRARY_PATH
+            # set of -L folders before the list.  Based on testing and some
+            # reading online, it appears that autotools ignores LIBRARY_PATH so
+            # that LDFLAGS is the appropriate env var to use.
+            export LDFLAGS=-L/lib/x86_64-linux-gnu
+            ls -la /lib/x86_64-linux-gnu
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
         else
