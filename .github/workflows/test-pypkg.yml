@@ -94,6 +94,8 @@ jobs:
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
+      env: 
+        OMPI_PATH: ${{ github.workspace }}/local/OpenMPI
       run: |
         export CPATH=$EIGEN_PATH
         if   [ "${{ runner.os }}" = "macOS" ]; then
@@ -107,10 +109,12 @@ jobs:
             # set of -L folders before the list.  Based on testing and some
             # reading online, it appears that autotools ignores LIBRARY_PATH so
             # that LDFLAGS is the appropriate env var to use.
-            export LDFLAGS=-L/lib/x86_64-linux-gnu
-            ln -s /lib/x86_64-linux-gnu/libmpi.so.40 /lib/x86_64-linux-gnu/libmpi.so
-            ln -s /lib/x86_64-linux-gnu/libmpi_cxx.so.40 /lib/x86_64-linux-gnu/libmpi_cxx.so
             ls -la /lib/x86_64-linux-gnu
+            export LDFLAGS=-L$OMPI_PATH
+            mkdir $OMPI_PATH
+            ln -s /lib/x86_64-linux-gnu/libmpi.so.40     $OMPI_PATH/libmpi.so
+            ln -s /lib/x86_64-linux-gnu/libmpi_cxx.so.40 $OMPI_PATH/libmpi_cxx.so
+            ls -la $OMPI_PATH
             ldconfig -p
             ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
