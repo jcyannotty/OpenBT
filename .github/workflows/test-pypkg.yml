@@ -43,11 +43,14 @@ jobs:
       uses: actions/checkout@v4
     - name: Install autotools
       run: |
-        if [ "${{ runner.os }}" = "macOS" ]; then
+        if   [ "${{ runner.os }}" = "macos-12" ]; then
             brew install autoconf
             brew install autoconf-archive
             brew install automake
             brew install libtool
+        elif [ "${{ runner.os }}" = "macos-13" ]; then
+            brew install autoconf-archive
+            brew install automake
         else
             sudo apt-get update
             sudo apt-get -y install autoconf-archive
@@ -92,7 +95,7 @@ jobs:
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
         export CPATH=$EIGEN_PATH
-        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
         if   [ "${{ runner.os }}" = "macOS" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
@@ -142,7 +145,7 @@ jobs:
             sysctl hw.physicalcpu
             sysctl hw.logicalcpu
         fi
-        pushd ${{ github.workspace }}/openbtmixing_pypkg
+        pushd $CLONE_PATH/openbtmixing_pypkg
         echo " "
         echo "Building source and wheels"
         echo "-------------------------------------------------"
@@ -157,7 +160,7 @@ jobs:
         echo " "
         echo "Test installed package"
         echo "-------------------------------------------------"
-        ${{ github.workspace }}/tools/test_python_installation.py -v 2
+        $CLONE_PATH/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
   pypkg_coverage:
@@ -196,7 +199,7 @@ jobs:
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
         export CPATH=$EIGEN_PATH
-        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
+        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
 
     ##-- Run full test suite
     # Run this from local clone since we have already tested packages.
@@ -214,7 +217,7 @@ jobs:
         echo " "
         pip list
         echo " "
-        pushd ${{ github.workspace }}/openbtmixing_pypkg
+        pushd $CLONE_PATH/openbtmixing_pypkg
         tox -r -e coverage,report
         popd
 
@@ -224,5 +227,5 @@ jobs:
       with:
         name: code-coverage-results
         path: |
-            ${{ github.workspace }}/openbtmixing_pypkg/.coverage
-            ${{ github.workspace }}/openbtmixing_pypkg/htmlcov
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/.coverage
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/htmlcov
