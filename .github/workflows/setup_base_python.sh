@@ -24,7 +24,7 @@ if   [ "$runner_os" = "macOS" ]; then
     sysctl hw.ncpu
     sysctl hw.physicalcpu
     sysctl hw.logicalcpu
-elif [ "$runner.os" = "Linux" ]; then
+elif [ "$runner_os" = "Linux" ]; then
     echo " "
     # Get information on number of cores & hardware threads, which sets limit
     # on number of "slots" available for MPI processes in OpenMPI.
