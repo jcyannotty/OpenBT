@@ -1,4 +1,8 @@
 name: Test OpenBTMixing Python Package
+env:
+  CLONE_PATH: ${{ github.workspace }}
+  EIGEN_PATH: ${{ github.workspace }}/eigen
+  INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
 on:
   push:
     branches:
@@ -11,9 +15,6 @@ jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
   test_pypkg:
     runs-on: ${{ matrix.os }}
-    env:
-      EIGEN_PATH: ${{ github.workspace }}/eigen
-      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
         # For macos-14 (i.e., arm64/macOS), presently
@@ -161,9 +162,6 @@ jobs:
   #####----- FULL TESTING WITH COVERAGE
   pypkg_coverage:
     runs-on: ${{ matrix.os }}
-    env:
-      EIGEN_PATH: ${{ github.workspace }}/eigen
-      INSTALL_PATH: ${{ github.workspace }}/local/OpenBT
     strategy:
       matrix:
         os: [ubuntu-22.04]
