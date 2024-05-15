@@ -94,15 +94,12 @@ jobs:
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
-      env: 
-        OMPI_PATH: ${{ github.workspace }}/local/OpenMPI
       run: |
         export CPATH=$EIGEN_PATH
+        ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
         if   [ "${{ runner.os }}" = "macOS" ]; then
-            ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" == "ubuntu-20.04" ]; then
-            ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli 
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
             # mpicxx lists many libraries for linking, but didn't put the full
@@ -110,17 +107,7 @@ jobs:
             # reading online, it appears that autotools ignores LIBRARY_PATH so
             # that LDFLAGS is the appropriate env var to use.
             ls -la /lib/x86_64-linux-gnu
-            ls -la /lib/x86_64-linux-gnu/hwloc
-            ls -la /lib/x86_64-linux-gnu/openmpi
-            ls -la /lib/x86_64-linux-gnu/openmpi/lib
-            export LDFLAGS=-L$OMPI_PATH
-            mkdir -p $OMPI_PATH
-            ls -la $OMPI_PATH
-            ln -s /lib/x86_64-linux-gnu/libmpi.so.40     $OMPI_PATH/libmpi.so
-            ln -s /lib/x86_64-linux-gnu/libmpi_cxx.so.40 $OMPI_PATH/libmpi_cxx.so
-            ls -la $OMPI_PATH
             ldconfig -p
-            ${{ github.workspace }}/tools/build_openbt_clt.sh $INSTALL_PATH
             ldd $INSTALL_PATH/bin/openbtcli
         else
             echo "Invalid OS ${{ matrix.os }}"

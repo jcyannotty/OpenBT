@@ -166,12 +166,12 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
 
     # MPI with local program
     try:
-        subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
-                       stdin=subprocess.DEVNULL,
-                       capture_output=True, check=True)
-        #subprocess.run(["mpirun", "-np", str(tc), "--oversubscribe", cmd, str(fpath)],
+        #subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
         #               stdin=subprocess.DEVNULL,
         #               capture_output=True, check=True)
+        subprocess.run(["mpirun", "-np", str(tc), "--oversubscribe", cmd, str(fpath)],
+                       stdin=subprocess.DEVNULL,
+                       capture_output=True, check=True)
     except subprocess.CalledProcessError as err:
         stdout = err.stdout.decode()
         stderr = err.stderr.decode()
