@@ -140,11 +140,11 @@ jobs:
                #
                # These lines can be used to confirm that MPICH is being used
                # correctly at build and execution time.
-               #ls -la /usr/include/x86_64-linux-gnu/mpich
-               #echo " "
-               #ls -la /usr/lib/x86_64-linux-gnu
-               #echo " "
-               #ls -la /lib/x86_64-linux-gnu/libmpi*
+               ls -la /usr/include/x86_64-linux-gnu/mpich
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/libmpi*
             else
                echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
                exit 1
@@ -187,11 +187,11 @@ jobs:
                #
                # These lines can be used to confirm that MPICH is being used
                # correctly at build and execution time.
-               #ls -la /usr/include/x86_64-linux-gnu/mpich
-               #echo " "
-               #ls -la /usr/lib/x86_64-linux-gnu
-               #echo " "
-               #ls -la /lib/x86_64-linux-gnu/libmpi*
+               ls -la /usr/include/x86_64-linux-gnu/mpich
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/libmpi*
             fi
             echo " "
             ldd $INSTALL_PATH/bin/openbtcli 
