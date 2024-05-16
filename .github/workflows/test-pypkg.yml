@@ -97,116 +97,116 @@ jobs:
         elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
             # The conditionals can be used to confirm that MPI is being used
             # correctly at build and execution time.
-            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
-               # For 20.04/OpenMPI 4.0.3/g++ 9.4.0, mpicxx uses
-               #   -I/usr/lib/x86_64-linux-gnu/openmpi/include
-               #   -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
-               #   -L/usr/lib/x86_64-linux-gnu/openmpi/lib
-               # which make good sense since using the OpenMPI usr
-               # installation.
-               ls -la /usr/lib/x86_64-linux-gnu/openmpi/include
-               echo " "
-               ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
-               echo " "
-               # Contains non-versioned libraries for use when linking that
-               # symlink to specific version in same folder
-               ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
-               echo " "
-               # Contains non-versioned libraries symlinked to versioned
-               # libraries in same folder except for
-               # libmpi.so -> /etc/alternatives/libmpi.so-x86_64-linux-gnu.
-               # However, this is not found when linking and is therefore not
-               # used at execution time.  The versioned libraries are in turn
-               # symlinked to libraries in /lib/x86_64-linux-gnu/openmpi/lib
-               ls -la /lib/x86_64-linux-gnu/libmpi*
-               echo " "
-               # Contains versioned libraries and non-versioned libraries
-               # symlinked to specific version in the same folder.  Note that
-               # libmpi.so.40.20.3 has the same size (1124440) here and in 
-               # /usr/lib/x86_64-linux-gnu/openmpi/lib; Same for
-               # libmpi_cxx.so.40.20.1 with size 118648.  It appears that
-               # installing OpenMPI puts identical libraries in /usr/lib and
-               # /lib and that we link against the former but execute with the
-               # latter.  I wish that this were cleaner.
-               ls -la /lib/x86_64-linux-gnu/openmpi/lib
-               echo " "
-               ls -la /etc/alternatives/libmpi*
-            elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-               # For 20.04/MPICH 3.3.2/gcc 9.4.0, mpicxx uses 
-               #   -I/usr/include/x86_64-linux-gnu/mpich
-               #   -L/usr/lib/x86_64-linux-gnu
-               #
-               ls -la /usr/include/x86_64-linux-gnu/mpich
-               echo " "
-               # Contains non-versioned libraries for use when linking that
-               # symlink to specific version in same folder.
-               ls -la /usr/lib/x86_64-linux-gnu
-               echo " "
-               # Contains non-versioned libraries that symlink to specific
-               # version in same folder.  Note that libmpich.so.12.1.8 has the
-               # same size (3202576) here and in /usr/lib/x86_64-linux-gnu.  It
-               # appears that installing MPICH puts identical libraries in
-               # /usr/lib and /lib and that we link against the former but
-               # execute with the latter.  I wish that this were cleaner.
-               ls -la /lib/x86_64-linux-gnu/libmpi*
-            else
-               echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
-               exit 1
-            fi
+            #if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+            #   # For 20.04/OpenMPI 4.0.3/g++ 9.4.0, mpicxx uses
+            #   #   -I/usr/lib/x86_64-linux-gnu/openmpi/include
+            #   #   -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+            #   #   -L/usr/lib/x86_64-linux-gnu/openmpi/lib
+            #   # which make good sense since using the OpenMPI usr
+            #   # installation.
+            #   ls -la /usr/lib/x86_64-linux-gnu/openmpi/include
+            #   echo " "
+            #   ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+            #   echo " "
+            #   # Contains non-versioned libraries for use when linking that
+            #   # symlink to specific version in same folder
+            #   ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
+            #   echo " "
+            #   # Contains non-versioned libraries symlinked to versioned
+            #   # libraries in same folder except for
+            #   # libmpi.so -> /etc/alternatives/libmpi.so-x86_64-linux-gnu.
+            #   # However, this is not found when linking and is therefore not
+            #   # used at execution time.  The versioned libraries are in turn
+            #   # symlinked to libraries in /lib/x86_64-linux-gnu/openmpi/lib
+            #   ls -la /lib/x86_64-linux-gnu/libmpi*
+            #   echo " "
+            #   # Contains versioned libraries and non-versioned libraries
+            #   # symlinked to specific version in the same folder.  Note that
+            #   # libmpi.so.40.20.3 has the same size (1124440) here and in 
+            #   # /usr/lib/x86_64-linux-gnu/openmpi/lib; Same for
+            #   # libmpi_cxx.so.40.20.1 with size 118648.  It appears that
+            #   # installing OpenMPI puts identical libraries in /usr/lib and
+            #   # /lib and that we link against the former but execute with the
+            #   # latter.  I wish that this were cleaner.
+            #   ls -la /lib/x86_64-linux-gnu/openmpi/lib
+            #   echo " "
+            #   ls -la /etc/alternatives/libmpi*
+            #elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+            #   # For 20.04/MPICH 3.3.2/gcc 9.4.0, mpicxx uses 
+            #   #   -I/usr/include/x86_64-linux-gnu/mpich
+            #   #   -L/usr/lib/x86_64-linux-gnu
+            #   #
+            #   ls -la /usr/include/x86_64-linux-gnu/mpich
+            #   echo " "
+            #   # Contains non-versioned libraries for use when linking that
+            #   # symlink to specific version in same folder.
+            #   ls -la /usr/lib/x86_64-linux-gnu
+            #   echo " "
+            #   # Contains non-versioned libraries that symlink to specific
+            #   # version in same folder.  Note that libmpich.so.12.1.8 has the
+            #   # same size (3202576) here and in /usr/lib/x86_64-linux-gnu.  It
+            #   # appears that installing MPICH puts identical libraries in
+            #   # /usr/lib and /lib and that we link against the former but
+            #   # execute with the latter.  I wish that this were cleaner.
+            #   ls -la /lib/x86_64-linux-gnu/libmpi*
+            #else
+            #   echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
+            #   exit 1
+            #fi
             echo " "
             ldd $INSTALL_PATH/bin/openbtcli 
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
-               # For 22.04/OpenMPI 4.1.2/g++ 11.4.0, mpicxx uses
-               #   -I/usr/lib/x86_64-linux-gnu/openmpi/include
-               #   -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
-               #   -L/usr/lib/x86_64-linux-gnu/openmpi/lib
-               # which make good sense since using the OpenMPI usr
-               # installation.
-               ls -la /usr/lib/x86_64-linux-gnu/openmpi/include
-               echo " "
-               ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
-               echo " "
-               # Contains non-versioned libraries for use when linking that
-               # symlink to specific version in /usr/lib/x86_64-linux-gnu.
-               # These in turn symlink to a more specific version in the same
-               # folder.  Ultimately we are linking against these.
-               ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
-               echo " "
-               ls -la /usr/lib/x86_64-linux-gnu/libmpi*
-               echo " "
-               # Contains versioned libraries and non-versioned libraries
-               # symlinked to specific version in the same folder except for
-               # libmpi.so -> /etc/alternatives/libmpi.so-x86_64-linux-gnu.
-               # However, this last is not found when linking and is therefore
-               # not used at execution time.  Note that libmpi.so.40.30.2 has
-               # the same size (1198600) here and in
-               # /usr/lib/x86_64-linux-gnu/; Same for libmpi_cxx.so.40.30.1
-               # with size 102272.  It appears that installing OpenMPI puts
-               # identical libraries in /usr/lib and /lib and that we link
-               # against the former but execute with the latter.  I wish that
-               # this were cleaner.
-               ls -la /lib/x86_64-linux-gnu/libmpi*
-               echo " "
-               ls -la /etc/alternatives/libmpi*
-            elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-               # For 22.04/MPICH 4.0-3/g++ 11.0.4, mpicxx uses 
-               #   -I/usr/include/x86_64-linux-gnu/mpich 
-               #   -L/usr/lib/x86_64-linux-gnu 
-               ls -la /usr/include/x86_64-linux-gnu/mpich
-               echo " "
-               # Contains non-versioned libraries for use when linking that
-               # symlink to specific version in same folder.
-               ls -la /usr/lib/x86_64-linux-gnu
-               echo " "
-               # Contains non-versioned libraries that symlink to specific
-               # version in same folder.  Note that libmpich.so.12.2.0 has the
-               # same size (38697968) here and in /usr/lib/x86_64-linux-gnu.
-               # It appears that installing MPICH puts identical libraries in
-               # /usr/lib and /lib and that we link against the former but
-               # execute with the latter.  I wish that this were cleaner.
-               ls -la /lib/x86_64-linux-gnu/libmpi*
-            fi
+            #if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+            #   # For 22.04/OpenMPI 4.1.2/g++ 11.4.0, mpicxx uses
+            #   #   -I/usr/lib/x86_64-linux-gnu/openmpi/include
+            #   #   -I/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+            #   #   -L/usr/lib/x86_64-linux-gnu/openmpi/lib
+            #   # which make good sense since using the OpenMPI usr
+            #   # installation.
+            #   ls -la /usr/lib/x86_64-linux-gnu/openmpi/include
+            #   echo " "
+            #   ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
+            #   echo " "
+            #   # Contains non-versioned libraries for use when linking that
+            #   # symlink to specific version in /usr/lib/x86_64-linux-gnu.
+            #   # These in turn symlink to a more specific version in the same
+            #   # folder.  Ultimately we are linking against these.
+            #   ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
+            #   echo " "
+            #   ls -la /usr/lib/x86_64-linux-gnu/libmpi*
+            #   echo " "
+            #   # Contains versioned libraries and non-versioned libraries
+            #   # symlinked to specific version in the same folder except for
+            #   # libmpi.so -> /etc/alternatives/libmpi.so-x86_64-linux-gnu.
+            #   # However, this last is not found when linking and is therefore
+            #   # not used at execution time.  Note that libmpi.so.40.30.2 has
+            #   # the same size (1198600) here and in
+            #   # /usr/lib/x86_64-linux-gnu/; Same for libmpi_cxx.so.40.30.1
+            #   # with size 102272.  It appears that installing OpenMPI puts
+            #   # identical libraries in /usr/lib and /lib and that we link
+            #   # against the former but execute with the latter.  I wish that
+            #   # this were cleaner.
+            #   ls -la /lib/x86_64-linux-gnu/libmpi*
+            #   echo " "
+            #   ls -la /etc/alternatives/libmpi*
+            #elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+            #   # For 22.04/MPICH 4.0-3/g++ 11.0.4, mpicxx uses 
+            #   #   -I/usr/include/x86_64-linux-gnu/mpich 
+            #   #   -L/usr/lib/x86_64-linux-gnu 
+            #   ls -la /usr/include/x86_64-linux-gnu/mpich
+            #   echo " "
+            #   # Contains non-versioned libraries for use when linking that
+            #   # symlink to specific version in same folder.
+            #   ls -la /usr/lib/x86_64-linux-gnu
+            #   echo " "
+            #   # Contains non-versioned libraries that symlink to specific
+            #   # version in same folder.  Note that libmpich.so.12.2.0 has the
+            #   # same size (38697968) here and in /usr/lib/x86_64-linux-gnu.
+            #   # It appears that installing MPICH puts identical libraries in
+            #   # /usr/lib and /lib and that we link against the former but
+            #   # execute with the latter.  I wish that this were cleaner.
+            #   ls -la /lib/x86_64-linux-gnu/libmpi*
+            #fi
             echo " "
             ldd $INSTALL_PATH/bin/openbtcli 
         else
