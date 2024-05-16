@@ -23,19 +23,19 @@ jobs:
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
         os: [ubuntu-20.04, ubuntu-22.04]
-        mpi_impl: ["openmpi"]
+        mpi_impl: ["openmpi", "mpich"]
         python-version: ["3.9"]
-        #exclude:
-        #  # For Ubuntu20.04, presently
-        #  # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
-        #  #   core) when the test asks for 4 MPI processes
-        #  - os: ubuntu-20.04
-        #    mpi_impl: "openmpi"
-        #  # For Ubuntu22.04, presently
-        #  # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
-        #  #   core) when the test asks for 4 MPI processes
-        #  - os: ubuntu-22.04
-        #    mpi_impl: "openmpi"
+        exclude:
+          # For Ubuntu20.04, presently
+          # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
+          #   core) when the test asks for 4 MPI processes
+          - os: ubuntu-20.04
+            mpi_impl: "openmpi"
+          # For Ubuntu22.04, presently
+          # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
+          #   core) when the test asks for 4 MPI processes
+          - os: ubuntu-22.04
+            mpi_impl: "openmpi"
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -116,10 +116,9 @@ jobs:
                # Contains non-versioned libraries symlinked to versioned
                # libraries in same folder except for
                # libmpi.so -> /etc/alternatives/libmpi.so-x86_64-linux-gnu.
-               # However, this last is not found when linking and is therefore
-               # not used at execution time.  The versioned libraries are in
-               # turn symlinked to libraries in
-               # /lib/x86_64-linux-gnu/openmpi/lib
+               # However, this is not found when linking and is therefore not
+               # used at execution time.  The versioned libraries are in turn
+               # symlinked to libraries in /lib/x86_64-linux-gnu/openmpi/lib
                ls -la /lib/x86_64-linux-gnu/libmpi*
                echo " "
                # Contains versioned libraries and non-versioned libraries
@@ -129,7 +128,7 @@ jobs:
                # libmpi_cxx.so.40.20.1 with size 118648.  It appears that
                # installing OpenMPI puts identical libraries in /usr/lib and
                # /lib and that we link against the former but execute with the
-               # latter.
+               # latter.  I wish that this were cleaner.
                ls -la /lib/x86_64-linux-gnu/openmpi/lib
                echo " "
                ls -la /etc/alternatives/libmpi*
@@ -167,7 +166,9 @@ jobs:
                ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
                echo " "
                # Contains non-versioned libraries for use when linking that
-               # symlink to specific version in /usr/lib/x86_64-linux-gnu
+               # symlink to specific version in /usr/lib/x86_64-linux-gnu.
+               # These in turn symlink to a more specific version in the same
+               # folder.  Ultimately we are linking against these.
                ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
                echo " "
                ls -la /usr/lib/x86_64-linux-gnu/libmpi*
@@ -176,7 +177,13 @@ jobs:
                # symlinked to specific version in the same folder except for
                # libmpi.so -> /etc/alternatives/libmpi.so-x86_64-linux-gnu.
                # However, this last is not found when linking and is therefore
-               # not used at execution time.
+               # not used at execution time.  Note that libmpi.so.40.30.2 has
+               # the same size (1198600) here and in
+               # /usr/lib/x86_64-linux-gnu/; Same for libmpi_cxx.so.40.30.1
+               # with size 102272.  It appears that installing OpenMPI puts
+               # identical libraries in /usr/lib and /lib and that we link
+               # against the former but execute with the latter.  I wish that
+               # this were cleaner.
                ls -la /lib/x86_64-linux-gnu/libmpi*
                echo " "
                ls -la /etc/alternatives/libmpi*
