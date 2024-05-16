@@ -22,9 +22,9 @@ jobs:
         #   4 MPI processes
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [ubuntu-20.04, ubuntu-22.04]
+        os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
         mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.9"]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
         exclude:
           # For Ubuntu20.04, presently
           # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
@@ -95,6 +95,8 @@ jobs:
         if   [ "${{ runner.os }}" = "macOS" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+            # The conditionals can be used to confirm that MPI is being used
+            # correctly at build and execution time.
             if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
                # For 20.04/OpenMPI 4.0.3/g++ 9.4.0, mpicxx uses
                #   -I/usr/lib/x86_64-linux-gnu/openmpi/include
@@ -102,9 +104,6 @@ jobs:
                #   -L/usr/lib/x86_64-linux-gnu/openmpi/lib
                # which make good sense since using the OpenMPI usr
                # installation.
-               #
-               # These lines can be used to confirm that OpenMPI is being used
-               # correctly at build and execution time.
                ls -la /usr/lib/x86_64-linux-gnu/openmpi/include
                echo " "
                ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
@@ -133,16 +132,22 @@ jobs:
                echo " "
                ls -la /etc/alternatives/libmpi*
             elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-               # For 20.04/MPICH 3.3.2, mpicxx uses 
+               # For 20.04/MPICH 3.3.2/gcc 9.4.0, mpicxx uses 
                #   -I/usr/include/x86_64-linux-gnu/mpich
                #   -L/usr/lib/x86_64-linux-gnu
                #
-               # These lines can be used to confirm that MPICH is being used
-               # correctly at build and execution time.
                ls -la /usr/include/x86_64-linux-gnu/mpich
                echo " "
+               # Contains non-versioned libraries for use when linking that
+               # symlink to specific version in same folder.
                ls -la /usr/lib/x86_64-linux-gnu
                echo " "
+               # Contains non-versioned libraries that symlink to specific
+               # version in same folder.  Note that libmpich.so.12.1.8 has the
+               # same size (3202576) here and in /usr/lib/x86_64-linux-gnu.  It
+               # appears that installing MPICH puts identical libraries in
+               # /usr/lib and /lib and that we link against the former but
+               # execute with the latter.  I wish that this were cleaner.
                ls -la /lib/x86_64-linux-gnu/libmpi*
             else
                echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
@@ -158,9 +163,6 @@ jobs:
                #   -L/usr/lib/x86_64-linux-gnu/openmpi/lib
                # which make good sense since using the OpenMPI usr
                # installation.
-               #
-               # These lines can be used to confirm that OpenMPI is being used
-               # correctly at build and execution time.
                ls -la /usr/lib/x86_64-linux-gnu/openmpi/include
                echo " "
                ls -la /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi
@@ -188,16 +190,21 @@ jobs:
                echo " "
                ls -la /etc/alternatives/libmpi*
             elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-               # For 22.04/MPICH 4.0-3, mpicxx uses 
+               # For 22.04/MPICH 4.0-3/g++ 11.0.4, mpicxx uses 
                #   -I/usr/include/x86_64-linux-gnu/mpich 
                #   -L/usr/lib/x86_64-linux-gnu 
-               #
-               # These lines can be used to confirm that MPICH is being used
-               # correctly at build and execution time.
                ls -la /usr/include/x86_64-linux-gnu/mpich
                echo " "
+               # Contains non-versioned libraries for use when linking that
+               # symlink to specific version in same folder.
                ls -la /usr/lib/x86_64-linux-gnu
                echo " "
+               # Contains non-versioned libraries that symlink to specific
+               # version in same folder.  Note that libmpich.so.12.2.0 has the
+               # same size (38697968) here and in /usr/lib/x86_64-linux-gnu.
+               # It appears that installing MPICH puts identical libraries in
+               # /usr/lib and /lib and that we link against the former but
+               # execute with the latter.  I wish that this were cleaner.
                ls -la /lib/x86_64-linux-gnu/libmpi*
             fi
             echo " "
@@ -239,58 +246,58 @@ jobs:
         $CLONE_PATH/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
-#  pypkg_coverage:
-#    runs-on: ${{ matrix.os }}
-#    strategy:
-#      matrix:
-#        os: [ubuntu-22.04]
-#        mpi_impl: ["mpich"]
-#        python-version: ["3.12"]
-#
-#    steps:
-#    #####----- SETUP TESTING ENVIRONMENT
-#    - name: Checkout OpenBTMixing
-#      uses: actions/checkout@v4
-#    - name: Install autotools
-#      run: |
-#        sudo apt-get update
-#        sudo apt-get -y install autoconf-archive
-#    - name: Install ${{ matrix.mpi_impl }}
-#      run: sudo apt-get -y install mpich
-#    - name: Set up Python ${{ matrix.python-version }}
-#      uses: actions/setup-python@v5
-#      with:
-#        python-version: ${{ matrix.python-version }}
-#    - name: Setup Python dependencies
-#      run: |
-#        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-#    - name: Install eigen dependency
-#      run: |
-#        # C++ template only => no build here! 
-#        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
-#
-#    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-#    - name: Build OpenBTMixing C++ CLTs & Libraries
-#      run: |
-#        export CPATH=$EIGEN_PATH
-#        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
-#
-#    ##-- Run full test suite
-#    # Run this from local clone since we have already tested packages.
-#    #
-#    # This checks that coverage tox environment is functional.
-#    - name: Run full OpenBtMixing test suite
-#      run: |
-#        export PATH=$PATH:$INSTALL_PATH/bin
-#        pushd $CLONE_PATH/openbtmixing_pypkg
-#        tox -r -e coverage,report
-#        popd
-#
-#    ##-- Publish full coverage report as artifact
-#    - name: Archive code coverage results
-#      uses: actions/upload-artifact@v4
-#      with:
-#        name: code-coverage-results
-#        path: |
-#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/.coverage
-#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/htmlcov
+  pypkg_coverage:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        mpi_impl: ["mpich"]
+        python-version: ["3.12"]
+
+    steps:
+    #####----- SETUP TESTING ENVIRONMENT
+    - name: Checkout OpenBTMixing
+      uses: actions/checkout@v4
+    - name: Install autotools
+      run: |
+        sudo apt-get update
+        sudo apt-get -y install autoconf-archive
+    - name: Install ${{ matrix.mpi_impl }}
+      run: sudo apt-get -y install mpich
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Setup Python dependencies
+      run: |
+        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+    - name: Install eigen dependency
+      run: |
+        # C++ template only => no build here! 
+        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
+
+    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
+    - name: Build OpenBTMixing C++ CLTs & Libraries
+      run: |
+        export CPATH=$EIGEN_PATH
+        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+
+    ##-- Run full test suite
+    # Run this from local clone since we have already tested packages.
+    #
+    # This checks that coverage tox environment is functional.
+    - name: Run full OpenBtMixing test suite
+      run: |
+        export PATH=$PATH:$INSTALL_PATH/bin
+        pushd $CLONE_PATH/openbtmixing_pypkg
+        tox -r -e coverage,report
+        popd
+
+    ##-- Publish full coverage report as artifact
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-coverage-results
+        path: |
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/.coverage
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/htmlcov
