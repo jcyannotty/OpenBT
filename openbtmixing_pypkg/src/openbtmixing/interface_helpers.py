@@ -20,15 +20,8 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
     sdraws = []
     wdraws = {}
     out = {}
-    print()
-    print(fpath)
-    print(modelname)
-    print()
     if readmean:
         mdraw_files = sorted(list(fpath.glob(modelname + ".mdraws*")))
-        print()
-        print(mdraw_files)
-        print()
         
         for f in mdraw_files:
             read = open(f, "r")
@@ -159,14 +152,9 @@ def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab =
     elif shutil.which(cmd) is None:
         raise RuntimeError(f"Add to PATH the folder that contains {cmd}")
 
-    print()
-    print(shutil.which("mpirun"))
-    print(shutil.which(cmd))
-    print()
-
     # MPI with local program
     try:
-        subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
+        subprocess.run(["mpirun", "-np", str(tc), "--oversubscribe", cmd, str(fpath)],
                        stdin=subprocess.DEVNULL,
                        capture_output=True, check=True)
     except subprocess.CalledProcessError as err:

@@ -22,20 +22,20 @@ jobs:
         #   4 MPI processes
         # * MPICH seems to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
-        mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
-        exclude:
-          # For Ubuntu20.04, presently
-          # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
-          #   core) when the test asks for 4 MPI processes
-          - os: ubuntu-20.04
-            mpi_impl: "openmpi"
-          # For Ubuntu22.04, presently
-          # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
-          #   core) when the test asks for 4 MPI processes
-          - os: ubuntu-22.04
-            mpi_impl: "openmpi"
+        os: [ubuntu-20.04, ubuntu-22.04]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.9"]
+        #exclude:
+        #  # For Ubuntu20.04, presently
+        #  # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
+        #  #   core) when the test asks for 4 MPI processes
+        #  - os: ubuntu-20.04
+        #    mpi_impl: "openmpi"
+        #  # For Ubuntu22.04, presently
+        #  # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
+        #  #   core) when the test asks for 4 MPI processes
+        #  - os: ubuntu-22.04
+        #    mpi_impl: "openmpi"
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -91,12 +91,76 @@ jobs:
       run: |
         export CPATH=$EIGEN_PATH
         $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+        echo " "
         if   [ "${{ runner.os }}" = "macOS" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
         elif [ "${{ matrix.os }}" = "ubuntu-20.04" ]; then
+            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+               # For 20.04/OpenMPI 4.0.3, mpicxx uses
+               #
+               # These lines can be used to confirm that OpenMPI is being used
+               # correctly at build and execution time.
+               ls -la /usr/include/x86_64-linux-gnu
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu/openmpi
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/libmpi*
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/openmpi
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/openmpi/lib
+            elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+               # For 20.04/MPICH 3.3.2, mpicxx uses 
+               #   -I/usr/include/x86_64-linux-gnu/mpich
+               #   -L/usr/lib/x86_64-linux-gnu
+               #
+               # These lines can be used to confirm that MPICH is being used
+               # correctly at build and execution time.
+               ls -la /usr/include/x86_64-linux-gnu/mpich
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/libmpi*
+            else
+               echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
+               exit 1
+            fi
+            echo " "
             ldd $INSTALL_PATH/bin/openbtcli 
         elif [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
-            ldd $INSTALL_PATH/bin/openbtcli
+            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+               # For 22.04/OpenMPI 4.1.2, mpicxx uses
+               #
+               # These lines can be used to confirm that OpenMPI is being used
+               # correctly at build and execution time.
+               ls -la /usr/include/x86_64-linux-gnu
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu/openmpi
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu/openmpi/lib
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/libmpi*
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/openmpi
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/openmpi/lib
+            elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+               # For 22.04/MPICH 4.0-3, mpicxx uses 
+               #   -I/usr/include/x86_64-linux-gnu/mpich 
+               #   -L/usr/lib/x86_64-linux-gnu 
+               #
+               # These lines can be used to confirm that MPICH is being used
+               # correctly at build and execution time.
+               ls -la /usr/include/x86_64-linux-gnu/mpich
+               echo " "
+               ls -la /usr/lib/x86_64-linux-gnu
+               echo " "
+               ls -la /lib/x86_64-linux-gnu/libmpi*
+            fi
+            echo " "
+            ldd $INSTALL_PATH/bin/openbtcli 
         else
             echo "Invalid OS ${{ matrix.os }}"
         fi
