@@ -6,23 +6,23 @@
 # which is shared under the MIT license with the following copyright and
 # permissions:
 #
-# Interpolation-Based Composite Derivative-Free Optimization (IBCDFO) 
+# Interpolation-Based Composite Derivative-Free Optimization (IBCDFO)
 # Part of POptUS: Practical Optimization Using Structure
 # Copyright (c) 2023, The Regents of the University of California,
 # through Lawrence Berkeley National Laboratory and UChicago Argonne
 # LLC through Argonne National Laboratory (subject to receipt of any
 # required approvals from the U.S. Dept. of Energy).  All rights reserved.
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -64,7 +64,7 @@ def main():
     # ----- SPECIFY COMMAND LINE USAGE
     DESCRIPTION = "Return status of OpenBTMixing Python package full testing " \
                   + "as exit code for use with CI\n"
-    VERBOSE_HELP = "Verbosity level of python unittest logging"
+    VERBOSE_HELP = "Verbosity level of pytest logging"
     parser = argparse.ArgumentParser(
                 description=DESCRIPTION,
                 formatter_class=argparse.RawTextHelpFormatter

@@ -16,7 +16,6 @@ __pycache__/*
 # autotools products
 src/Makefile
 src/compile
-src/configure.ac_me
 src/depcomp
 src/install-sh
 src/libtool
@@ -46,8 +45,9 @@ __pycache__
 # Standard intermediate products
 openbtmixing_pypkg/dist
 openbtmixing_pypkg/build
+openbtmixing_pypkg/.coverage_openbt
+openbtmixing_pypkg/coverage.xml
 openbtmixing_pypkg/htmlcov
-openbtmixing_pypkg/.coverage
 openbtmixing_pypkg/*.whl
 openbtmixing_pypkg/src/openbtmixing.egg-info
 # Installed OpenBT CLTs

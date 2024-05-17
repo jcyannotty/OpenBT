@@ -5,13 +5,16 @@
 # package's setup can find them for installation and use.
 #
 # Users must pass the path to the folder in which OpenBT should be installed.
-# IMPORTANT: The given folder will be removed as part of the build!
+# IMPORTANT: The given folder will be removed before the build starts!
 #
 # On some systems I have needed to run as
 #
 # CPATH=~/local/eigen ./tools/build_openbt_clt.sh ~/local/OpenBT
 #
 # in order for configuration to run through properly.
+#
+# This script returns exit codes that should make it compatible with use in CI
+# build processes.
 #
 # TODO: See if we can get configure to find Eigen directly or by using
 # pkg-config so that I don't have to set CPATH.
@@ -37,9 +40,9 @@ if ! command -v mpicc &> /dev/null; then
     echo "Please install MPI with mpicc C compiler wrapper"
     echo
     exit 1
-elif ! command -v mpic++ &> /dev/null; then
+elif ! command -v mpicxx &> /dev/null; then
     echo
-    echo "Please install MPI with mpic++ C++ compiler wrapper"
+    echo "Please install MPI with mpicxx C++ compiler wrapper"
     echo
     exit 1
 fi
@@ -66,9 +69,11 @@ echo "CC=$CC"
 echo "CXX=$CXX"
 echo "MPICC=$MPICC"
 echo "MPICXX=$MPICXX"
-echo "LDFLAGS=$LDFLAGS"
 echo "CPATH=$CPATH"
-echo "LIBRARY_PATH=$LIBRARY_PATH"
+echo "CFLAGS=$CFLAGS"
+echo "CXXFLAGS=$CXXFLAGS"
+echo "CPPFLAGS=$CPPFLAGS"
+echo "LDFLAGS=$LDFLAGS"
 echo
 
 if ! command -v autoconf &> /dev/null; then
@@ -138,7 +143,7 @@ echo "---------------------------------------------"
 ./configure --with-mpi --with-silent --prefix=$prefix || { cat config.log; exit 1; }
 
 # We need to install the libraries so that they are in the location provided in
-# the RPATH of the CLI programs.  Then tools like auditwheel and delocate can
+# the RPATH of the CLT programs.  Then tools like auditwheel and delocate can
 # find them and include them in the wheel.
 echo
 echo "Make & Install OpenBT"

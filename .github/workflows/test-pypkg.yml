@@ -20,7 +20,7 @@ jobs:
         # For macos-14 (i.e., arm64/macOS), presently
         # * OpenMPI fails due to too few processors (3) when the test asks for
         #   4 MPI processes
-        # * MPICH seems to run forever (MPI_Finalize seems to hang on my
+        # * MPICH appears to run forever (MPI_Finalize seems to hang on my
         #   machine)
         os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
         mpi_impl: ["openmpi", "mpich"]
@@ -149,9 +149,6 @@ jobs:
             #   # /usr/lib and /lib and that we link against the former but
             #   # execute with the latter.  I wish that this were cleaner.
             #   ls -la /lib/x86_64-linux-gnu/libmpi*
-            #else
-            #   echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
-            #   exit 1
             #fi
             echo " "
             ldd $INSTALL_PATH/bin/openbtcli 
@@ -217,8 +214,8 @@ jobs:
         echo " "
 
     ##-- Run full test suite
-    # Prefer full end-to-end test of binary wheels rather than testing in
-    # local clone alone
+    # Prefer full end-to-end test of wheels rather than testing in local clone
+    # alone
     #
     # This also confirms that the test script is functional
     - name: Run full OpenBtMixing test suite
@@ -251,7 +248,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        mpi_impl: ["mpich"]
         python-version: ["3.12"]
 
     steps:
@@ -262,7 +258,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get -y install autoconf-archive
-    - name: Install ${{ matrix.mpi_impl }}
+    - name: Install MPICH
       run: sudo apt-get -y install mpich
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
@@ -295,9 +291,14 @@ jobs:
 
     ##-- Publish full coverage report as artifact
     - name: Archive code coverage results
+      env:
+        COVERAGE_FILE: coverage_result
+        COVERAGE_HTML: htmlcov
+        COVERAGE_XML:  coverage.xml
       uses: actions/upload-artifact@v4
       with:
         name: code-coverage-results
         path: |
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/.coverage
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/htmlcov
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}

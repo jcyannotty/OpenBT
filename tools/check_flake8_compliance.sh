@@ -33,7 +33,7 @@
 #
 
 #
-# Check that all python code in the repository adheres to the PEP8 coding
+# Check that all Python code in the repository adheres to the PEP8 coding
 # standard.
 #
 # This returns exit codes that are compatible with the use of this
@@ -43,29 +43,26 @@
 SCRIPT_PATH=$(dirname -- "${BASH_SOURCE[0]}")
 CLONE_PATH=$SCRIPT_PATH/..
 
-declare -a PACKAGES=("openbtmixing_pypkg")
 declare -a FOLDERS=("tools")
 
 pushd $CLONE_PATH
 
-# Let each python package determine if its code is acceptable
-for pkg in "${PACKAGES[@]}"; do
-    pushd $pkg &> /dev/null || exit 1
-    tox -r -e check         || exit $?
-    popd &> /dev/null
-done
+pushd openbtmixing_pypkg &> /dev/null || exit 1
+# Let Python package determine if its code is acceptable
+tox -r -e check             || exit $?
 
 # Load virtual env so that flake8 is available and ...
-pushd "${PACKAGES[0]}" &> /dev/null
 . ./.tox/check/bin/activate || exit $?
 popd &> /dev/null
 
-# manually check python code *not* included in a package
+# manually check Python code *not* included in a package
 for dir in "${FOLDERS[@]}"; do
     echo
-    echo "Check python code in $dir/* ..."
+    echo "Check Python code in $dir/* ..."
     pushd $dir &> /dev/null   || exit 1
     flake8 --config=./.flake8 || exit $?
     popd &> /dev/null
 done
 echo
+
+popd &> /dev/null
