@@ -16,4 +16,4 @@ def test(level=0):
     elif level >= 1:
         args = ["-" + "v"*level]
 
-    return pytest.main(args + ["--pyargs", "openbtmixing.tests"])
+    return (pytest.main(args + ["--pyargs", "openbtmixing.tests"]) == 0)
