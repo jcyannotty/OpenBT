@@ -9,6 +9,7 @@ import tempfile
 import shutil
 import os
 import typing
+import numbers
 
 from scipy.stats import norm
 from pathlib import Path
@@ -126,83 +127,69 @@ def read_in_preds(fpath, modelname, nummodels, q_upper, q_lower, readmean, reads
     return out
 
 
-def run_model(fpath, tc, cmd="openbtcli", local_openbt_path = "", google_colab = False):
+def run_model(fpath, tc, cmd="openbtcli",
+              local_openbt_path="", google_colab=False):
     """
     Private function, run the cpp program via the command line using
     a subprocess.
+
+    This assumes that the folders that contain the OpenBT command line tools
+    and mpirun are in the PATH.  The mpirun that is found should be from an
+    MPI implementation compatible with the MPI implementation that was used to
+    build the OpenBT C++ command line tools.
+
+    .. todo::
+        * What error checking should be done for fpath?
     """
-    # Check to see if executable is installed via debian
-    sh = shutil.which(cmd)
+    KNOWN_COMMANDS = {
+        "openbtcli",
+        "openbtmixing", "openbtmixingpred", "openbtmixingwts",
+        "openbtmopareto", "openbtpred", "openbtsobol", "openbtvartivity"
+    }
 
-    # Check to see if installed via wheel
-    pyinstall = False
-    if sh is None:
-        pywhl_path = os.popen("pip show openbtmixing").read()
-        pywhl_path = pywhl_path.split("Location: ")
-        if len(pywhl_path)>1:
-            pywhl_path = pywhl_path[1].split("\n")[0] + "/openbtmixing"
-            sh = shutil.which(cmd, path=pywhl_path)
-            pyinstall = True
+    # ----- ERROR CHECK ARGUMENTS
+    if (not isinstance(fpath, str)) and (not isinstance(fpath, Path)):
+        raise TypeError(f"fpath is not a string or Path object ({fpath})")
+    elif not isinstance(tc, numbers.Integral):
+        raise TypeError(f"tc is not an integer ({tc})")
+    elif tc <= 0:
+        raise ValueError(f"tc is not a positive integer ({tc})")
+    elif cmd not in KNOWN_COMMANDS:
+        raise ValueError(f"Unknown OpenBT command line tool {cmd}")
+    elif shutil.which(cmd) is None:
+        raise RuntimeError(f"Add to PATH the folder that contains {cmd}")
+    elif local_openbt_path != "":
+        raise NotImplementedError("local_openbt_path not supported")
+    elif google_colab:
+        raise NotImplementedError("google_colab not supported")
 
-    # Execute the subprocess, changing directory when needed
-    if sh is None:
-        # openbt exe were not found in the current directory -- try the
-        # local directory passed in
-        sh = shutil.which(cmd, path=local_openbt_path)
-        if sh is None:
-            raise FileNotFoundError(
-                "Cannot find openbt executables. Please specify the path using the argument local_openbt_path in the constructor.")
-        else:
-            cmd = sh
-            if not google_colab:
-                # MPI with local program
-                sp = subprocess.run(["mpirun",
-                                        "-np",
-                                        str(tc),
-                                        cmd,
-                                        str(fpath)],
-                                    stdin=subprocess.DEVNULL,
-                                    capture_output=True)
-            else:
-                # Shell command for MPI with google colab
-                full_cmd = "mpirun --allow-run-as-root --oversubscribe -np " + \
-                    str(tc) + " " + cmd + " " + str(fpath)
-                os.system(full_cmd)
-    else:
-        if pyinstall:
-            # MPI with local program
-            #os.system("ldd /home/johnyannotty/Documents/Taweret/test_env/lib/python3.8/site-packages/openbtmixing/.libs/openbtcli")
-            #os.environ['LD_LIBRARY_PATH'] = "/home/johnyannotty/Documents/Taweret/test_env/lib/python3.8/site-packages/openbtmixing/.libs/"
-            libdir = "/".join(sh.split("/")[:-1]) + "/.libs/"
-            os.environ['LD_LIBRARY_PATH'] = libdir
-            os.environ['DYLD_LIBRARY_PATH'] = libdir
-            cmd = sh
-            print(libdir)
-            print(cmd)
-            sp = subprocess.run(["mpirun",
-                                    "-np",
-                                    str(tc),
-                                    cmd,
-                                    str(fpath)],
-                                stdin=subprocess.DEVNULL,
-                                capture_output=True)
-            print(sp)
-        else:
-            if not google_colab:
-                # MPI with installed .exe
-                sp = subprocess.run(["mpirun",
-                                    "-np",
-                                    str(tc),
-                                    cmd,
-                                    str(fpath)],
-                                    stdin=subprocess.DEVNULL,
-                                    capture_output=True)
-            else:
-                # Google colab with installed program
-                full_cmd = "mpirun --allow-run-as-root --oversubscribe -np " + \
-                    str(tc) + " " + cmd + " " + str(fpath)
-                os.system(full_cmd)
+    # ----- ERROR CHECK MPI SETUP
+    if shutil.which("mpirun") is None:
+        msg = "Add to PATH the folder that contains the mpirun\n"
+        msg += "of the MPI implementation used to build OpenBT CLTs"
+        raise RuntimeError(msg)
 
+    try:
+        # MPI running OpenBT command line tool with both found through PATH
+        subprocess.run(["mpirun", "-np", str(tc), cmd, str(fpath)],
+                       stdin=subprocess.DEVNULL,
+                       capture_output=True, check=True)
+    except subprocess.CalledProcessError as err:
+        stdout = err.stdout.decode()
+        stderr = err.stderr.decode()
+        print()
+        msg = "[run_model] Unable to run command (Return code {})"
+        print(msg.format(err.returncode))
+        print("[run_model] " + " ".join(err.cmd))
+        if stdout != "":
+            print("[run_model] stdout")
+            for line in stdout.split("\n"):
+                print(f"\t{line}")
+        if stderr != "":
+            print("[run_model] stderr")
+            for line in stderr.split("\n"):
+                print(f"\t{line}")
+        raise
 
 
 def write_data_to_txt(data, tc, fpath, root, fmt):

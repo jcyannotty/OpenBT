@@ -1,3 +1,0 @@
-include src/*
-include src/*.h
-include src/*.cpp
