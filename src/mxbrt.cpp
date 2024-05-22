@@ -119,9 +119,9 @@ double mxbrt::lm(sinfo& si){
     mxd Sig_inv(k,k), Sig(k,k), I(k,k);
     vxd betavec(k), beta_t2(k); 
     double t2 = ci.tau*ci.tau;
-    double suml; //sum of log determinent 
-    double sumq; //sum of quadratic term
-    double sumpl; //sum of prior precision log determinant
+    double suml=0.0; //sum of log determinent 
+    double sumq=0.0; //sum of quadratic term
+    double sumpl=0.0; //sum of prior precision log determinant
     
     I = mxd::Identity(k,k); //Set identity matrix
 
