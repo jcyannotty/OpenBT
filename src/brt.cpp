@@ -245,8 +245,8 @@ void brt::adapt()
 
 #ifdef SILENT
    //Ugly hack to get rid of silly compiler warning
-   if(m_rate) ;
-   if(chgv_rate) ;
+   if(m_rate){m_rate = m_rate;}
+   if(chgv_rate){chgv_rate = chgv_rate;}
 #endif
 
 #ifndef SILENT
