@@ -483,7 +483,7 @@ void tree::rgi(size_t v, int* L, int* U)
 // Applies rgi at each internal node and stores results in a map with nid as the key
 void tree::rgitree(xinfo& xi){
    int L0, U0; 
-   size_t v0, vr;
+   size_t v0;
    L0=std::numeric_limits<int>::min(); U0=std::numeric_limits<int>::max();
 
    // Terminal node
@@ -495,7 +495,7 @@ void tree::rgitree(xinfo& xi){
    v0 = this->v;
    this->rgi(v0,&L0,&U0);
    if(L0<0){L0 = 0;}
-   if(U0>xi[v0].size()){U0 = xi[v0].size()-1;}
+   if(U0>static_cast<int>(xi[v0].size())){U0 = xi[v0].size()-1;}
    this->setcbnds(L0,U0);
 
    // Apply to children nodes
@@ -506,11 +506,11 @@ void tree::rgitree(xinfo& xi){
 //--------------------
 void tree::calcphix(double *xx, xinfo& xi , std::map<tree_p,double> &phixmap, std::map<tree_p,double> &logpathprob,double gamma, double q){
    double psi0;
-   double logphix;
+   //double logphix;
    double c0, ub, lb;
 
    // Check if this node is a terminal node
-   if((this->l) == 0 & (this->p) == 0){
+   if(((this->l) == 0) & ((this->p) == 0)){
       // Tree stump case
       phixmap[this] = 1;
       logpathprob[this] = 0;

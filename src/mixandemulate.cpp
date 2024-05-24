@@ -219,6 +219,7 @@ int main(int argc, char* argv[])
     std::string summarystats_str;
     conf >> summarystats_str;
     if(summarystats_str=="TRUE"){ summarystats = true; }
+    if(summarystats){ cout << "Add summary stats...";}
     conf.close();
 
     //MPI initialization
@@ -357,7 +358,7 @@ int main(int argc, char* argv[])
     xcol = 0;
     // Get the appropriate x columns
     if(mpirank > 0){
-        for(size_t i=0;i<nummodels;i++){
+        for(int i=0;i<nummodels;i++){
             xcolsize = x_cols_list[i].size(); //x_cols_list is nummodel dimensional -- only for emulators
             for(size_t j=0;j<nvec[0];j++){
                 for(size_t k=0;k<xcolsize;k++){

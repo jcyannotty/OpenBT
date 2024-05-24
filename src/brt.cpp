@@ -126,7 +126,7 @@ void brt::draw_mpislave(rn& gen)
 
    // Perturbation Proposal
    // nothing to perturb if tree is a single terminal node, so we would just skip.
-   if(mi.dopert && t.treesize()>1)
+   if(mi.dopert && (t.treesize()>1))
    {
       tree::npv intnodes;
       tree::tree_p pertnode;
@@ -245,8 +245,8 @@ void brt::adapt()
 
 #ifdef SILENT
    //Ugly hack to get rid of silly compiler warning
-   if(m_rate) ;
-   if(chgv_rate) ;
+   if(m_rate) {m_rate = m_rate;}
+   if(chgv_rate) {chgv_rate = chgv_rate;}
 #endif
 
 #ifndef SILENT
@@ -2409,7 +2409,8 @@ void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, s
                         std::map<tree::tree_p,tree::npv> &pathmap) 
 { 
    tree::npv path; 
-   tree::tree_p p0, n0;
+   tree::tree_p p0;
+   //tree::tree_p n0;
    std::vector<double> ubvectemp, lbvectemp;
    int L,U, v0;
    double lb, ub;
@@ -2421,7 +2422,7 @@ void brt::get_phix_bounds(tree::npv bnv, std::map<tree::tree_p,double> &lbmap, s
       for(size_t l=0;l<(path.size()-1);l++){
          // Reset L and U to min and max & then update
          L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
-         n0 = path[l];
+         //n0 = path[l];
          p0 = path[l]->p; // get the parent of the current node on the path
          v0 = p0->v; // get its split var
          if(lbmap.find(p0) == lbmap.end()){
@@ -2703,7 +2704,7 @@ void brt::rpath_adapt(){
 double brt::sumlogphix(double gam, tree::tree_p nx){
    double sumlphix = 0;
    double psi0 = 0;
-   int v0, U, L;
+   int v0;
    double lb,ub, c0;
    tree::tree_p p0, n0;
    diterator diter(di);
@@ -3237,8 +3238,8 @@ void brt::shuffle_randz(rn &gen){
    tree::tree_p root;
    double lmold;
    double lmnew;
-   double lmold2;
-   double lmnew2;
+   //double lmold2;
+   //double lmnew2;
    bool hardreject = false;
 
    root = t.getptr(t.nid());
@@ -3310,20 +3311,20 @@ void brt::shuffle_randz(rn &gen){
    cout << "newdiff" << lmnew2 - lmnew << endl;
    */
 
-   lmold2 = 0.0;
+   lmold = 0.0;
    for(size_t i=0;i<rbnv.size();i++){
       //cout << "lmold2 .. " << lmold2 << endl;
-      lmold2 = lmold2 + lm(*(sold[i]));
+      lmold = lmold + lm(*(sold[i]));
       //cout << "lm + " << lm(*(sold[i])) << endl;
       //cout << "lmold2" << lmold2 << endl;
    }
       
-   lmnew2 = 0.0;   
+   lmnew = 0.0;   
    //cout << "lmnew2 ... " << lmnew2 << endl;
    for(size_t i=0;i<rbnv.size();i++) {
       //cout << "lmnew2 .. " << lmnew2 << endl;
       if((snew[i]->n) >= mi.minperbot){
-         lmnew2 = lmnew2 + lm(*(snew[i]));
+         lmnew = lmnew + lm(*(snew[i]));
       }else{ 
          hardreject=true;
          //cout << "hardreject..." << endl;
@@ -3423,7 +3424,7 @@ void brt::sample_tree_prior(rn& gen){
             L=std::numeric_limits<int>::min(); U=std::numeric_limits<int>::max();
             bprop(t,*xi,tp,mi.pb,goodbots,PBx,nx,v,c,pr,gen);            
             nx->rgi(v,&L,&U);
-            if((L!=c) && (U!=c)){
+            if((L!= static_cast<int>(c)) && (U!= static_cast<int>(c))){
                t.birthp(nx,v,c,0.0,0.0);
                // bprop gives us the new tree - need to add to queue
                nidqueue.push_back(nid*2); // left child id

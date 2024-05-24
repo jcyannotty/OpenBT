@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
    if(modeltype==MODEL_MIXCALIBRATE){
       uvec.setucur(u0);
       
-      for(int j=0; j<nummodels;j++){
+      for(size_t j=0; j<nummodels;j++){
          // Initialize the xf_list calibration parameter values
          uvec.updatexmm(xc_list[j],u_cols_list[j],pvec[j+1],np);
       }
@@ -529,7 +529,7 @@ int main(int argc, char* argv[])
          ucur.clear();
          for(size_t j=0;j<q;j++){ ucur.push_back(e_udraws[q*(i+1)+j]);}
          uvec.setucur(ucur);
-         for(int j=0; j<nummodels;j++){
+         for(size_t j=0; j<nummodels;j++){
             // Initialize the xf_list calibration parameter values
             uvec.updatexmm(xc_list[j],u_cols_list[j],pvec[j+1],np);
          }

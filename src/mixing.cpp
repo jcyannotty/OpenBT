@@ -630,7 +630,7 @@ int main(int argc, char* argv[])
     double opm; //variance info
     double lambda; //variance info
     finfo fi;
-    size_t tempn; // used when defining dips_list for emulators
+    size_t tempn = 0; // used when defining dips_list for emulators
     int l = 0; //Used for indexing emulators
     nu = 1.0; //reset nu to 1, previosuly defined earlier in program
 
