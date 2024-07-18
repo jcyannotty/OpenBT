@@ -19,6 +19,8 @@ import openbtmixing.interface_helpers as ih
 class Openbtmix():
     def __init__(self,**kwargs):
         '''
+        .. todo::
+            * See if we can remove local_openbt_path and google_colab
 
         Parameters:
         ----------
@@ -83,7 +85,7 @@ class Openbtmix():
         # Set other defaults
         self.modelname = "mixmodel"
         self.summarystats = "FALSE"
-        self.local_openbt_path = os.getcwd()
+        self.local_openbt_path = ""
         self.google_colab = False       
         self.diffwtsprior = False # used for diff values of beta and tau in noninform prior
         self.tauvec = None # the tauvec for diff components in noninform prior
