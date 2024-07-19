@@ -380,7 +380,7 @@ predict.openbtmixing = function(
   
   if(runlocal) cmd="./openbtcli --conf"
   
-  cmdopt=system(cmd)
+  cmdopt=101#system(cmd)
   
   if(cmdopt==101) # MPI
   {
