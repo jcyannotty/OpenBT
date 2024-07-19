@@ -1614,7 +1614,7 @@ void brt::drawvec_mpislave(rn& gen)
    }
 
    // Shuffle proposal for rpath
-   if(randpath & t.treesize()>1){
+   if(randpath & (t.treesize()>1)){
       //cout << "Update SHUFFLE" << endl;
       tree::npv rbnv;
       tree::tree_p root;
