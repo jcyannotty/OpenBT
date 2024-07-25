@@ -1,18 +1,21 @@
 # ----- SPECIFY PROJECT
 # eigen dependency requires C++14
 project('openbtmixing', 'cpp', default_options: ['cpp_std=c++14'])
+# TODO: Should meson accept flags to determine if these should be added?
+add_project_arguments('-D_OPENMPI', language: 'cpp')
+add_project_arguments('-DSILENT', language: 'cpp')
 
-# dependencies
-# TODO: Can we just clone eigen automatically?
-mpi_dep   = dependency('mpi', language : 'cpp')
-eigen_dep = dependency('eigen', required : false)
-if not eigen_dep.found()
-    message('Install eigen and set CPATH to its installation path')
-endif
-deps = [mpi_dep, eigen_dep]
+# ----- DEPENDENCIES
+# If users have a local install of eigen that can be discovered with
+# pkg-config, then that installation will be used.  Otherwise, meson will
+# download the specific tarball as defined in eigen.wrap and use that.
+eigen_dep = dependency('eigen', fallback : ['eigen', 'eigen_dep'])
+mpi_dep = dependency('mpi', language : 'cpp')
+deps_all = [mpi_dep, eigen_dep]
 
 # ----- SPECIFY & BUILD libopenbtmixing LIBRARY
 # Sources to build individual components in single library
+# TODO: How to get rid of src/?
 src_crn      = ['src/crn.cpp', 'src/tnorm.cpp']
 src_tree     = ['src/treefuns.cpp', 'src/tree.cpp']
 src_brt      = ['src/brt.cpp', 'src/brtmoves.cpp', 'src/brtfuns.cpp']
@@ -26,10 +29,33 @@ src_poisson  = ['src/singlepoisson.cpp']
 src_binomial = ['src/singlebinomial.cpp']
 
 # Build library
+# TODO: Put headers in their own includes folder?
+# TODO: Way to get these automatically without explicit listing?
+lib_headers = include_directories('src')
+install_headers('src/ambrt.h',
+                'src/amxbrt.h',
+                'src/brt.h',
+                'src/brtfuns.h',
+                'src/crn.h',
+                'src/dinfo.h',
+                'src/mbrt.h',
+                'src/mxbrt.h',
+                'src/psbrt.h',
+                'src/rn.h',
+                'src/sbrt.h',
+                'src/singlebinomial.h',
+                'src/singlepoisson.h',
+                'src/tnorm.h',
+                'src/tree.h',
+                'src/treefuns.h')
+
 lib_srcs  = src_crn + src_tree + src_brt + src_mbrt + src_sbrt
 lib_srcs += src_mxbrt + src_ambrt + src_psbrt + src_amxbrt
 lib_srcs += src_poisson + src_binomial
-lib = library('openbtmixing', sources : lib_srcs, dependencies : deps)
+lib = library('openbtmixing', sources : lib_srcs,
+              dependencies : deps_all,
+              include_directories : lib_headers,
+              pic : true, install : true)
 
 # ----- BUILD COMMAND LINE TOOLS
 CLTs = [['openbtcli',        'src/cli.cpp'],
@@ -41,12 +67,16 @@ CLTs = [['openbtcli',        'src/cli.cpp'],
         ['openbtmixing',     'src/mixandemulate.cpp'],
         ['openbtmixingpred', 'src/mixandemulatepred.cpp']]
 foreach each : CLTs
-    executable(each[0], each[1], dependencies : deps, link_with : lib)
+    executable(each[0], each[1],
+               dependencies : deps_all, link_with : lib,
+               install : true)
 endforeach
 
 # ----- BUILD UNIT TESTS
-# TODO: Integrate these as tests that are run as part of the build
 # TODO: amxbrt has build failures
+# TODO: Some of these tests are failing with segfaults.
+# TODO: Integrate these as tests that are run as part of the build once they
+# are all passing.
 tests_all  = ['crn', 'tree']
 tests_all += ['brt', 'brtvp']
 #tests_all += ['mbrt', 'ambrt', 'mxbrt', 'amxbrt']
@@ -56,5 +86,7 @@ tests_all += ['singlepoisson', 'singlebinomial']
 foreach name : tests_all
     test_name = f'test_@name@' 
     test_src = f'src/@test_name@.cpp'
-    executable(test_name, test_src, dependencies : deps, link_with : lib)
+    executable(test_name, test_src,
+               dependencies : deps_all, link_with : lib,
+               install : true)
 endforeach

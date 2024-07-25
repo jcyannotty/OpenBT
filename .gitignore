@@ -13,28 +13,9 @@
 __pycache__/*
 *.pyc
 
-# autotools products
-src/Makefile
-src/compile
-src/depcomp
-src/install-sh
-src/libtool
-src/missing
-
-# Intermediate products of CLT build
-src/*.o
-src/*.lo
-src/*.la
-src/.deps/*
-src/.libs/*
-src/openbtcli
-src/openbtmixing
-src/openbtmixingpred
-src/openbtmixingwts
-src/openbtmopareto
-src/openbtpred
-src/openbtsobol
-src/openbtvartivity
+# meson setup
+subprojects/eigen-*
+subprojects/packagecache
 
 # Other folders
 .vscode/*
@@ -54,9 +35,4 @@ openbtmixing_pypkg/src/openbtmixing.egg-info
 openbtmixing_pypkg/src/openbtmixing/.bin
 
 # Other files
-config.guess
-config.log
-config.status
-config.sub
-!/src/configure
 .DS_Store
