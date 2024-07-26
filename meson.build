@@ -2,6 +2,7 @@
 # eigen dependency requires C++14
 project('openbtmixing', 'cpp', default_options: ['cpp_std=c++14'])
 # TODO: Should meson accept flags to determine if these should be added?
+# TODO: Allow users to choose between debug and optimized builds.
 add_project_arguments('-D_OPENMPI', language: 'cpp')
 add_project_arguments('-DSILENT', language: 'cpp')
 
