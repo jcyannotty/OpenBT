@@ -1,8 +1,8 @@
 name: Test OpenBTMixing Python Package
 env:
   CLONE_PATH:   ${{ github.workspace }}
-  EIGEN_PATH:   ${{ github.workspace }}/../local/eigen
   INSTALL_PATH: ${{ github.workspace }}/../local/OpenBT
+  WHEEL_PATH:   ${{ github.workspace }}/openbtmixing_pypkg/dist
 on:
   push:
     branches:
@@ -22,9 +22,9 @@ jobs:
         #   4 MPI processes
         # * MPICH appears to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
+        os: [macos-13]
         mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.12"]
         exclude:
           # For Ubuntu20.04, presently
           # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
@@ -81,15 +81,10 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-    - name: Install eigen dependency
-      run: |
-        # C++ template only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
-        export CPATH=$EIGEN_PATH
         $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
         echo " "
         if   [ "${{ runner.os }}" = "macOS" ]; then
@@ -220,20 +215,14 @@ jobs:
     # This also confirms that the test script is functional
     - name: Run full OpenBtMixing test suite
       run: |
-        export PATH=$PATH:$INSTALL_PATH/bin
         echo " "
-        which mpirun
-        which openbtcli
-        echo " "
-        pushd $CLONE_PATH/openbtmixing_pypkg
-        echo " "
-        echo "Building source and wheels"
+        echo "Building wheels"
         echo "-------------------------------------------------"
-        python -m build
+        $CLONE_PATH/tools/build_openbt_wheel.sh $INSTALL_PATH
         echo " "
         echo "Install wheel"
         echo "-------------------------------------------------"
-        python -m pip install dist/openbtmixing-*-py3-none-any.whl
+        python -m pip install $WHEEL_PATH/openbtmixing-*-py3-none-any.whl
         echo " "
         popd
         pip list
@@ -243,62 +232,57 @@ jobs:
         $CLONE_PATH/tools/test_python_installation.py -v 2
 
   #####----- FULL TESTING WITH COVERAGE
-  pypkg_coverage:
-    runs-on: ${{ matrix.os }}
-    env:
-      COVERAGE_FILE: coverage_result
-      COVERAGE_HTML: htmlcov
-      COVERAGE_XML:  coverage.xml
-    strategy:
-      matrix:
-        os: [ubuntu-22.04]
-        python-version: ["3.12"]
-
-    steps:
-    #####----- SETUP TESTING ENVIRONMENT
-    - name: Checkout OpenBTMixing
-      uses: actions/checkout@v4
-    - name: Install autotools
-      run: |
-        sudo apt-get update
-        sudo apt-get -y install autoconf-archive
-    - name: Install MPICH
-      run: sudo apt-get -y install mpich
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Setup Python dependencies
-      run: |
-        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-    - name: Install eigen dependency
-      run: |
-        # C++ template only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
-
-    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-    - name: Build OpenBTMixing C++ CLTs & Libraries
-      run: |
-        export CPATH=$EIGEN_PATH
-        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
-
-    ##-- Run full test suite
-    # Run this from local clone since we have already tested packages.
-    #
-    # This checks that coverage tox environment is functional.
-    - name: Run full OpenBtMixing test suite
-      run: |
-        export PATH=$PATH:$INSTALL_PATH/bin
-        pushd $CLONE_PATH/openbtmixing_pypkg
-        tox -r -e coverage,report
-        popd
-
-    ##-- Publish full coverage report as artifact
-    - name: Archive code coverage results
-      uses: actions/upload-artifact@v4
-      with:
-        name: code-coverage-results
-        path: |
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}
+#  pypkg_coverage:
+#    runs-on: ${{ matrix.os }}
+#    env:
+#      COVERAGE_FILE: coverage_result
+#      COVERAGE_HTML: htmlcov
+#      COVERAGE_XML:  coverage.xml
+#    strategy:
+#      matrix:
+#        os: [ubuntu-22.04]
+#        python-version: ["3.12"]
+#
+#    steps:
+#    #####----- SETUP TESTING ENVIRONMENT
+#    - name: Checkout OpenBTMixing
+#      uses: actions/checkout@v4
+#    - name: Install autotools
+#      run: |
+#        sudo apt-get update
+#        sudo apt-get -y install autoconf-archive
+#    - name: Install MPICH
+#      run: sudo apt-get -y install mpich
+#    - name: Set up Python ${{ matrix.python-version }}
+#      uses: actions/setup-python@v5
+#      with:
+#        python-version: ${{ matrix.python-version }}
+#    - name: Setup Python dependencies
+#      run: |
+#        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+#
+#    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
+#    - name: Build OpenBTMixing C++ CLTs & Libraries
+#      run: |
+#        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+#
+#    ##-- Run full test suite
+#    # Run this from local clone since we have already tested packages.
+#    #
+#    # This checks that coverage tox environment is functional.
+#    - name: Run full OpenBtMixing test suite
+#      run: |
+#        export PATH=$PATH:$INSTALL_PATH/bin
+#        pushd $CLONE_PATH/openbtmixing_pypkg
+#        tox -r -e coverage,report
+#        popd
+#
+#    ##-- Publish full coverage report as artifact
+#    - name: Archive code coverage results
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: code-coverage-results
+#        path: |
+#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
+#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
+#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}

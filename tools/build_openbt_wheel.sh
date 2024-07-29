@@ -36,6 +36,13 @@ pypkg_root=$clone_root/openbtmixing_pypkg
 
 # ----- LOG IMPORTANT DATA
 echo
+echo "Dependency Information"
+echo "---------------------------------------------"
+which mpirun
+which mpicxx
+mpicxx -show
+
+echo
 echo "Python version information"
 echo "---------------------------------------------"
 which python
@@ -66,10 +73,14 @@ python -m build --wheel || exit 1
 echo
 echo "Include libopenmixing in package and fix CLTs"
 echo "---------------------------------------------"
+delocate-listdeps --all --depending dist/openbtmixing-*.whl || exit 1
+
 # This brings in the library and hardwires the CLTs via relative path to only
 # use our library.  Therefore, an installation cannot accidentally use a
 # different version of the library in a machine.
 # TODO: This is for macOS binaries only
-delocate-wheel -v -e libmpi dist/openbtmixing-*.whl || exit 1
+delocate-wheel -v -e libmpi dist/openbtmixing-*.whl         || exit 1
+
+tar tvfz dist/openbtmixing-*.whl
 
 popd &> /dev/null
