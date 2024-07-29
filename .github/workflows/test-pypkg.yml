@@ -81,6 +81,14 @@ jobs:
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
         python -m pip install meson
+        if   [ "${{ runner.os }}" = "macOS" ]; then
+            python -m pip install delocate
+        elif [ "${{ runner.os }}" = "Linux" ]; then
+            python -m pip install auditwheel
+        else
+            echo "Invalid runner or OS"
+            exit 1
+        fi
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
