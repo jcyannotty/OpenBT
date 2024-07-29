@@ -41,14 +41,13 @@ jobs:
     #####----- SETUP TESTING ENVIRONMENT
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
-    - name: Install autotools
+    - name: Install meson dependencies
       run: |
         if   [ "${{ runner.os }}" = "macOS" ]; then
-            brew install autoconf-archive
-            brew install automake
+            brew install ninja
         elif [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update
-            sudo apt-get -y install autoconf-archive
+            sudo apt-get -y install ninja-build
         else
             echo "Invalid runner or OS"
             exit 1
@@ -81,6 +80,7 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+        python -m pip install meson
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
