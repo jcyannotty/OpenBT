@@ -5,8 +5,8 @@
 # installation in machines with compatible Python version, OS, and CPU as the
 # machine doing the building.
 #
-# The package installs the libopenbtmixing and associated C++ command line
-# tools (CLTS), which are assumed to already exist.
+# The package installs the libopenbtmixing library and associated C++ command
+# line tools (CLTs), which are assumed to already exist.
 #
 # Users must pass the path to the root folder in which libopenbtmixing and CLTs
 # are installed.  It is assumed that the binaries are in the bin subfolder.
