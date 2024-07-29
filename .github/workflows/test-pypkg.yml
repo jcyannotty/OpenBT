@@ -232,7 +232,6 @@ jobs:
         echo "-------------------------------------------------"
         python -m pip install $WHEEL_PATH/openbtmixing-*-py3-none-any.whl
         echo " "
-        popd
         pip list
         echo " "
         echo "Test installed package"
