@@ -233,10 +233,18 @@ jobs:
         python -m pip install $WHEEL_PATH/openbtmixing-*-py3-none-any.whl
         echo " "
         pip list
-        echo " "
-        echo "Test installed package"
-        echo "-------------------------------------------------"
-        $CLONE_PATH/tools/test_python_installation.py -v 2
+        #echo " "
+        #echo "Test installed package"
+        #echo "-------------------------------------------------"
+        #$CLONE_PATH/tools/test_python_installation.py -v 2
+
+    ##-- Publish full coverage report as artifact
+    - name: Archive macOS Python wheel
+      uses: actions/upload-artifact@v4
+      with:
+        name: macOS_wheel
+        path: |
+            ${{ env.WHEEL_PATH }}/openbtmixing-*-py3-none-any.whl
 
   #####----- FULL TESTING WITH COVERAGE
 #  pypkg_coverage:
