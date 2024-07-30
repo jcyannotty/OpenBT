@@ -92,7 +92,7 @@ pushd $clone_root &> /dev/null || exit 1
 echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
-meson setup $build_dir -Dprefix=$prefix || exit 1
+meson setup --wipe $build_dir -Dprefix=$prefix || exit 1
 
 echo
 echo "Make & Install OpenBT"

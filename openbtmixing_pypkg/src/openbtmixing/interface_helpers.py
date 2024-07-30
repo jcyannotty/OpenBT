@@ -147,7 +147,7 @@ def run_model(fpath, tc, cmd="openbtcli",
         "openbtmopareto", "openbtpred", "openbtsobol", "openbtvartivity"
     }
     PKG_ROOT = Path(__file__).parent.resolve()
-    BIN_PATH = PKG_ROOT.joinpath(".bin")
+    BIN_PATH = PKG_ROOT.joinpath("bin")
 
     # ----- ERROR CHECK ARGUMENTS
     cmd_with_path = BIN_PATH.joinpath(cmd)

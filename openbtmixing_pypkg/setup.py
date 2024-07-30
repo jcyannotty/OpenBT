@@ -1,18 +1,18 @@
 import os
-import shutil
 import codecs
 
+import subprocess as sbp
+
 from pathlib import Path
-from setuptools import setup
+from setuptools import (
+    setup, Command
+)
+from setuptools.command.build import build as _build
 
 # ----- HARDCODED VALUES
 PKG_ROOT = Path(__file__).resolve().parent
-SRC_PATH = PKG_ROOT.joinpath("src", "openbtmixing")
-BIN_PATH = SRC_PATH.joinpath(".bin")
-if "CLT_BIN_INSTALL" not in os.environ:
-    msg = "Please set CLT_BIN_INSTALL to the location of the OpenBT binaries"
-    raise RuntimeError(msg)
-CLT_BIN_INSTALL = Path(os.environ["CLT_BIN_INSTALL"]).resolve()
+PY_SRC_PATH = PKG_ROOT.joinpath("src", "openbtmixing")
+CLT_SRC_PATH = PKG_ROOT.joinpath("cpp")
 
 # Names of C++ products to include
 CLT_NAMES = [
@@ -23,22 +23,74 @@ CLT_NAMES = [
     "openbtsobol",
     "openbtvartivity"
 ]
+LIB_BASENAME = "libopenbtmixing"
 
+# Package metadata
 PYTHON_REQUIRES = ">=3.9"
 CODE_REQUIRES = ["numpy", "matplotlib"]
 TEST_REQUIRES = ["pytest", "scipy", "pandas"]
 INSTALL_REQUIRES = CODE_REQUIRES + TEST_REQUIRES
 
-# TODO: Try to use BIN_PATH here if possible
 PACKAGE_DATA = {
-    'openbtmixing':
-        ["tests/bart_bmm_test_data/2d_*.txt", ".bin/*"]
+    "openbtmixing":
+        ["tests/bart_bmm_test_data/2d_*.txt"] + \
+        [f"bin/{clt}" for clt in CLT_NAMES] + \
+        [f"lib/{LIB_BASENAME}.*"]
 }
 
 PROJECT_URLS = {
     "Source": "https://github.com/jcyannotty/OpenBT",
     "Documentation": "https://github.com/jcyannotty/OpenBT",
     "Tracker": "https://github.com/jcyannotty/OpenBT/issues",
+}
+
+# ----- CUSTOM COMMAND TO BUILD C++ CLTs
+class build(_build):
+    user_options = _build.user_options
+    sub_commands = ([("build_clt", lambda self: True)])
+
+
+class build_clt(Command):
+    description = "Build the OpenBTMixing CLTs"
+    user_options: list[str] = []
+    editable_mode: bool
+
+    def initialize_options(self):
+        # TODO: Can we get this to work with editable mode installations?
+        self.editable_mode = False
+
+    def finalize_options(self):
+        pass
+
+    def run(self, *args, **kwargs):
+        # Install the CLTs and library within the Python source files and so
+        # that they are included in the wheel build based on PACKAGE_DATA
+        cwd = Path.cwd()
+        os.chdir(CLT_SRC_PATH)
+        sbp.run(["meson", "setup", "--wipe", "builddir", f"-Dprefix={PY_SRC_PATH}"])
+        sbp.run(["meson", "compile", "-C", "builddir"])
+        sbp.run(["meson", "install", "--quiet", "-C", "builddir"])
+        os.chdir(cwd)
+
+        if sys.platform == "darwin":
+            lib_name = f"{LIB_BASENAME}.dylib"
+            lib_path = PY_SRC_PATH.joinpath("lib", lib_name)
+            for clt in CLT_NAMES:
+                # TODO: This assumes that the XCode Command Line Tools are
+                # installed.  Can we use delocate here?
+                sbp.check_call(
+                    [
+                        "install_name_tool",
+                        "-change",
+                        lib_path,
+                        f"@loader_path/../lib/{lib_name}",
+                        PY_SRC_PATH.joinpath("bin", clt)
+                    ]
+                )
+
+cmdclass = {
+    'build': build,
+    'build_clt': build_clt
 }
 
 
@@ -54,18 +106,6 @@ def version():
     with open(fname, "r") as fptr:
         return fptr.read().strip()
 
-# ----- INCLUDE COMMAND LINE TOOLS
-# Always start with a clean installation folder
-if BIN_PATH.exists():
-    shutil.rmtree(BIN_PATH)
-os.mkdir(BIN_PATH)
-
-# Only include the CLTs.  To finalize wheels, we must use delocate or
-# auditwheel to pull in *only* the OpenBT library and *no* MPI-related
-# dependencies.  This will fix the CLTs so that they use only the library
-# installed with them via a relative path.
-for name in CLT_NAMES:
-    shutil.copy(str(CLT_BIN_INSTALL.joinpath(name)), str(BIN_PATH))
 
 setup(
     name='openbtmixing',
@@ -77,6 +117,7 @@ setup(
     license="MIT",
     package_dir={"": "src"},
     package_data=PACKAGE_DATA,
+    cmdclass=cmdclass,
     url=PROJECT_URLS["Source"],
     project_urls=PROJECT_URLS,
     description="Model mixing using Bayesian Additive Regression Trees",
