@@ -45,6 +45,9 @@ PROJECT_URLS = {
 }
 
 # ----- CUSTOM COMMAND TO BUILD C++ CLTs
+# TODO: Is there a way to get the C++ code into source distributions without
+# having to use the symlinks?  I recall seeing an repo that claimed that these
+# facilities can do that.
 class build(_build):
     user_options = _build.user_options
     sub_commands = ([("build_clt", lambda self: True)])
@@ -65,6 +68,7 @@ class build_clt(Command):
     def run(self, *args, **kwargs):
         # Install the CLTs and library within the Python source files and so
         # that they are included in the wheel build based on PACKAGE_DATA
+        # TODO: Error check all the calls.
         cwd = Path.cwd()
         os.chdir(CLT_SRC_PATH)
         sbp.run(["meson", "setup", "--wipe", "--buildtype=release",
