@@ -1,18 +1,37 @@
 # ----- SPECIFY PROJECT
 # eigen dependency requires C++14
 project('openbtmixing', 'cpp', default_options: ['cpp_std=c++14'])
-# TODO: Should meson accept flags to determine if these should be added?
-# TODO: Allow users to choose between debug and optimized builds.
-add_project_arguments('-D_OPENMPI', language: 'cpp')
-add_project_arguments('-DSILENT', language: 'cpp')
 
 # ----- DEPENDENCIES
 # If users have a local install of eigen that can be discovered with
 # pkg-config, then that installation will be used.  Otherwise, meson will
 # download the specific tarball as defined in eigen.wrap and use that.
 eigen_dep = dependency('eigen', fallback : ['eigen', 'eigen_dep'])
-mpi_dep = dependency('mpi', language : 'cpp')
-deps_all = [mpi_dep, eigen_dep]
+deps_all = [eigen_dep]
+
+# ----- USER ARGUMENTS
+# Run this after dependencies so that we can alter dependencies according to
+# the user's needs.
+if not get_option('verbose')
+    add_project_arguments('-DSILENT', language: 'cpp')
+endif
+
+if get_option('mpi') != 'none'
+    # TODO: This should probably set -DUSE_MPI since the code is not written
+    # explicitly for OpenMPI.
+    add_project_arguments('-D_OPENMPI', language: 'cpp')
+endif
+
+if get_option('mpi') == 'open-mpi'
+    deps_all += [dependency('mpi', language : 'cpp')]
+elif get_option('mpi') == 'mpich'
+    # Currently meson does not find and work with MPICH as expected if we just
+    # declare MPI as a dependence.  This assumes that MPICH can be discovered
+    # through pkg-config.
+    # TODO: Add link to MPI issue
+    # TODO: Add link to project that I based this on SU(2)?
+    deps_all += [dependency('mpich')]
+endif
 
 # ----- SPECIFY & BUILD libopenbtmixing LIBRARY
 # Sources to build individual components in single library

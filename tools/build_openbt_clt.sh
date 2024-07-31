@@ -92,12 +92,12 @@ pushd $clone_root &> /dev/null || exit 1
 echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
-meson setup --wipe $build_dir -Dprefix=$prefix || exit 1
+meson setup --wipe --buildtype=release $build_dir -Dprefix=$prefix -Dmpi=open-mpi || exit 1
 
 echo
 echo "Make & Install OpenBT"
 echo "---------------------------------------------"
 meson compile -v -C $build_dir          || exit 1
-meson install -C $build_dir             || exit 1
+meson install --quiet -C $build_dir     || exit 1
 
 popd &> /dev/null

@@ -67,7 +67,10 @@ class build_clt(Command):
         # that they are included in the wheel build based on PACKAGE_DATA
         cwd = Path.cwd()
         os.chdir(CLT_SRC_PATH)
-        sbp.run(["meson", "setup", "--wipe", "builddir", f"-Dprefix={PY_SRC_PATH}"])
+        sbp.run(["meson", "setup", "--wipe", "--buildtype=release",
+                 "builddir",
+                 f"-Dprefix={PY_SRC_PATH}",
+                 "-Dmpi=open-mpi"])
         sbp.run(["meson", "compile", "-C", "builddir"])
         sbp.run(["meson", "install", "--quiet", "-C", "builddir"])
         os.chdir(cwd)
