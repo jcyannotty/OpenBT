@@ -15,13 +15,20 @@ PY_SRC_PATH = PKG_ROOT.joinpath("src", "openbtmixing")
 CLT_SRC_PATH = PKG_ROOT.joinpath("cpp")
 
 # Names of C++ products to include
+# Full set of OpenBT command line tools
+#CLT_NAMES = [
+#    "openbtcli",
+#    "openbtmixing", "openbtmixingpred", "openbtmixingwts",
+#    "openbtmopareto",
+#    "openbtpred",
+#    "openbtsobol",
+#    "openbtvartivity"
+#]
+# OpenBT command line tools that are used in package
 CLT_NAMES = [
     "openbtcli",
-    "openbtmixing", "openbtmixingpred", "openbtmixingwts",
-    "openbtmopareto",
     "openbtpred",
-    "openbtsobol",
-    "openbtvartivity"
+    "openbtmixingwts"
 ]
 LIB_BASENAME = "libopenbtmixing"
 
@@ -45,6 +52,17 @@ PROJECT_URLS = {
 }
 
 # ----- CUSTOM COMMAND TO BUILD C++ CLTs
+# EdgeDB builds a CLT that they make available through their interface.  This
+# is partially based on what they have done at commit c5db98c.
+#
+# https://github.com/edgedb/edgedb/blob/master/setup.py
+#
+# Pytorch does some work fixing up binaries in their build_ext step to have
+# good dependency and path specifications (at least for macOS).  See commit
+# e191b83.
+#
+# https://github.com/pytorch/pytorch
+#
 # TODO: Is there a way to get the C++ code into source distributions without
 # having to use the symlinks?  I recall seeing an repo that claimed that these
 # facilities can do that.
@@ -66,17 +84,20 @@ class build_clt(Command):
         pass
 
     def run(self, *args, **kwargs):
+        SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=release",
+                     "builddir",
+                     f"-Dprefix={PY_SRC_PATH}",
+                     "-Dmpi=open-mpi"]
+        COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
+        INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]
+
         # Install the CLTs and library within the Python source files and so
         # that they are included in the wheel build based on PACKAGE_DATA
         # TODO: Error check all the calls.
         cwd = Path.cwd()
         os.chdir(CLT_SRC_PATH)
-        sbp.run(["meson", "setup", "--wipe", "--buildtype=release",
-                 "builddir",
-                 f"-Dprefix={PY_SRC_PATH}",
-                 "-Dmpi=open-mpi"])
-        sbp.run(["meson", "compile", "-C", "builddir"])
-        sbp.run(["meson", "install", "--quiet", "-C", "builddir"])
+        for cmd in [SETUP_CMD, COMPILE_CMD, INSTALL_CMD]:
+            sbp.run(cmd)
         os.chdir(cwd)
 
         if sys.platform == "darwin":

@@ -22,14 +22,23 @@ if get_option('mpi') != 'none'
     add_project_arguments('-D_OPENMPI', language: 'cpp')
 endif
 
+# Currently meson does not find and work with MPICH as expected if we just
+# declare MPI as a dependence.  The following workaround assumes that MPICH can
+# be discovered through pkg-config.  More information on this can be found at
+#
+# https://github.com/mesonbuild/meson/issues/7045
+# 
+# with a possible solution at
+#
+# https://github.com/mesonbuild/meson/pull/7373
+#
+# The SU2 repo has a workaround for this at commit f3f083e, which I have
+# adapated here for now.
+#
+# https://github.com/su2code/SU2
 if get_option('mpi') == 'open-mpi'
     deps_all += [dependency('mpi', language : 'cpp')]
 elif get_option('mpi') == 'mpich'
-    # Currently meson does not find and work with MPICH as expected if we just
-    # declare MPI as a dependence.  This assumes that MPICH can be discovered
-    # through pkg-config.
-    # TODO: Add link to MPI issue
-    # TODO: Add link to project that I based this on SU(2)?
     deps_all += [dependency('mpich')]
 endif
 
@@ -78,6 +87,7 @@ lib = library('openbtmixing', sources : lib_srcs,
               pic : true, install : true)
 
 # ----- BUILD COMMAND LINE TOOLS
+# Full set of OpenBT command line tools
 CLTs = [['openbtcli',        'src/cli.cpp'],
         ['openbtpred',       'src/pred.cpp'],
         ['openbtvartivity',  'src/vartivity.cpp'],
@@ -87,8 +97,8 @@ CLTs = [['openbtcli',        'src/cli.cpp'],
         ['openbtmixing',     'src/mixandemulate.cpp'],
         ['openbtmixingpred', 'src/mixandemulatepred.cpp']]
 foreach each : CLTs
-    executable(each[0], each[1],
-               dependencies : deps_all, link_with : lib,
+    executable(each[0], [each[1]] + lib_srcs,
+               dependencies : deps_all,
                install : true)
 endforeach
 
