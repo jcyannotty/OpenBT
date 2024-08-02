@@ -15,16 +15,8 @@ PY_SRC_PATH = PKG_ROOT.joinpath("src", "openbtmixing")
 CLT_SRC_PATH = PKG_ROOT.joinpath("cpp")
 
 # Names of C++ products to include
-# Full set of OpenBT command line tools
-#CLT_NAMES = [
-#    "openbtcli",
-#    "openbtmixing", "openbtmixingpred", "openbtmixingwts",
-#    "openbtmopareto",
-#    "openbtpred",
-#    "openbtsobol",
-#    "openbtvartivity"
-#]
-# OpenBT command line tools that are used in package
+#
+# Only a subset of OpenBT command line tools are used in package
 CLT_NAMES = [
     "openbtcli",
     "openbtpred",
@@ -57,12 +49,6 @@ PROJECT_URLS = {
 #
 # https://github.com/edgedb/edgedb/blob/master/setup.py
 #
-# Pytorch does some work fixing up binaries in their build_ext step to have
-# good dependency and path specifications (at least for macOS).  See commit
-# e191b83.
-#
-# https://github.com/pytorch/pytorch
-#
 # TODO: Is there a way to get the C++ code into source distributions without
 # having to use the symlinks?  I recall seeing an repo that claimed that these
 # facilities can do that.
@@ -91,30 +77,14 @@ class build_clt(Command):
         COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
         INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]
 
-        # Install the CLTs and library within the Python source files and so
-        # that they are included in the wheel build based on PACKAGE_DATA
+        # Install the CLTs within the Python source files and so that they are
+        # included in the wheel build based on PACKAGE_DATA
         # TODO: Error check all the calls.
         cwd = Path.cwd()
         os.chdir(CLT_SRC_PATH)
         for cmd in [SETUP_CMD, COMPILE_CMD, INSTALL_CMD]:
             sbp.run(cmd)
         os.chdir(cwd)
-
-        if sys.platform == "darwin":
-            lib_name = f"{LIB_BASENAME}.dylib"
-            lib_path = PY_SRC_PATH.joinpath("lib", lib_name)
-            for clt in CLT_NAMES:
-                # TODO: This assumes that the XCode Command Line Tools are
-                # installed.  Can we use delocate here?
-                sbp.check_call(
-                    [
-                        "install_name_tool",
-                        "-change",
-                        lib_path,
-                        f"@loader_path/../lib/{lib_name}",
-                        PY_SRC_PATH.joinpath("bin", clt)
-                    ]
-                )
 
 cmdclass = {
     'build': build,
