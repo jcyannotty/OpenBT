@@ -32,7 +32,9 @@ openbtmixing_pypkg/htmlcov
 openbtmixing_pypkg/*.whl
 openbtmixing_pypkg/src/openbtmixing.egg-info
 # Installed OpenBT CLTs
-openbtmixing_pypkg/src/openbtmixing/.bin
+openbtmixing_pypkg/src/openbtmixing/include
+openbtmixing_pypkg/src/openbtmixing/lib
+openbtmixing_pypkg/src/openbtmixing/bin
 
 # Other files
 .DS_Store

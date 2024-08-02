@@ -44,7 +44,6 @@ jobs:
     - name: Install meson dependencies
       run: |
         if   [ "${{ runner.os }}" = "macOS" ]; then
-            #brew install ninja
             brew install meson
         elif [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update
@@ -81,7 +80,6 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-        #python -m pip install meson
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
@@ -217,76 +215,56 @@ jobs:
     - name: Run full OpenBtMixing test suite
       run: |
         pushd $PKG_ROOT
-        which python
-        which pip
-        pip list
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz
-        ls /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/openbtmixing
-        #ls /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/openbtmixing/bin
         popd
         $CLONE_PATH/tools/test_python_installation.py
 
+  #####----- FULL TESTING WITH COVERAGE
+  pypkg_coverage:
+    runs-on: ${{ matrix.os }}
+    env:
+      COVERAGE_FILE: coverage_result
+      COVERAGE_HTML: htmlcov
+      COVERAGE_XML:  coverage.xml
+    strategy:
+      matrix:
+        os: [macos-13]
+        python-version: ["3.12"]
+
+    steps:
+    #####----- SETUP TESTING ENVIRONMENT
+    - name: Checkout OpenBTMixing
+      uses: actions/checkout@v4
+    - name: Install build tools
+      run: brew install meson
+    - name: Install OpenMPI
+      run: brew install open-mpi
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Setup Python dependencies
+      run: |
+        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+
+    #####----- INSTALL CLTs AND USE IN EDITABLE MODE
+    ##-- Run full test suite
+    # Run this from local clone since we have already tested packages.
+    #
+    # This checks that coverage tox environment is functional.
+    - name: Run full OpenBtMixing test suite
+      run: |
+        pushd $CLONE_PATH/openbtmixing_pypkg
+        tox -r -e coverage,report
+        popd
+
     ##-- Publish full coverage report as artifact
-    - name: Archive macOS Python wheel
+    - name: Archive code coverage results
       uses: actions/upload-artifact@v4
       with:
-        name: macOS_wheel
+        name: code-coverage-results
         path: |
-            ${{ env.PKG_ROOT }}/dist/openbtmixing-*.tar.gz
-
-  #####----- FULL TESTING WITH COVERAGE
-#  pypkg_coverage:
-#    runs-on: ${{ matrix.os }}
-#    env:
-#      COVERAGE_FILE: coverage_result
-#      COVERAGE_HTML: htmlcov
-#      COVERAGE_XML:  coverage.xml
-#    strategy:
-#      matrix:
-#        os: [ubuntu-22.04]
-#        python-version: ["3.12"]
-#
-#    steps:
-#    #####----- SETUP TESTING ENVIRONMENT
-#    - name: Checkout OpenBTMixing
-#      uses: actions/checkout@v4
-#    - name: Install autotools
-#      run: |
-#        sudo apt-get update
-#        sudo apt-get -y install autoconf-archive
-#    - name: Install MPICH
-#      run: sudo apt-get -y install mpich
-#    - name: Set up Python ${{ matrix.python-version }}
-#      uses: actions/setup-python@v5
-#      with:
-#        python-version: ${{ matrix.python-version }}
-#    - name: Setup Python dependencies
-#      run: |
-#        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-#
-#    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-#    - name: Build OpenBTMixing C++ CLTs & Libraries
-#      run: |
-#        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
-#
-#    ##-- Run full test suite
-#    # Run this from local clone since we have already tested packages.
-#    #
-#    # This checks that coverage tox environment is functional.
-#    - name: Run full OpenBtMixing test suite
-#      run: |
-#        export PATH=$PATH:$INSTALL_PATH/bin
-#        pushd $CLONE_PATH/openbtmixing_pypkg
-#        tox -r -e coverage,report
-#        popd
-#
-#    ##-- Publish full coverage report as artifact
-#    - name: Archive code coverage results
-#      uses: actions/upload-artifact@v4
-#      with:
-#        name: code-coverage-results
-#        path: |
-#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
-#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
-#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
+            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}
