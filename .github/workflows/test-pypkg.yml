@@ -44,7 +44,8 @@ jobs:
     - name: Install meson dependencies
       run: |
         if   [ "${{ runner.os }}" = "macOS" ]; then
-            brew install ninja
+            #brew install ninja
+            brew install meson
         elif [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update
             sudo apt-get -y install ninja-build
@@ -80,7 +81,7 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-        python -m pip install meson
+        #python -m pip install meson
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
