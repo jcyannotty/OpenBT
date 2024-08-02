@@ -217,7 +217,9 @@ jobs:
       run: |
         pushd $PKG_ROOT
         python -m build --sdist
-        python -m pip install dist/openbtmixing-*.tar.gz
+        python -m pip install -v dist/openbtmixing-*.tar.gz
+        ls /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/openbtmixing
+        #ls /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/openbtmixing/bin
         popd
         $CLONE_PATH/tools/test_python_installation.py
 
