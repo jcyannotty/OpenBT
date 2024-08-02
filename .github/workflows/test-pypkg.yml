@@ -216,6 +216,9 @@ jobs:
     - name: Run full OpenBtMixing test suite
       run: |
         pushd $PKG_ROOT
+        which python
+        which pip
+        pip list
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz
         ls /Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/site-packages/openbtmixing
