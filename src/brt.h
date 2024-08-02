@@ -35,7 +35,7 @@
 
 #ifdef _OPENMPI
 #   include <mpi.h>
-#   include <crn.h>
+#   include "crn.h"
 #   define SIZE_UINT1 16  // sizeof(unsigned int)
 #   define SIZE_UINT2 32  // sizeof(unsigned int)*2
 #   define SIZE_UINT3 48  // sizeof(unsigned int)*3

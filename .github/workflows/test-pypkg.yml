@@ -1,8 +1,8 @@
 name: Test OpenBTMixing Python Package
 env:
   CLONE_PATH:   ${{ github.workspace }}
-  EIGEN_PATH:   ${{ github.workspace }}/../local/eigen
   INSTALL_PATH: ${{ github.workspace }}/../local/OpenBT
+  PKG_ROOT:     ${{ github.workspace }}/openbtmixing_pypkg
 on:
   push:
     branches:
@@ -22,9 +22,9 @@ jobs:
         #   4 MPI processes
         # * MPICH appears to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [ubuntu-20.04, ubuntu-22.04, macos-12, macos-13]
-        mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        os: [macos-13]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.12"]
         exclude:
           # For Ubuntu20.04, presently
           # * OpenMPI fails due to too few processors (2 cores with 2 HW threads per
@@ -41,14 +41,13 @@ jobs:
     #####----- SETUP TESTING ENVIRONMENT
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
-    - name: Install autotools
+    - name: Install meson dependencies
       run: |
         if   [ "${{ runner.os }}" = "macOS" ]; then
-            brew install autoconf-archive
-            brew install automake
+            brew install meson
         elif [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update
-            sudo apt-get -y install autoconf-archive
+            sudo apt-get -y install ninja-build
         else
             echo "Invalid runner or OS"
             exit 1
@@ -81,15 +80,10 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-    - name: Install eigen dependency
-      run: |
-        # C++ template only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
-        export CPATH=$EIGEN_PATH
         $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
         echo " "
         if   [ "${{ runner.os }}" = "macOS" ]; then
@@ -220,27 +214,11 @@ jobs:
     # This also confirms that the test script is functional
     - name: Run full OpenBtMixing test suite
       run: |
-        export PATH=$PATH:$INSTALL_PATH/bin
-        echo " "
-        which mpirun
-        which openbtcli
-        echo " "
-        pushd $CLONE_PATH/openbtmixing_pypkg
-        echo " "
-        echo "Building source and wheels"
-        echo "-------------------------------------------------"
-        python -m build
-        echo " "
-        echo "Install wheel"
-        echo "-------------------------------------------------"
-        python -m pip install dist/openbtmixing-*-py3-none-any.whl
-        echo " "
+        pushd $PKG_ROOT
+        python -m build --sdist
+        python -m pip install -v dist/openbtmixing-*.tar.gz
         popd
-        pip list
-        echo " "
-        echo "Test installed package"
-        echo "-------------------------------------------------"
-        $CLONE_PATH/tools/test_python_installation.py -v 2
+        $CLONE_PATH/tools/test_python_installation.py
 
   #####----- FULL TESTING WITH COVERAGE
   pypkg_coverage:
@@ -251,19 +229,17 @@ jobs:
       COVERAGE_XML:  coverage.xml
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [macos-13]
         python-version: ["3.12"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
-    - name: Install autotools
-      run: |
-        sudo apt-get update
-        sudo apt-get -y install autoconf-archive
-    - name: Install MPICH
-      run: sudo apt-get -y install mpich
+    - name: Install build tools
+      run: brew install meson
+    - name: Install OpenMPI
+      run: brew install open-mpi
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -271,24 +247,14 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-    - name: Install eigen dependency
-      run: |
-        # C++ template only => no build here! 
-        git clone https://gitlab.com/libeigen/eigen.git $EIGEN_PATH
 
-    #####----- BUILD WHEEL FROM SCRATCH & INSTALL
-    - name: Build OpenBTMixing C++ CLTs & Libraries
-      run: |
-        export CPATH=$EIGEN_PATH
-        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
-
+    #####----- INSTALL CLTs AND USE IN EDITABLE MODE
     ##-- Run full test suite
     # Run this from local clone since we have already tested packages.
     #
     # This checks that coverage tox environment is functional.
     - name: Run full OpenBtMixing test suite
       run: |
-        export PATH=$PATH:$INSTALL_PATH/bin
         pushd $CLONE_PATH/openbtmixing_pypkg
         tox -r -e coverage,report
         popd

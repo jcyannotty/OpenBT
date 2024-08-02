@@ -1,0 +1,5 @@
+option('verbose', type : 'boolean', value : false,
+       description : 'Allow verbose OpenBT output if true')
+option('mpi', type : 'combo',
+       choices : ['none', 'open-mpi', 'mpich'], value : 'none',
+       description : 'Specify the desired MPI support')
