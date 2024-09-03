@@ -16,8 +16,8 @@ OpenBT relies on OpenMPI, which is not compatible with Windows. Thus you can wor
 
 There is currently no wheel in PyPI for macs with ARM processors.  While we hope
 to have a permanent solution to this issue soon (See Issue #6), at present
-affected users must manually build and install the package using the following
-procedure.
+affected users must manually build and install the package using the
+procedure given here.
 
 We assume the use of the [homebrew package manager](https://brew.sh).  For
 ARM-based macs, homebrew installs packages in `/opt/homebrew`.  Please adapt
@@ -35,12 +35,12 @@ Preinstall requirements:
 
 Confirm that installation is valid:
 * Run `which mpirun` and confirm that `mpirun` is found and located in a
-  reasonable location (e.g., `/opt/homebrew/bin/mpirun`)
+  reasonable location (e.g., `/opt/homebrew/bin/mpirun`).
 * Run `ls /opt/homebrew/include/eigen3/Eigen` and confirm that you see an
   installation by confirming that folders such as `QR`, `SVD`, and `Dense` are
   shown.
 
-Build the openbtmixing command line tools:
+Build the openbtmixing command line tools (CLTs):
 * Clone the [openbtmixing repository](https://github.com/jcyannotty/OpenBT) on
   the machine that requires the installation
 * `cd /path/to/OpenBT`
@@ -48,11 +48,13 @@ Build the openbtmixing command line tools:
 * `CPATH=/opt/homebrew/include/eigen3 ./tools/build_openbt_clt.sh ~/local/OpenBT`
 * Run `ls ~/local/OpenBT/bin` and confirm that you see `openbtcli` and similar
 * Run `ls ~/local/OpenBT/lib` and confirm that you see `libtree.dylib` and similar
-* Add to PATH with something like `export PATH=$PATH:$HOME/local/OpenBT/bin`
-* Run `which openbtcli` and confirm that `openbtcli` is found and installed in
-  the expected location
+* Add location of the CLTs to `PATH` with something like
+  `export PATH=$PATH:$HOME/local/OpenBT/bin`
+* Run `which openbtcli` and confirm that the `openbtcli` CLT is found and installed
+  in the expected location
 * Run `./tools/test_python_installation.py` and confirm that all tests are
   passing.
+
 Note that users might want to add the alteration of `PATH` to a shell
 configuration file such as `.zshrc` so that it is automatically setup when the
 shell is started.
