@@ -14,7 +14,7 @@ OpenBT relies on OpenMPI, which is not compatible with Windows. Thus you can wor
 
 **macOS Users**: 
 
-There is currently no wheel in PyPI for macs with ARM processors.  While we hope
+There is currently no wheel in PyPI for macs with ARM processors.  While we intend
 to have a permanent solution to this issue soon (See Issue #6), at present
 affected users must manually build and install the package using the
 procedure given here.
