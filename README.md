@@ -52,7 +52,7 @@ Build the openbtmixing command line tools (CLTs):
   `export PATH=$PATH:$HOME/local/OpenBT/bin`
 * Run `which openbtcli` and confirm that the `openbtcli` CLT is found and installed
   in the expected location
-* Run `./tools/test_python_installation.py` and confirm that all tests are
+* Run `/path/to/OpenBT/tools/test_python_installation.py` and confirm that all tests are
   passing.
 
 Note that users might want to add the alteration of `PATH` to a shell
