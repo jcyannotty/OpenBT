@@ -52,8 +52,6 @@ Build the openbtmixing command line tools (CLTs):
   `export PATH=$PATH:$HOME/local/OpenBT/bin`
 * Run `which openbtcli` and confirm that the `openbtcli` CLT is found and installed
   in the expected location
-* Run `/path/to/OpenBT/tools/test_python_installation.py` and confirm that all tests are
-  passing.
 
 Note that users might want to add the alteration of `PATH` to a shell
 configuration file such as `.zshrc` so that it is automatically setup when the
@@ -67,6 +65,8 @@ your target Python and activate the environment.
 * `python -m build --sdist`
 * `python -m pip install dist/openbtmixing-<version>.tar.gz`
 * `python -m pip list`
+* Run `/path/to/OpenBT/tools/test_python_installation.py` and confirm that all tests are
+  passing.
 
 # Installation for R Users:
 
