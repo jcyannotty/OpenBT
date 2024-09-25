@@ -12,6 +12,61 @@ You can work with the BART-based model mixing method via the Taweret python pack
 
 OpenBT relies on OpenMPI, which is not compatible with Windows. Thus you can work with Taweret by using Windows Subsystem for Linux (WSL). See instructions below for installing WSL.
 
+**macOS Users**: 
+
+There is currently no wheel in PyPI for macs with ARM processors.  While we intend
+to have a permanent solution to this issue soon (See Issue #6), at present
+affected users must manually build and install the package using the
+procedure given here.
+
+We assume the use of the [homebrew package manager](https://brew.sh).  For
+ARM-based macs, homebrew installs packages in `/opt/homebrew`.  Please adapt
+appropriately the following if you are installing by other means or if homebrew
+installs to a different location.
+
+Preinstall requirements:
+* Install homebrew if not already done so
+* `brew install open-mpi`
+* `brew install autoconf`
+* `brew install autoconf-archive`
+* `brew install automake`
+* `brew install libtool`
+* `brew install eigen`
+
+Confirm that installation is valid:
+* Run `which mpirun` and confirm that `mpirun` is found and located in a
+  reasonable location (e.g., `/opt/homebrew/bin/mpirun`).
+* Run `ls /opt/homebrew/include/eigen3/Eigen` and confirm that you see an
+  installation by confirming that folders such as `QR`, `SVD`, and `Dense` are
+  shown.
+
+Build the openbtmixing command line tools (CLTs):
+* Clone the [openbtmixing repository](https://github.com/jcyannotty/OpenBT) on
+  the machine that requires the installation
+* `cd /path/to/OpenBT`
+* `mkdir ~/local/OpenBT`
+* `CPATH=/opt/homebrew/include/eigen3 ./tools/build_openbt_clt.sh ~/local/OpenBT`
+* Run `ls ~/local/OpenBT/bin` and confirm that you see `openbtcli` and similar
+* Run `ls ~/local/OpenBT/lib` and confirm that you see `libtree.dylib` and similar
+* Add location of the CLTs to `PATH` with something like
+  `export PATH=$PATH:$HOME/local/OpenBT/bin`
+* Run `which openbtcli` and confirm that the `openbtcli` CLT is found and installed
+  in the expected location
+
+Note that users might want to add the alteration of `PATH` to a shell
+configuration file such as `.zshrc` so that it is automatically setup when the
+shell is started.
+
+To build and install the package, please first setup a virtual environment with
+your target Python and activate the environment.
+* `cd /path/to/OpenBT/openbtmixing_pypkg`
+* `python -m pip install --upgrade pip`
+* `python -m pip install build`
+* `python -m build --sdist`
+* `python -m pip install dist/openbtmixing-<version>.tar.gz`
+* `python -m pip list`
+* Run `/path/to/OpenBT/tools/test_python_installation.py` and confirm that all tests are
+  passing.
 
 # Installation for R Users:
 
