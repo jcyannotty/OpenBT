@@ -39,7 +39,8 @@ endif
 if get_option('mpi') == 'open-mpi'
     deps_all += [dependency('mpi', language : 'cpp')]
 elif get_option('mpi') == 'mpich'
-    deps_all += [dependency('mpich')]
+    deps_all += [dependency('mpi', language : 'cpp')]
+#    deps_all += [dependency('mpich')]
 endif
 
 # ----- SPECIFY & BUILD libopenbtmixing LIBRARY

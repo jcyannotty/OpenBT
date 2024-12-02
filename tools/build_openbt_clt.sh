@@ -73,6 +73,8 @@ echo
 echo "pkg-config information"
 echo "---------------------------------------------"
 pkg-config --list-all
+pkg-config --cflags mpi
+pkg-config --cflags mpich
 
 if ! command -v meson &> /dev/null; then
     echo
