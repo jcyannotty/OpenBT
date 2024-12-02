@@ -47,7 +47,7 @@ jobs:
             brew install meson
         elif [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update
-            sudo apt-get -y install ninja-build
+            sudo apt-get -y install ninja-build meson
         else
             echo "Invalid runner or OS"
             exit 1
