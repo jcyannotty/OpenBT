@@ -63,6 +63,17 @@ echo "CPPFLAGS=$CPPFLAGS"
 echo "LDFLAGS=$LDFLAGS"
 echo
 
+if ! command -v pkg-config &> /dev/null; then
+    echo
+    echo "Please install pkg-config"
+    echo
+    exit 1
+fi
+echo
+echo "pkg-config information"
+echo "---------------------------------------------"
+pkg-config --list-all
+
 if ! command -v meson &> /dev/null; then
     echo
     echo "Please install meson"
