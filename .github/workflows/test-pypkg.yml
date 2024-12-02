@@ -84,7 +84,7 @@ jobs:
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
-        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH || cat /home/runner/work/OpenBT/OpenBT/builddir/meson-logs/meson-log.txt
         echo " "
         if   [ "${{ runner.os }}" = "macOS" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
