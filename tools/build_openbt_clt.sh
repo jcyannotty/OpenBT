@@ -92,6 +92,7 @@ pushd $clone_root &> /dev/null || exit 1
 echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
+mkdir -p $build_dir
 meson setup --wipe --buildtype=release $build_dir -Dprefix=$prefix -Dmpi=open-mpi -Dverbose=false || exit 1
 
 echo
