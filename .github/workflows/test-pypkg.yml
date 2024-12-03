@@ -214,6 +214,9 @@ jobs:
     # This also confirms that the test script is functional
     - name: Run full OpenBtMixing test suite
       run: |
+        which python
+        which meson
+        python -m pip list
         pushd $PKG_ROOT
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz

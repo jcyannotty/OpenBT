@@ -72,6 +72,7 @@ fi
 echo
 echo "pkg-config information"
 echo "---------------------------------------------"
+which pkg-config
 pkg-config --list-all
 pkg-config --cflags mpi
 pkg-config --cflags mpich
@@ -87,6 +88,7 @@ fi
 echo
 echo "meson version information"
 echo "---------------------------------------------"
+which meson
 meson --version
 
 # ----- CLEAN-UP LEFTOVERS FROM PREVIOUS BUILDS
