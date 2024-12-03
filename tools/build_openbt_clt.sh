@@ -14,9 +14,21 @@
 #
 
 #####----- EXTRACT BUILD INFO FROM COMMAND LINE ARGUMENT
-if [[ "$#" -ne 1 ]]; then
+if   [[ "$#" -eq 1 ]]; then
+    build_type=release
+    use_verbose=false
+elif [[ "$#" -eq 2 ]]; then
+    if [[ $2 != "--debug" ]]; then
+        echo
+        echo "build_openbt_clt.sh /installation/path/OpenBT [--debug]"
+        echo
+        exit 1
+    fi
+    build_type=debug
+    use_verbose=true
+else
     echo
-    echo "build_openbt_clt.sh /installation/path/OpenBT"
+    echo "build_openbt_clt.sh /installation/path/OpenBT [--debug]"
     echo
     exit 1
 fi
@@ -94,7 +106,7 @@ echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
 mkdir -p $build_dir
-meson setup --wipe --buildtype=release $build_dir -Dprefix=$prefix -Duse_mpi=true -Dverbose=false || exit 1
+meson setup --wipe --buildtype=$build_type $build_dir -Dprefix=$prefix -Duse_mpi=true -Dverbose=$use_verbose || exit 1
 
 echo
 echo "Make & Install OpenBT"

@@ -1,4 +1,6 @@
 import os
+import sys
+import shutil
 import codecs
 
 import subprocess as sbp
@@ -48,13 +50,9 @@ PROJECT_URLS = {
 # is partially based on what they have done at commit c5db98c.
 #
 # https://github.com/edgedb/edgedb/blob/master/setup.py
-#
-# TODO: Is there a way to get the C++ code into source distributions without
-# having to use the symlinks?  I recall seeing an repo that claimed that these
-# facilities can do that.
 class build(_build):
     user_options = _build.user_options
-    sub_commands = ([("build_clt", lambda self: True)])
+    sub_commands = ([("build_clt", None)])
 
 
 class build_clt(Command):
@@ -70,6 +68,12 @@ class build_clt(Command):
         pass
 
     def run(self, *args, **kwargs):
+        if shutil.which("meson", mode=os.F_OK | os.X_OK) is None:
+            print()
+            print("Please install the Meson build system & add meson to path")
+            print()
+            sys.exit(1)
+
         # TODO: Debug code so that we can build with C++ assertions in place
         # without failures (i.e., -Db_ndebug=false or not specified at all).
         SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=release",
@@ -81,11 +85,27 @@ class build_clt(Command):
 
         # Install the CLTs within the Python source files and so that they are
         # included in the wheel build based on PACKAGE_DATA
-        # TODO: Error check all the calls.
         cwd = Path.cwd()
         os.chdir(CLT_SRC_PATH)
         for cmd in [SETUP_CMD, COMPILE_CMD, INSTALL_CMD]:
-            sbp.run(cmd)
+            try:
+                sbp.run(cmd, stdin=sbp.DEVNULL, capture_output=True, check=True)
+            except sbp.CalledProcessError as err:
+                stdout = err.stdout.decode()
+                stderr = err.stderr.decode()
+                print()
+                msg = "[meson build] Unable to run command (Return code {})"
+                print(msg.format(err.returncode))
+                print("[meson build] " + " ".join(err.cmd))
+                if stdout != "":
+                    print("[meson build] stdout")
+                    for line in stdout.split("\n"):
+                        print(f"\t{line}")
+                if stderr != "":
+                    print("[meson build] stderr")
+                    for line in stderr.split("\n"):
+                        print(f"\t{line}")
+                sys.exit(2)
         os.chdir(cwd)
 
 cmdclass = {

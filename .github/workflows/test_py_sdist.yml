@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-12, macos-13, macos-14,
+        os: [macos-13, macos-14, macos-15,
              ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
         mpi_impl: ["openmpi", "mpich"]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
@@ -81,7 +81,7 @@ jobs:
         python -m pip install meson>=1.6.0
         mkdir -p $LOCAL_BIN
         ln -s $MESON_VENV/bin/meson $LOCAL_BIN
-        export PATH=$PATH:$LOCAL_BIN
+        echo "$LOCAL_BIN" >> "$GITHUB_PATH"
 
     ##-- Run full test suite
     # Prefer full end-to-end test of wheels rather than testing in local clone
