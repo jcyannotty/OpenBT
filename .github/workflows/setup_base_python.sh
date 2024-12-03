@@ -40,11 +40,9 @@ python -m pip install --upgrade pip
 python -m pip install --upgrade setuptools
 python -m pip install build
 python -m pip install tox
-python -m pip install --user meson
 echo " "
 python --version
 tox --version
-meson --version
 echo " "
 pip list
 echo " "

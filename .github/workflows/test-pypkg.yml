@@ -3,6 +3,9 @@ env:
   CLONE_PATH:   ${{ github.workspace }}
   INSTALL_PATH: ${{ github.workspace }}/../local/OpenBT
   PKG_ROOT:     ${{ github.workspace }}/openbtmixing_pypkg
+  VENV_PATH:    ${{ github.workspace }}/local/venv
+  MESON_VENV:   ${{ github.workspace }}/local/venv/meson
+  LOCAL_BIN:    ${{ github.workspace }}/local/bin
 on:
   push:
     branches:
@@ -80,10 +83,23 @@ jobs:
     - name: Setup Python dependencies
       run: |
         $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+    - name: Install latest meson
+      run: |
+        mkdir -p $VENV_PATH
+        python -m venv $MESON_VENV
+        . $MESON_VENV/bin/activate
+        python -m pip install --upgrade pip
+        which python
+        which pip
+        python -m pip install meson
+        mkdir -p $LOCAL_BIN
+        ln -s $MESON_VENV/bin/meson $LOCAL_BIN
+        ls -la $LOCAL_BIN
 
     #####----- BUILD WHEEL FROM SCRATCH & INSTALL
     - name: Build OpenBTMixing C++ CLTs & Libraries
       run: |
+        export PATH=$PATH:$LOCAL_BIN
         $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH || cat /home/runner/work/OpenBT/OpenBT/builddir/meson-logs/meson-log.txt
         echo " "
         if   [ "${{ runner.os }}" = "macOS" ]; then
@@ -214,9 +230,9 @@ jobs:
     # This also confirms that the test script is functional
     - name: Run full OpenBtMixing test suite
       run: |
-        which python
+        export PATH=$PATH:$LOCAL_BIN
         which meson
-        python -m pip list
+        meson --version
         pushd $PKG_ROOT
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz
