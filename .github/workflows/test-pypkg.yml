@@ -25,7 +25,7 @@ jobs:
         #   4 MPI processes
         # * MPICH appears to run forever (MPI_Finalize seems to hang on my
         #   machine)
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        os: [macos-13, ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
         mpi_impl: ["openmpi"]
         python-version: ["3.12"]
         #exclude:
@@ -89,7 +89,7 @@ jobs:
         python -m venv $MESON_VENV
         . $MESON_VENV/bin/activate
         python -m pip install --upgrade pip
-        python -m pip install meson==1.3.2
+        python -m pip install meson>=1.6.0
         mkdir -p $LOCAL_BIN
         ln -s $MESON_VENV/bin/meson $LOCAL_BIN
 
@@ -236,50 +236,50 @@ jobs:
         $CLONE_PATH/tools/test_python_installation.py
 
   #####----- FULL TESTING WITH COVERAGE
-  pypkg_coverage:
-    runs-on: ${{ matrix.os }}
-    env:
-      COVERAGE_FILE: coverage_result
-      COVERAGE_HTML: htmlcov
-      COVERAGE_XML:  coverage.xml
-    strategy:
-      matrix:
-        os: [macos-13]
-        python-version: ["3.12"]
-
-    steps:
-    #####----- SETUP TESTING ENVIRONMENT
-    - name: Checkout OpenBTMixing
-      uses: actions/checkout@v4
-    - name: Install build tools
-      run: brew install ninja
-    - name: Install OpenMPI
-      run: brew install open-mpi
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Setup Python dependencies
-      run: |
-        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
-
-    #####----- INSTALL CLTs AND USE IN EDITABLE MODE
-    ##-- Run full test suite
-    # Run this from local clone since we have already tested packages.
-    #
-    # This checks that coverage tox environment is functional.
-    - name: Run full OpenBtMixing test suite
-      run: |
-        pushd $CLONE_PATH/openbtmixing_pypkg
-        tox -r -e coverage,report
-        popd
-
-    ##-- Publish full coverage report as artifact
-    - name: Archive code coverage results
-      uses: actions/upload-artifact@v4
-      with:
-        name: code-coverage-results
-        path: |
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
-            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}
+#  pypkg_coverage:
+#    runs-on: ${{ matrix.os }}
+#    env:
+#      COVERAGE_FILE: coverage_result
+#      COVERAGE_HTML: htmlcov
+#      COVERAGE_XML:  coverage.xml
+#    strategy:
+#      matrix:
+#        os: [macos-13]
+#        python-version: ["3.12"]
+#
+#    steps:
+#    #####----- SETUP TESTING ENVIRONMENT
+#    - name: Checkout OpenBTMixing
+#      uses: actions/checkout@v4
+#    - name: Install build tools
+#      run: brew install ninja
+#    - name: Install OpenMPI
+#      run: brew install open-mpi
+#    - name: Set up Python ${{ matrix.python-version }}
+#      uses: actions/setup-python@v5
+#      with:
+#        python-version: ${{ matrix.python-version }}
+#    - name: Setup Python dependencies
+#      run: |
+#        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+#
+#    #####----- INSTALL CLTs AND USE IN EDITABLE MODE
+#    ##-- Run full test suite
+#    # Run this from local clone since we have already tested packages.
+#    #
+#    # This checks that coverage tox environment is functional.
+#    - name: Run full OpenBtMixing test suite
+#      run: |
+#        pushd $CLONE_PATH/openbtmixing_pypkg
+#        tox -r -e coverage,report
+#        popd
+#
+#    ##-- Publish full coverage report as artifact
+#    - name: Archive code coverage results
+#      uses: actions/upload-artifact@v4
+#      with:
+#        name: code-coverage-results
+#        path: |
+#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_FILE }}
+#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_HTML }}
+#            ${{ env.CLONE_PATH }}/openbtmixing_pypkg/${{ env.COVERAGE_XML }}

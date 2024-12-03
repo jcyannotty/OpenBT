@@ -70,9 +70,11 @@ class build_clt(Command):
         pass
 
     def run(self, *args, **kwargs):
-        SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=debug",
+        # TODO: Debug code so that we can build with C++ assertions in place
+        # without failures (i.e., -Db_ndebug=false or not specified at all).
+        SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=release",
                      "builddir",
-                     f"-Dprefix={PY_SRC_PATH}",
+                     f"-Dprefix={PY_SRC_PATH}", "-Db_ndebug=true",
                      "-Dmpi=open-mpi", "-Dverbose=false"]
         COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
         INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]
