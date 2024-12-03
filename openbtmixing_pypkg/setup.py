@@ -70,7 +70,7 @@ class build_clt(Command):
         pass
 
     def run(self, *args, **kwargs):
-        SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=release",
+        SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=debug",
                      "builddir",
                      f"-Dprefix={PY_SRC_PATH}",
                      "-Dmpi=open-mpi", "-Dverbose=false"]
