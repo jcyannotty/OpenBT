@@ -44,10 +44,10 @@ jobs:
     - name: Install meson dependencies
       run: |
         if   [ "${{ runner.os }}" = "macOS" ]; then
-            brew install meson
+            brew install ninja
         elif [ "${{ runner.os }}" = "Linux" ]; then
             sudo apt-get update
-            sudo apt-get -y install ninja-build meson
+            sudo apt-get -y install ninja-build
         else
             echo "Invalid runner or OS"
             exit 1
@@ -237,7 +237,7 @@ jobs:
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
     - name: Install build tools
-      run: brew install meson
+      run: brew install ninja
     - name: Install OpenMPI
       run: brew install open-mpi
     - name: Set up Python ${{ matrix.python-version }}
