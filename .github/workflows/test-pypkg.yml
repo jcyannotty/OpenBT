@@ -89,7 +89,7 @@ jobs:
         python -m venv $MESON_VENV
         . $MESON_VENV/bin/activate
         python -m pip install --upgrade pip
-        python -m pip install meson
+        python -m pip install meson==1.3.2
         mkdir -p $LOCAL_BIN
         ln -s $MESON_VENV/bin/meson $LOCAL_BIN
 
