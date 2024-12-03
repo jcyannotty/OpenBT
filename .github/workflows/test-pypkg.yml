@@ -26,7 +26,7 @@ jobs:
         # * MPICH appears to run forever (MPI_Finalize seems to hang on my
         #   machine)
         os: [macos-13, macos-14, ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
-        mpi_impl: ["openmpi"]
+        mpi_impl: ["mpich"]
         python-version: ["3.12"]
         #exclude:
         #  # For Ubuntu20.04, presently

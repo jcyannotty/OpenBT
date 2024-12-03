@@ -177,7 +177,7 @@ def run_model(fpath, tc, cmd="openbtcli",
 
     try:
         # MPI running OpenBT command line tool with both found through PATH
-        subprocess.run(["mpirun", "-np", str(tc), "--oversubscribe",
+        subprocess.run(["mpirun", "-np", str(tc),
                        str(cmd_with_path), str(fpath)],
                        stdin=subprocess.DEVNULL,
                        capture_output=True, check=True)
