@@ -63,20 +63,6 @@ echo "CPPFLAGS=$CPPFLAGS"
 echo "LDFLAGS=$LDFLAGS"
 echo
 
-if ! command -v pkg-config &> /dev/null; then
-    echo
-    echo "Please install pkg-config"
-    echo
-    exit 1
-fi
-echo
-echo "pkg-config information"
-echo "---------------------------------------------"
-which pkg-config
-pkg-config --list-all
-pkg-config --cflags mpi
-pkg-config --cflags mpich
-
 if ! command -v meson &> /dev/null; then
     echo
     echo "Please install meson"
@@ -108,7 +94,7 @@ echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
 mkdir -p $build_dir
-meson setup --wipe --buildtype=release $build_dir -Dprefix=$prefix -Dmpi=open-mpi -Dverbose=false || exit 1
+meson setup --wipe --buildtype=release $build_dir -Dprefix=$prefix -Duse_mpi=true -Dverbose=false || exit 1
 
 echo
 echo "Make & Install OpenBT"

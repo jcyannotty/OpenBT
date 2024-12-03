@@ -1,6 +1,8 @@
 # ----- SPECIFY PROJECT
 # eigen dependency requires C++14
-project('openbtmixing', 'cpp', default_options: ['cpp_std=c++14'])
+project('openbtmixing', 'cpp',
+        default_options: ['cpp_std=c++14'],
+        meson_version: '>=1.6.0')
 
 # ----- DEPENDENCIES
 # If users have a local install of eigen that can be discovered with
@@ -16,30 +18,13 @@ if not get_option('verbose')
     add_project_arguments('-DSILENT', language: 'cpp')
 endif
 
-if get_option('mpi') != 'none'
+if get_option('use_mpi')
     # TODO: This should probably set -DUSE_MPI since the code is not written
     # explicitly for OpenMPI.
     add_project_arguments('-D_OPENMPI', language: 'cpp')
-endif
-
-# Currently meson does not find and work with MPICH as expected if we just
-# declare MPI as a dependence.  The following workaround assumes that MPICH can
-# be discovered through pkg-config.  More information on this can be found at
-#
-# https://github.com/mesonbuild/meson/issues/7045
-# 
-# with a possible solution at
-#
-# https://github.com/mesonbuild/meson/pull/7373
-#
-# The SU2 repo has a workaround for this at commit f3f083e, which I have
-# adapated here for now.
-#
-# https://github.com/su2code/SU2
-if get_option('mpi') == 'open-mpi'
+    # This works with both OpenMPI & MPICH beginning with v1.6.0.  See
+    # https://github.com/mesonbuild/meson/pull/13619
     deps_all += [dependency('mpi', language : 'cpp')]
-elif get_option('mpi') == 'mpich'
-    deps_all += [dependency('mpich')]
 endif
 
 # ----- SPECIFY & BUILD libopenbtmixing LIBRARY
