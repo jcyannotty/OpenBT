@@ -59,7 +59,7 @@ def test_mixing():
         nskip=2000,
         adaptevery=500,
         minnumbot=4,
-        tc = 4)
+        tc = 2)
 
     # Check the mcmc objects
     assert mix.ndpost == 10000, "class object ndpost is not set."
