@@ -1,0 +1,98 @@
+name: Test OpenBTMixing Python Source Distribution
+env:
+  CLONE_PATH:   ${{ github.workspace }}
+  PKG_ROOT:     ${{ github.workspace }}/openbtmixing_pypkg
+  VENV_PATH:    ${{ github.workspace }}/local/venv
+  MESON_VENV:   ${{ github.workspace }}/local/venv/meson
+  LOCAL_BIN:    ${{ github.workspace }}/local/bin
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  #####----- FULL TESTING WITHOUT COVERAGE
+  test_pypkg:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-12, macos-13, macos-14,
+             ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        mpi_impl: ["openmpi", "mpich"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # For Ubuntu24.04, presently
+          # * fails the last three tests with MPICH for unknown reasons
+          - os: ubuntu-24.04
+            mpi_impl: "mpich"
+
+    steps:
+    #####----- SETUP TESTING ENVIRONMENT
+    - name: Checkout OpenBTMixing
+      uses: actions/checkout@v4
+    - name: Install meson dependencies
+      run: |
+        if   [ "${{ runner.os }}" = "macOS" ]; then
+            brew install ninja
+        elif [ "${{ runner.os }}" = "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get -y install ninja-build
+        else
+            echo "Invalid runner or OS"
+            exit 1
+        fi
+    - name: Install ${{ matrix.mpi_impl }}
+      run: |
+          if   [ "${{ runner.os }}" = "Linux" ]; then
+             if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+                sudo apt-get -y install openmpi-bin libopenmpi-dev
+             elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+                sudo apt-get -y install mpich
+             else
+                echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
+                exit 1
+             fi
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+             if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+                brew install open-mpi
+             elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+                brew install mpich
+             else
+                echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
+                exit 1
+             fi
+          fi
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Setup Python dependencies
+      run: |
+        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+    - name: Install latest meson
+      run: |
+        mkdir -p $VENV_PATH
+        python -m venv $MESON_VENV
+        . $MESON_VENV/bin/activate
+        python -m pip install --upgrade pip
+        python -m pip install meson>=1.6.0
+        mkdir -p $LOCAL_BIN
+        ln -s $MESON_VENV/bin/meson $LOCAL_BIN
+        export PATH=$PATH:$LOCAL_BIN
+
+    ##-- Run full test suite
+    # Prefer full end-to-end test of wheels rather than testing in local clone
+    # alone
+    #
+    # This also confirms that the test script is functional
+    - name: Run full OpenBtMixing test suite
+      run: |
+        which meson
+        pushd $PKG_ROOT
+        python -m build --sdist
+        python -m pip install -v dist/openbtmixing-*.tar.gz
+        popd
+        $CLONE_PATH/tools/test_python_installation.py
