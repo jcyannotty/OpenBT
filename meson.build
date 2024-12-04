@@ -26,26 +26,9 @@ if get_option('use_mpi')
 endif
 
 # ----- SPECIFY HEADERS USED TO BUILD LIBRARY, CLTs, & TESTS
-# Install the headers along with library for linking
-install_headers('includes/ambrt.h',
-                'includes/amxbrt.h',
-                'includes/brt.h',
-                'includes/brtfuns.h',
-                'includes/crn.h',
-                'includes/dinfo.h',
-                'includes/mbrt.h',
-                'includes/mxbrt.h',
-                'includes/psbrt.h',
-                'includes/rn.h',
-                'includes/sbrt.h',
-                'includes/singlebinomial.h',
-                'includes/singlepoisson.h',
-                'includes/tnorm.h',
-                'includes/tree.h',
-                'includes/treefuns.h')
 incdir = include_directories('includes')
 
-# ----- SPECIFY & BUILD libopenbtmixing LIBRARY
+# ----- SPECIFY libopenbtmixing LIBRARY
 # Sources to build individual components in single library
 src_crn      = ['src/crn.cpp', 'src/tnorm.cpp']
 src_tree     = ['src/treefuns.cpp', 'src/tree.cpp']
@@ -59,34 +42,11 @@ src_amxbrt   = ['src/amxbrt.cpp']
 src_poisson  = ['src/singlepoisson.cpp']
 src_binomial = ['src/singlebinomial.cpp']
 
-# Build library
 lib_srcs  = src_crn + src_tree + src_brt + src_mbrt + src_sbrt
 lib_srcs += src_mxbrt + src_ambrt + src_psbrt + src_amxbrt
 lib_srcs += src_poisson + src_binomial
-lib = library('openbtmixing', sources : lib_srcs,
-              dependencies : deps_all,
-              include_directories : incdir,
-              pic : true, install : true)
 
-# ----- BUILD COMMAND LINE TOOLS
-# Full set of OpenBT command line tools built as standalone binaries rather than
-# linked to openbtmixing library.
-CLTs = [['openbtcli',        'src/cli.cpp'],
-        ['openbtpred',       'src/pred.cpp'],
-        ['openbtvartivity',  'src/vartivity.cpp'],
-        ['openbtsobol',      'src/sobol.cpp'],
-        ['openbtmopareto',   'src/mopareto.cpp'],
-        ['openbtmixingwts',  'src/mixingwts.cpp'],
-        ['openbtmixing',     'src/mixandemulate.cpp'],
-        ['openbtmixingpred', 'src/mixandemulatepred.cpp']]
-foreach each : CLTs
-    executable(each[0], [each[1]] + lib_srcs,
-               dependencies : deps_all,
-               include_directories : incdir,
-               install : true)
-endforeach
-
-# ----- BUILD UNIT TESTS
+# ----- SPECIFY LIBRARY UNIT TESTS
 # TODO: amxbrt has build failures
 # TODO: Some of these tests are failing with segfaults.
 # TODO: Integrate these as tests that are run as part of the build once they
@@ -97,11 +57,59 @@ tests_all += ['brt', 'brtvp']
 tests_all += ['mbrt', 'ambrt', 'mxbrt']
 tests_all += ['sbrt', 'psbrt']
 tests_all += ['singlepoisson', 'singlebinomial']
-foreach name : tests_all
-    test_name = f'test_@name@' 
-    test_src = f'tests/test_@name@.cpp'
-    executable(test_name, test_src,
-               dependencies : deps_all, link_with : lib,
+
+# ----- SPECIFY COMMAND LINE TOOLS
+CLTs = [['openbtcli',        'src/cli.cpp'],
+        ['openbtpred',       'src/pred.cpp'],
+        ['openbtvartivity',  'src/vartivity.cpp'],
+        ['openbtsobol',      'src/sobol.cpp'],
+        ['openbtmopareto',   'src/mopareto.cpp'],
+        ['openbtmixingwts',  'src/mixingwts.cpp'],
+        ['openbtmixing',     'src/mixandemulate.cpp'],
+        ['openbtmixingpred', 'src/mixandemulatepred.cpp']]
+
+# ----- BUILD & INSTALL ALL PRODUCTS
+# For the Python package, only the command line tools are needed since these are
+# built as standalone binaries rather than linked against the openbtmixing
+# library.  This will keep the package's source distribution and installation as
+# small and clean as possible.
+if not get_option('pypkg')
+    # Install the headers along with library for building against it
+    install_headers('includes/ambrt.h',
+                    'includes/amxbrt.h',
+                    'includes/brt.h',
+                    'includes/brtfuns.h',
+                    'includes/crn.h',
+                    'includes/dinfo.h',
+                    'includes/mbrt.h',
+                    'includes/mxbrt.h',
+                    'includes/psbrt.h',
+                    'includes/rn.h',
+                    'includes/sbrt.h',
+                    'includes/singlebinomial.h',
+                    'includes/singlepoisson.h',
+                    'includes/tnorm.h',
+                    'includes/tree.h',
+                    'includes/treefuns.h')
+
+    lib = library('openbtmixing', sources : lib_srcs,
+                  dependencies : deps_all,
+                  include_directories : incdir,
+                  pic : true, install : true)
+
+    foreach name : tests_all
+        test_name = f'test_@name@' 
+        test_src = f'tests/test_@name@.cpp'
+        executable(test_name, test_src,
+                   dependencies : deps_all, link_with : lib,
+                   include_directories : incdir,
+                   install : true)
+    endforeach
+endif
+
+foreach each : CLTs
+    executable(each[0], [each[1]] + lib_srcs,
+               dependencies : deps_all,
                include_directories : incdir,
                install : true)
 endforeach

@@ -82,7 +82,7 @@ class build_clt(Command):
         SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=release",
                      "builddir",
                      f"-Dprefix={PY_SRC_PATH}", "-Db_ndebug=true",
-                     "-Duse_mpi=true", "-Dverbose=false"]
+                     "-Duse_mpi=true", "-Dverbose=false", "-Dpypkg=true"]
         COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
         INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]
 
