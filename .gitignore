@@ -19,8 +19,6 @@ subprojects/packagecache
 
 # Other folders
 .vscode/*
-src/autom4te.cache/*
-autom4te.cache/*
 __pycache__
 
 # Standard intermediate products
@@ -29,12 +27,7 @@ openbtmixing_pypkg/build
 openbtmixing_pypkg/.coverage_openbt
 openbtmixing_pypkg/coverage.xml
 openbtmixing_pypkg/htmlcov
-openbtmixing_pypkg/*.whl
 openbtmixing_pypkg/src/openbtmixing.egg-info
-# Installed OpenBT CLTs
-openbtmixing_pypkg/src/openbtmixing/include
-openbtmixing_pypkg/src/openbtmixing/lib
-openbtmixing_pypkg/src/openbtmixing/bin
 
 # Other files
 .DS_Store

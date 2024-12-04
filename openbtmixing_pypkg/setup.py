@@ -24,7 +24,6 @@ CLT_NAMES = [
     "openbtpred",
     "openbtmixingwts"
 ]
-LIB_BASENAME = "libopenbtmixing"
 
 # Package metadata
 PYTHON_REQUIRES = ">=3.9"
@@ -35,8 +34,7 @@ INSTALL_REQUIRES = CODE_REQUIRES + TEST_REQUIRES
 PACKAGE_DATA = {
     "openbtmixing":
         ["tests/bart_bmm_test_data/2d_*.txt"] + \
-        [f"bin/{clt}" for clt in CLT_NAMES] + \
-        [f"lib/{LIB_BASENAME}.*"]
+        [f"bin/{clt}" for clt in CLT_NAMES]
 }
 
 PROJECT_URLS = {
@@ -61,13 +59,18 @@ class build_clt(Command):
     editable_mode: bool
 
     def initialize_options(self):
-        # TODO: Can we get this to work with editable mode installations?
         self.editable_mode = False
 
     def finalize_options(self):
         pass
 
     def run(self, *args, **kwargs):
+        # At present, tox can build an editable-mode venv with the CLTs
+        # installed in the clone.  However, those will get rebuilt with every
+        # tox -e coverage call.  To work interactively in Python, a developer
+        # can call tox -e coverage to setup the CLTs, activate the coverage
+        # venv, and then run tests via pytest directly.
+
         if shutil.which("meson", mode=os.F_OK | os.X_OK) is None:
             print()
             print("Please install the Meson build system & add meson to path")
