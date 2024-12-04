@@ -19,17 +19,34 @@ if not get_option('verbose')
 endif
 
 if get_option('use_mpi')
-    # TODO: This should probably set -DUSE_MPI since the code is not written
-    # explicitly for OpenMPI.
     add_project_arguments('-D_OPENMPI', language: 'cpp')
     # This works with both OpenMPI & MPICH beginning with v1.6.0.  See
     # https://github.com/mesonbuild/meson/pull/13619
     deps_all += [dependency('mpi', language : 'cpp')]
 endif
 
+# ----- SPECIFY HEADERS USED TO BUILD LIBRARY, CLTs, & TESTS
+# Install the headers along with library for linking
+install_headers('includes/ambrt.h',
+                'includes/amxbrt.h',
+                'includes/brt.h',
+                'includes/brtfuns.h',
+                'includes/crn.h',
+                'includes/dinfo.h',
+                'includes/mbrt.h',
+                'includes/mxbrt.h',
+                'includes/psbrt.h',
+                'includes/rn.h',
+                'includes/sbrt.h',
+                'includes/singlebinomial.h',
+                'includes/singlepoisson.h',
+                'includes/tnorm.h',
+                'includes/tree.h',
+                'includes/treefuns.h')
+incdir = include_directories('includes')
+
 # ----- SPECIFY & BUILD libopenbtmixing LIBRARY
 # Sources to build individual components in single library
-# TODO: How to get rid of src/?
 src_crn      = ['src/crn.cpp', 'src/tnorm.cpp']
 src_tree     = ['src/treefuns.cpp', 'src/tree.cpp']
 src_brt      = ['src/brt.cpp', 'src/brtmoves.cpp', 'src/brtfuns.cpp']
@@ -43,36 +60,17 @@ src_poisson  = ['src/singlepoisson.cpp']
 src_binomial = ['src/singlebinomial.cpp']
 
 # Build library
-# TODO: Put headers in their own includes folder?
-# TODO: Way to get these automatically without explicit listing?
-lib_headers = include_directories('src')
-install_headers('src/ambrt.h',
-                'src/amxbrt.h',
-                'src/brt.h',
-                'src/brtfuns.h',
-                'src/crn.h',
-                'src/dinfo.h',
-                'src/mbrt.h',
-                'src/mxbrt.h',
-                'src/psbrt.h',
-                'src/rn.h',
-                'src/sbrt.h',
-                'src/singlebinomial.h',
-                'src/singlepoisson.h',
-                'src/tnorm.h',
-                'src/tree.h',
-                'src/treefuns.h')
-
 lib_srcs  = src_crn + src_tree + src_brt + src_mbrt + src_sbrt
 lib_srcs += src_mxbrt + src_ambrt + src_psbrt + src_amxbrt
 lib_srcs += src_poisson + src_binomial
 lib = library('openbtmixing', sources : lib_srcs,
               dependencies : deps_all,
-              include_directories : lib_headers,
+              include_directories : incdir,
               pic : true, install : true)
 
 # ----- BUILD COMMAND LINE TOOLS
-# Full set of OpenBT command line tools
+# Full set of OpenBT command line tools built as standalone binaries rather than
+# linked to openbtmixing library.
 CLTs = [['openbtcli',        'src/cli.cpp'],
         ['openbtpred',       'src/pred.cpp'],
         ['openbtvartivity',  'src/vartivity.cpp'],
@@ -84,6 +82,7 @@ CLTs = [['openbtcli',        'src/cli.cpp'],
 foreach each : CLTs
     executable(each[0], [each[1]] + lib_srcs,
                dependencies : deps_all,
+               include_directories : incdir,
                install : true)
 endforeach
 
@@ -100,8 +99,9 @@ tests_all += ['sbrt', 'psbrt']
 tests_all += ['singlepoisson', 'singlebinomial']
 foreach name : tests_all
     test_name = f'test_@name@' 
-    test_src = f'src/@test_name@.cpp'
+    test_src = f'tests/test_@name@.cpp'
     executable(test_name, test_src,
                dependencies : deps_all, link_with : lib,
+               include_directories : incdir,
                install : true)
 endforeach
