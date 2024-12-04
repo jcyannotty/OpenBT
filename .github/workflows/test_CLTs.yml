@@ -2,9 +2,6 @@ name: Test OpenBTMixing C++ Command Line Tools
 env:
   CLONE_PATH:   ${{ github.workspace }}
   INSTALL_PATH: ${{ github.workspace }}/../local/OpenBT
-  VENV_PATH:    ${{ github.workspace }}/local/venv
-  MESON_VENV:   ${{ github.workspace }}/local/venv/meson
-  LOCAL_BIN:    ${{ github.workspace }}/local/bin
 on:
   push:
     branches:
@@ -89,7 +86,8 @@ jobs:
     # We presently call only those tests that run through.
     - name: Test OpenBTMixing C++ CLTs
       run: |
+        export LD_LIBRARY_PATH=$INSTALL_PATH/lib
         pushd $INSTALL_PATH/bin
-        #./test_crn
-        #./test_tree
+        ./test_crn
+        ./test_tree
         popd
