@@ -16,8 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04]
-        mpi_impl: ["openmpi", "mpich"]
+        os: [macos-13, ubuntu-22.04]
+        mpi_impl: ["openmpi"]
         python-version: ["3.12"]
         exclude:
           # Intel-MPI only available on Linux via mpi4py
@@ -47,8 +47,8 @@ jobs:
       run: |
         conda install -c conda-forge mpi4py ${{ matrix.mpi_impl }}
         conda list
-        which mpicc
-        mpicc -show
+        which mpicxx
+        mpicxx -show
     - name: Install Meson build system
       run: |
         $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
