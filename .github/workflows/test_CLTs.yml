@@ -80,15 +80,10 @@ jobs:
     # We presently call only those tests that run through.
     - name: Test OpenBTMixing C++ CLTs
       run: |
-        ls -la $INSTALL_PATH
-        ls -la $INSTALL_PATH/bin
-        ls -la $INSTALL_PATH/include
-        ls -la $INSTALL_PATH/lib
-        ls -la $INSTALL_PATH/lib/x86_64-linux-gnu
+        if [ "${{ runner.os }}" = "Linux" ]; then
+            export LD_LIBRARY_PATH=$INSTALL_PATH/lib/x86_64-linux-gnu
+        fi
         pushd $INSTALL_PATH/bin
-        ldd ./test_crn
-        export LD_LIBRARY_PATH=$INSTALL_PATH/lib
-        ldd ./test_crn
         ./test_crn
         ./test_tree
         popd
