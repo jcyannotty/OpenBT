@@ -1,0 +1,59 @@
+name: Test OpenBTMixing in Anaconda
+env:
+  CLONE_PATH:   ${{ github.workspace }}
+  PKG_ROOT:     ${{ github.workspace }}/openbtmixing_pypkg
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  #####----- FULL TESTING WITHOUT COVERAGE
+  test_pypkg:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.12"]
+
+    steps:
+    #####----- SETUP TESTING ENVIRONMENT
+    - name: Checkout OpenBTMixing
+      uses: actions/checkout@v4
+    - name: Install ${{ matrix.mpi_impl }}
+      run: |
+        if   [ "${{ runner.os }}" = "Linux" ]; then
+           if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+              sudo apt-get -y install openmpi-bin libopenmpi-dev
+           elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+              sudo apt-get -y install mpich
+           else
+              echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
+              exit 1
+           fi
+        elif [ "${{ runner.os }}" = "macOS" ]; then
+           if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+              brew install open-mpi
+           elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+              brew install mpich
+           else
+              echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
+              exit 1
+           fi
+        fi
+    - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          python-version: ${{ matrix.python-version }}
+    - name: Conda info
+        shell: bash -el {0}
+        run: |
+          which python
+          which pip
+          python --version
+          conda info
+          conda list
