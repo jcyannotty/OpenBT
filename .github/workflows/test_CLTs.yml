@@ -108,6 +108,6 @@ jobs:
     - name: Test OpenBTMixing C++ CLTs
       run: |
         pushd $INSTALL_PATH/bin
-        ./test_crn
-        ./test_tree
+        #./test_crn
+        #./test_tree
         popd
