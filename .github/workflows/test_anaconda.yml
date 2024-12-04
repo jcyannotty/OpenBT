@@ -50,10 +50,10 @@ jobs:
            fi
         fi
     - name: Conda info
-        shell: bash -el {0}
-        run: |
-          which python
-          which pip
-          python --version
-          conda info
-          conda list
+      shell: bash -el {0}
+      run: |
+        which python
+        which pip
+        python --version
+        conda info
+        conda list
