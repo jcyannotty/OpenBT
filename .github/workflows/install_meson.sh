@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -ne 2 ]]; then
     echo
     echo "install_meson.sh /installation/path {macOS, Linux}"
     echo
