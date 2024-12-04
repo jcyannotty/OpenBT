@@ -19,12 +19,7 @@ jobs:
         os: [macos-13, macos-14, macos-15,
              ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
         mpi_impl: ["openmpi", "mpich"]
-        python-version: ["3.12"]
-        exclude:
-          # For Ubuntu24.04, presently
-          # * fails the last three tests with MPICH for unknown reasons
-          - os: ubuntu-24.04
-            mpi_impl: "mpich"
+        python-version: ["3.13"]
 
     steps:
     #####----- SETUP TESTING ENVIRONMENT
@@ -86,8 +81,11 @@ jobs:
     # We presently call only those tests that run through.
     - name: Test OpenBTMixing C++ CLTs
       run: |
-        export LD_LIBRARY_PATH=$INSTALL_PATH/lib
+        ls -la $INSTALL_PATH/lib
         pushd $INSTALL_PATH/bin
+        ldd ./test_crn
+        export LD_LIBRARY_PATH=$INSTALL_PATH/lib
+        ldd ./test_crn
         ./test_crn
         ./test_tree
         popd
