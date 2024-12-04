@@ -16,12 +16,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-13, macos-14, macos-15,
-             ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
-        mpi_impl: ["openmpi"]
+        os: [macos-13, macos-14, macos-15]
+        mpi_impl: ["mpich"]
         python-version: ["3.12"]
         exclude:
-          # Intel-MPI only available on Linux via mpi4py
+          # Prebuilt IntelMPI only available on Linux
           - os: [macos-13, macos-14, macos-15]
             mpi_impl: "impi_rt"
 
