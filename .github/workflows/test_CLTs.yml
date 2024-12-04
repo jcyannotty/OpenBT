@@ -58,6 +58,7 @@ jobs:
         $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
     #####----- BUILD CLTs FROM SCRATCH & INSTALL
+    # This confirms that the build script works
     - name: Build OpenBTMixing C++ CLTs & Library
       run: |
         $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH

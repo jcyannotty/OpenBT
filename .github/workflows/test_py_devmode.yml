@@ -12,7 +12,7 @@ on:
 
 jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
-  test_pypkg:
+  test_dev_mode:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
