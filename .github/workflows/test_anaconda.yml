@@ -16,9 +16,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-13, macos-14, macos-15]
-        mpi_impl: ["mpich"]
-        python-version: ["3.12"]
+        os: [macos-13, macos-14, macos-15,
+             ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        mpi_impl: ["openmpi"]
+        python-version: ["3.13"]
         exclude:
           # Prebuilt IntelMPI only available on Linux
           - os: [macos-13, macos-14, macos-15]
@@ -54,7 +55,7 @@ jobs:
         $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
     ##-- Run full test suite
-    # Prefer full end-to-end test of local wheel builtd on demand rather than
+    # Prefer full end-to-end test of local wheel built on demand rather than
     # testing in local clone alone
     - name: Run full OpenBtMixing test suite
       shell: bash -el {0}
