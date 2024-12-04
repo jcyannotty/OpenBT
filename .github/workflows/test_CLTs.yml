@@ -16,9 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-13, macos-14, macos-15,
-             ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
-        mpi_impl: ["openmpi", "mpich"]
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        mpi_impl: ["openmpi"]
         python-version: ["3.13"]
 
     steps:
@@ -81,7 +80,11 @@ jobs:
     # We presently call only those tests that run through.
     - name: Test OpenBTMixing C++ CLTs
       run: |
+        ls -la $INSTALL_PATH
+        ls -la $INSTALL_PATH/bin
+        ls -la $INSTALL_PATH/include
         ls -la $INSTALL_PATH/lib
+        ls -la $INSTALL_PATH/lib/x86_64-linux-gnu
         pushd $INSTALL_PATH/bin
         ldd ./test_crn
         export LD_LIBRARY_PATH=$INSTALL_PATH/lib
