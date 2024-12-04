@@ -28,27 +28,6 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
-    - name: Install ${{ matrix.mpi_impl }}
-      run: |
-        if   [ "${{ runner.os }}" = "Linux" ]; then
-           if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
-              sudo apt-get -y install openmpi-bin libopenmpi-dev
-           elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-              sudo apt-get -y install mpich
-           else
-              echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
-              exit 1
-           fi
-        elif [ "${{ runner.os }}" = "macOS" ]; then
-           if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
-              brew install open-mpi
-           elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-              brew install mpich
-           else
-              echo "Cannot install ${{ matrix.mpi_impl }} for macOS"
-              exit 1
-           fi
-        fi
     - name: Conda info
       shell: bash -el {0}
       run: |
@@ -57,3 +36,11 @@ jobs:
         python --version
         conda info
         conda list
+        python -m pip list
+    - name: Install MPI implementation via mpi4py
+      shell: bash -el {0}
+      run: |
+        conda install -c conda-forge mpi4py openmpi
+        conda list
+        which mpicc
+        mpicc -show
