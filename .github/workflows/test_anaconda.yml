@@ -12,7 +12,7 @@ on:
 
 jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
-  test_pypkg:
+  test_anaconda:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -28,19 +28,37 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
-    - name: Conda info
+    - name: Setup miniconda & log
       shell: bash -el {0}
       run: |
         which python
         which pip
         python --version
         conda info
+        conda install build
         conda list
         python -m pip list
-    - name: Install MPI implementation via mpi4py
+    - name: Install $${{ matrix.mpi_impl }} via mpi4py
       shell: bash -el {0}
       run: |
         conda install -c conda-forge mpi4py openmpi
         conda list
         which mpicc
         mpicc -show
+    - name: Install Meson build system
+      run: |
+        $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
+
+    ##-- Run full test suite
+    # Prefer full end-to-end test of local wheel builtd on demand rather than
+    # testing in local clone alone
+    - name: Run full OpenBtMixing test suite
+      shell: bash -el {0}
+      run: |
+        which python
+        which meson
+        pushd $PKG_ROOT
+        python -m build --sdist
+        python -m pip install -v dist/openbtmixing-*.tar.gz
+        popd
+        $CLONE_PATH/tools/test_python_installation.py
