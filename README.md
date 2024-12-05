@@ -65,10 +65,10 @@ $ . /path/to/venv/my_venv/bin/activate
 $ cd /path/to/OpenBT/openbtmixing_pypkg
 $ python -m pip install -v -e .
 ```
-The command line tools are built automatically and installed at
-`/path/to/OpenBT/openbtmixing_pypkg/src/openbtmixing/bin`.  The Python package
-is hardcoded to use those tools so that the existence of another set of tools in
-the system and in the PATH should not cause issues.
+In this latter case, the command line tools are built automatically and
+installed at `/path/to/OpenBT/openbtmixing_pypkg/src/openbtmixing/bin`.  The
+Python package is hardcoded to use those tools so that the existence of another
+set of tools in the system and in the PATH should not cause issues.
 
 ## C++ library & command line tool interface
 Developers and C++ users can directly build and install the command line tools,
