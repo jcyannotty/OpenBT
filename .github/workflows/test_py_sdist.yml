@@ -36,7 +36,7 @@ jobs:
     - name: Install ${{ matrix.mpi_impl }}
       run: |
         if   [ "${{ runner.os }}" = "Linux" ]; then
-           #sudo apt-get update
+           sudo apt-get update
            #if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
            #   sudo apt-get -y install openmpi-bin libopenmpi-dev
            #elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
@@ -45,9 +45,9 @@ jobs:
            #   echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
            #   exit 1
            #fi
-           which mpirun
-           which mpiexec
-           which mpicxx
+           #which mpirun
+           #which mpiexec
+           #which mpicxx
            #mpirun --help
            #mpiexec --help
            #mpicxx -show
