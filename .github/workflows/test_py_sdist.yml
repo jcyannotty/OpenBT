@@ -36,15 +36,23 @@ jobs:
     - name: Install ${{ matrix.mpi_impl }}
       run: |
         if   [ "${{ runner.os }}" = "Linux" ]; then
-           sudo apt-get update
-           if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
-              sudo apt-get -y install openmpi-bin libopenmpi-dev
-           elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-              sudo apt-get -y install mpich
-           else
-              echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
-              exit 1
-           fi
+           #sudo apt-get update
+           #if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+           #   sudo apt-get -y install openmpi-bin libopenmpi-dev
+           #elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+           #   sudo apt-get -y install mpich
+           #else
+           #   echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
+           #   exit 1
+           #fi
+           which mpirun
+           which mpiexec
+           which mpicxx
+           mpirun --help
+           mpiexec --help
+           mpicxx -show
+           ldd $(which mpirun)
+           ldd $(which mpiexec)
         elif [ "${{ runner.os }}" = "macOS" ]; then
            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
               brew install open-mpi
@@ -55,12 +63,6 @@ jobs:
               exit 1
            fi
         fi
-        which mpirun
-        mpirun --help
-        which mpiexec
-        mpiexec --help
-        which mpicxx
-        mpicxx -show
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
