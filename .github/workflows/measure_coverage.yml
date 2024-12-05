@@ -1,4 +1,4 @@
-name: Determine OpenBTMixing Python Coverage
+name: Measure OpenBTMixing Python Coverage
 env:
   CLONE_PATH: ${{ github.workspace }}
   PKG_ROOT:   ${{ github.workspace }}/openbtmixing_pypkg
@@ -14,7 +14,8 @@ on:
       - main
 
 jobs:
-  #####----- FULL TESTING WITHOUT COVERAGE
+  #####----- FULL TESTING WITH COVERAGE
+  # This also confirms that tox with coverage & report works.
   coverage:
     runs-on: ubuntu-22.04
     strategy:
@@ -22,22 +23,21 @@ jobs:
         python-version: ["3.13"]
 
     steps:
-    #####----- SETUP TESTING ENVIRONMENT
+    ##-- Setup Testing Environment
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
     - name: Install mpich
       run: |
-          sudo apt-get -y install mpich
+        sudo apt-get update
+        sudo apt-get -y install mpich
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Setup Python dependencies
-      run: |
-        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+      run: $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
     - name: Install Meson build system
-      run: |
-        $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
+      run: $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
     ##-- Run full test suite with coverage
     - name: Measure coverage-by-line

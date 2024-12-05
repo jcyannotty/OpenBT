@@ -1,7 +1,7 @@
 name: Test OpenBTMixing in Anaconda
 env:
-  CLONE_PATH:   ${{ github.workspace }}
-  PKG_ROOT:     ${{ github.workspace }}/openbtmixing_pypkg
+  CLONE_PATH: ${{ github.workspace }}
+  PKG_ROOT:   ${{ github.workspace }}/openbtmixing_pypkg
 on:
   push:
     branches:
@@ -12,6 +12,10 @@ on:
 
 jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
+  # Prefer full end-to-end test of local wheel built on demand rather than
+  # testing in local clone alone.
+  #
+  # This also confirms that the test script is functional.
   test_anaconda:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -21,12 +25,12 @@ jobs:
         mpi_impl: ["openmpi"]
         python-version: ["3.13"]
         exclude:
-          # Prebuilt IntelMPI only available on Linux
+          # Prebuilt Intel MPI package not available for macOS
           - os: [macos-13, macos-14, macos-15]
             mpi_impl: "impi_rt"
 
     steps:
-    #####----- SETUP TESTING ENVIRONMENT
+    ##-- Setup Testing Environment
     - uses: conda-incubator/setup-miniconda@v3
       with:
         auto-update-conda: true
@@ -52,12 +56,9 @@ jobs:
         which mpicxx
         mpicxx -show
     - name: Install Meson build system
-      run: |
-        $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
+      run: $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
     ##-- Run full test suite
-    # Prefer full end-to-end test of local wheel built on demand rather than
-    # testing in local clone alone
     - name: Run full OpenBtMixing test suite
       shell: bash -el {0}
       run: |

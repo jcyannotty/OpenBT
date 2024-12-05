@@ -12,6 +12,8 @@ on:
 
 jobs:
   #####----- FULL TESTING WITHOUT COVERAGE
+  # Mimic the way in which a developer might work including the direct use of
+  # pytest.
   test_dev_mode:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -20,12 +22,13 @@ jobs:
         python-version: ["3.13"]
 
     steps:
-    #####----- SETUP TESTING ENVIRONMENT
+    ##-- Setup Testing Environment
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
     - name: Install MPICH
       run: |
         if   [ "${{ runner.os }}" = "Linux" ]; then
+           sudo apt-get update
            sudo apt-get -y install mpich
         elif [ "${{ runner.os }}" = "macOS" ]; then
            brew install mpich
@@ -35,14 +38,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Setup Python dependencies
-      run: |
-        $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
+      run: $CLONE_PATH/.github/workflows/setup_base_python.sh ${{ runner.os }}
     - name: Install Meson build system
-      run: |
-        $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
+      run: $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
     ##-- Run full test suite
-    # Mimic the way in which a developer might work
     - name: Run full OpenBtMixing test suite
       run: |
         which meson
@@ -51,4 +51,9 @@ jobs:
         popd
         ls -lart $PKG_ROOT/src/openbtmixing
         ls -lart $PKG_ROOT/src/openbtmixing/bin
+        if   [ "${{ runner.os }}" = "Linux" ]; then
+            ldd $PKG_ROOT/src/openbtmixing/bin/openbtcli
+        elif [ "${{ runner.os }}" = "macOS" ]; then
+            otool -L $PKG_ROOT/src/openbtmixing/bin/openbtcli
+        fi
         pytest $PKG_ROOT/src/openbtmixing/tests

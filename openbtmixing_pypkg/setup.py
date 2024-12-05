@@ -54,21 +54,14 @@ class build(_build):
 class build_clt(Command):
     description = "Build the OpenBTMixing CLTs"
     user_options: list[str] = []
-    editable_mode: bool
 
     def initialize_options(self):
-        self.editable_mode = False
+        pass
 
     def finalize_options(self):
         pass
 
     def run(self, *args, **kwargs):
-        # At present, tox can build an editable-mode venv with the CLTs
-        # installed in the clone.  However, those will get rebuilt with every
-        # tox -e coverage call.  To work interactively in Python, a developer
-        # can call tox -e coverage to setup the CLTs, activate the coverage
-        # venv, and then run tests via pytest directly.
-
         if shutil.which("meson", mode=os.F_OK | os.X_OK) is None:
             print()
             print("Please install the Meson build system & add meson to path")
@@ -77,9 +70,9 @@ class build_clt(Command):
 
         # TODO: Debug code so that we can build with C++ assertions in place
         # without failures (i.e., -Db_ndebug=false or not specified at all).
-        SETUP_CMD = ["meson", "setup", "--wipe", "--buildtype=release",
-                     "builddir",
-                     f"-Dprefix={PY_SRC_PATH}", "-Db_ndebug=true",
+        SETUP_CMD = ["meson", "setup", "--wipe", "--clearcache",
+                     "--buildtype=release", "builddir", f"-Dprefix={PY_SRC_PATH}",
+                     "-Db_ndebug=true",
                      "-Duse_mpi=true", "-Dverbose=false", "-Dpypkg=true"]
         COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
         INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]

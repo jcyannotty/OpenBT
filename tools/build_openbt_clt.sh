@@ -105,8 +105,7 @@ echo "Configure OpenBT"
 echo "---------------------------------------------"
 mkdir -p $build_dir                                     || exit 1
 meson setup --wipe --clearcache \
-    --buildtype=$build_type $build_dir \
-    -Dprefix=$prefix \
+    --buildtype=$build_type $build_dir -Dprefix=$prefix \
     -Duse_mpi=true -Dverbose=$use_verbose -Dpypkg=false || exit 1
 
 echo

@@ -39,8 +39,7 @@ the Python package using MPI implementations installed
   `homebrew` on macOS;
 * by experts on, for example, clusters and available as modules; and
 * with `conda` from the prebuilt conda forge
-  [openmpi](https://anaconda.org/conda-forge/openmpi) and 
-  [mpich](https://anaconda.org/conda-forge/mpich) packages.
+  [openmpi](https://anaconda.org/conda-forge/openmpi) package.
 
 ## Python package
 The OpenBTMixing Python package is distributed on PyPI as a source distribution
@@ -77,6 +76,25 @@ Note that these do **not** need to be built in order to use the Python package.
 
 ## R package
 **TODO**: Needs to be written based on original content of README.
+
+## Meson issues
+The Meson build system installation documents suggest installing Meson via
+package manager where possible.  If it is not available or the latest available
+version is too old, the following has been used to install Meson with python
+into a dedicated virtual environment.
+
+```
+$ /path/to/target/python -m venv ~/local/venv/meson
+$ . ~/local/venv/meson/bin/activate
+$ which python
+$ python -m pip install --upgrade pip
+$ python -m pip install meson
+$ python -m pip list
+$ ln -s ~/local/venv/meson/bin/meson ~/local/bin
+<append ~/local/bin to PATH if desired and appropriate>
+$ which meson
+$ meson --version
+```
 
 # Examples
 
