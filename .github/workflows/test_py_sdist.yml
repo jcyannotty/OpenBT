@@ -37,22 +37,22 @@ jobs:
       run: |
         if   [ "${{ runner.os }}" = "Linux" ]; then
            sudo apt-get update
-           #if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
-           #   sudo apt-get -y install openmpi-bin libopenmpi-dev
-           #elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
-           #   sudo apt-get -y install mpich
-           #else
-           #   echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
-           #   exit 1
-           #fi
-           #which mpirun
-           #which mpiexec
-           #which mpicxx
-           #mpirun --help
-           #mpiexec --help
-           #mpicxx -show
-           #ldd $(which mpirun)
-           #ldd $(which mpiexec)
+           if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
+              sudo apt-get -y install openmpi-bin libopenmpi-dev
+           elif [ "${{ matrix.mpi_impl }}" = "mpich" ]; then
+              sudo apt-get -y install mpich libmpich-dev
+           else
+              echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
+              exit 1
+           fi
+           which mpirun
+           which mpiexec
+           which mpicxx
+           mpirun --help
+           mpiexec --help
+           mpicxx -show
+           ldd $(which mpirun)
+           ldd $(which mpiexec)
         elif [ "${{ runner.os }}" = "macOS" ]; then
            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
               brew install open-mpi
