@@ -6,7 +6,8 @@
 # OpenBTMixing Python package.
 #
 # Users must pass the path to the folder in which OpenBT should be installed.
-# IMPORTANT: The given folder will be removed before the build starts!
+# IMPORTANT: THE GIVEN FOLDER WILL BE REMOVED BEFORE THE BUILD STARTS AND
+#            WITHOUT WARNING!
 #
 # ./tools/build_openbt_clt.sh ~/local/OpenBT [--debug]
 #
@@ -21,7 +22,7 @@ if   [[ "$#" -eq 1 ]]; then
 elif [[ "$#" -eq 2 ]]; then
     if [[ $2 != "--debug" ]]; then
         echo
-        echo "build_openbt_clt.sh /installation/path/OpenBT [--debug]"
+        echo "build_openbt_clt.sh /installation/path [--debug]"
         echo
         exit 1
     fi
@@ -29,7 +30,7 @@ elif [[ "$#" -eq 2 ]]; then
     use_verbose=true
 else
     echo
-    echo "build_openbt_clt.sh /installation/path/OpenBT [--debug]"
+    echo "build_openbt_clt.sh /installation/path [--debug]"
     echo
     exit 1
 fi
@@ -50,8 +51,14 @@ elif ! command -v mpicxx &> /dev/null; then
     echo "Please install MPI with mpicxx C++ compiler wrapper"
     echo
     exit 1
+elif ! command -v meson &> /dev/null; then
+    echo
+    echo "Please install the Meson build system"
+    echo
+    exit 1
 fi
 
+# ----- LOG IMPORTANT DATA
 echo
 echo "MPI wrappers"
 echo "---------------------------------------------"
@@ -74,16 +81,9 @@ echo "CFLAGS=$CFLAGS"
 echo "CXXFLAGS=$CXXFLAGS"
 echo "CPPFLAGS=$CPPFLAGS"
 echo "LDFLAGS=$LDFLAGS"
+echo "LIBRARY_PATH=$LIBRARY_PATH"
 echo
 
-if ! command -v meson &> /dev/null; then
-    echo
-    echo "Please install meson"
-    echo
-    exit 1
-fi
-
-# ----- LOG IMPORTANT DATA
 echo
 echo "meson version information"
 echo "---------------------------------------------"
@@ -91,7 +91,6 @@ which meson
 meson --version
 
 # ----- CLEAN-UP LEFTOVERS FROM PREVIOUS BUILDS
-
 echo
 echo "Clean-up build environment"
 echo "---------------------------------------------"
@@ -104,8 +103,11 @@ pushd $clone_root &> /dev/null || exit 1
 echo
 echo "Configure OpenBT"
 echo "---------------------------------------------"
-mkdir -p $build_dir
-meson setup --wipe --buildtype=$build_type $build_dir -Dprefix=$prefix -Duse_mpi=true -Dverbose=$use_verbose || exit 1
+mkdir -p $build_dir                                     || exit 1
+meson setup --wipe --clearcache \
+    --buildtype=$build_type $build_dir \
+    -Dprefix=$prefix \
+    -Duse_mpi=true -Dverbose=$use_verbose -Dpypkg=false || exit 1
 
 echo
 echo "Make & Install OpenBT"

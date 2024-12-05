@@ -24,13 +24,13 @@ CLT_NAMES = ["openbtcli", "openbtpred", "openbtmixingwts"]
 
 # Package metadata
 PYTHON_REQUIRES = ">=3.9"
-CODE_REQUIRES = ["numpy", "matplotlib"]
+CODE_REQUIRES = ["setuptools", "numpy", "matplotlib"]
 TEST_REQUIRES = ["pytest", "scipy", "pandas"]
 INSTALL_REQUIRES = CODE_REQUIRES + TEST_REQUIRES
 
 PACKAGE_DATA = {
     "openbtmixing":
-        ["tests/bart_bmm_test_data/2d_*.txt"] + \
+        ["tests/bart_bmm_test_data/2d_*.txt"] +
         [f"bin/{clt}" for clt in CLT_NAMES]
 }
 
@@ -39,6 +39,7 @@ PROJECT_URLS = {
     "Documentation": "https://github.com/jcyannotty/OpenBT",
     "Tracker": "https://github.com/jcyannotty/OpenBT/issues",
 }
+
 
 # ----- CUSTOM COMMAND TO BUILD C++ CLTs
 # EdgeDB builds a CLT that they make available through their interface.  This
@@ -107,6 +108,7 @@ class build_clt(Command):
                         print(f"\t{line}")
                 sys.exit(2)
         os.chdir(cwd)
+
 
 cmdclass = {
     'build': build,

@@ -133,13 +133,14 @@ def run_model(fpath, tc, cmd="openbtcli",
     Private function, run the cpp program via the command line using
     a subprocess.
 
-    This assumes that the folders that contain the OpenBT command line tools
-    and mpirun are in the PATH.  The mpirun that is found should be from an
-    MPI implementation compatible with the MPI implementation that was used to
-    build the OpenBT C++ command line tools.
+    This is hardcoded to use the OpenBT command line tools installed with the
+    package.  It requires that mpirun be in the PATH and that the mpirun that it
+    finds should be from an MPI implementation compatible with the MPI
+    implementation that was used to build the OpenBT C++ command line tools.
 
     .. todo::
         * What error checking should be done for fpath?
+        * Remove local_openbt_path and google_colab.
     """
     PKG_ROOT = Path(__file__).parent.resolve()
     BIN_PATH = PKG_ROOT.joinpath("bin")
@@ -159,8 +160,6 @@ def run_model(fpath, tc, cmd="openbtcli",
     elif cmd not in KNOWN_COMMANDS:
         raise ValueError(f"Unknown OpenBT command line tool {cmd}")
     elif not cmd_with_path.is_file():
-        # TODO: This should be of type LogicError (package-defined exception)
-        # since this indicates a failure in distributing the package.
         raise RuntimeError(f"Could not locate {cmd} in package installation")
     elif local_openbt_path != "":
         raise NotImplementedError("local_openbt_path not supported")
@@ -174,7 +173,6 @@ def run_model(fpath, tc, cmd="openbtcli",
         raise RuntimeError(msg)
 
     try:
-        # MPI running OpenBT command line tool with both found through PATH
         subprocess.run(["mpirun", "-np", str(tc),
                        str(cmd_with_path), str(fpath)],
                        stdin=subprocess.DEVNULL,
