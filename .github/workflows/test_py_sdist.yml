@@ -20,14 +20,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-24.04]
-        mpi_impl: ["mpich"]
-        python-version: ["3.9"]
-        #exclude:
-        #  # For Ubuntu24.04, presently
-        #  # * fails the last three tests with MPICH for unknown reasons
-        #  - os: ubuntu-24.04
-        #    mpi_impl: "mpich"
+        os: [macos-13, macos-14, macos-15,
+             ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        mpi_impl: ["openmpi", "mpich"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # MPICH+Ubuntu24.04 tests presently fail because they detect only one
+          # MPI process instead of two.  I suspect that this is related to using
+          # an mpirun that is not associated with the MPI used to build the
+          # CLTs.  Note that Meson failed as expected when I didn't install any
+          # MPI implementation, which suggests that there isn't a default
+          # installation.  Unfortunately paths to mpirun and mpicxx don't offer
+          # much insight into what is found or if there are crossed
+          # installations.
+          #
+          # Next testing steps would be to build a minimal MPI program and see
+          # if I can reproduce the issue.
+          - os: ubuntu-24.04
+            mpi_impl: "mpich"
 
     steps:
     ##-- Setup Testing Environment
@@ -45,14 +55,6 @@ jobs:
               echo "Cannot install ${{ matrix.mpi_impl }} for Linux"
               exit 1
            fi
-           which mpirun
-           which mpiexec
-           which mpicxx
-           mpirun --help
-           mpiexec --help
-           mpicxx -show
-           ldd $(which mpirun)
-           ldd $(which mpiexec)
         elif [ "${{ runner.os }}" = "macOS" ]; then
            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
               brew install open-mpi
@@ -80,5 +82,4 @@ jobs:
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz
         popd
-        ldd /opt/hostedtoolcache/Python/3.9.20/x64/lib/python3.9/site-packages/openbtmixing/bin/openbtcli
         $CLONE_PATH/tools/test_python_installation.py

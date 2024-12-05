@@ -173,7 +173,7 @@ def run_model(fpath, tc, cmd="openbtcli",
         raise RuntimeError(msg)
 
     try:
-        subprocess.run(["mpirun", "-n", str(tc),
+        subprocess.run(["mpirun", "-np", str(tc),
                        str(cmd_with_path), str(fpath)],
                        stdin=subprocess.DEVNULL,
                        capture_output=True, check=True)
