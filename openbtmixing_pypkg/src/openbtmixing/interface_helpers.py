@@ -247,7 +247,8 @@ def write_train_data(fpath, xi, x_train, y_train, f_train = None, s_train = None
     if x_train.shape[0] == 1:
         np.savetxt(str(fpath / Path("chgv")), [1], fmt='%.7f')
     elif x_train.shape[0] == 2:
-        np.savetxt(str(fpath / Path("chgv")),[spearmanr(x_train, axis=1)[0]], fmt='%.7f')
+        spr = spearmanr(x_train, axis=1)[0]
+        np.savetxt(str(fpath / Path("chgv")),[1,spr,spr,1], fmt='%.7f')
     else:
         np.savetxt(str(fpath / Path("chgv")),spearmanr(x_train, axis=1)[0], fmt='%.7f')
 
