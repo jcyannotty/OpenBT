@@ -20,15 +20,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-13, macos-14, macos-15,
-             ubuntu-20.04, ubuntu-22.04, ubuntu-24.04]
+        os: [ubuntu-24.04]
         mpi_impl: ["mpich"]
         python-version: ["3.9"]
-        exclude:
-          # For Ubuntu24.04, presently
-          # * fails the last three tests with MPICH for unknown reasons
-          - os: ubuntu-24.04
-            mpi_impl: "mpich"
+        #exclude:
+        #  # For Ubuntu24.04, presently
+        #  # * fails the last three tests with MPICH for unknown reasons
+        #  - os: ubuntu-24.04
+        #    mpi_impl: "mpich"
 
     steps:
     ##-- Setup Testing Environment
