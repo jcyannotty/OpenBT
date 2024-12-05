@@ -55,6 +55,12 @@ jobs:
               exit 1
            fi
         fi
+        which mpirun
+        mpirun --help
+        which mpiexec
+        mpiexec --help
+        which mpicxx
+        mpicxx -show
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
@@ -72,4 +78,5 @@ jobs:
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz
         popd
+        ldd /opt/hostedtoolcache/Python/3.9.20/x64/lib/python3.9/site-packages/openbtmixing/bin/openbtcli
         $CLONE_PATH/tools/test_python_installation.py
