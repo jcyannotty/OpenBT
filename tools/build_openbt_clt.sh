@@ -1,13 +1,14 @@
 #!/bin/bash
 
 #
-# Build the OpenBT C++ libraries and install them in a location where Python
-# package's setup can find them for installation and use.
+# Build and install the OpenBT C++ library, the standalone command line tools,
+# and tests of the library.  These are **not** needed to install and use the
+# OpenBTMixing Python package.
 #
 # Users must pass the path to the folder in which OpenBT should be installed.
 # IMPORTANT: The given folder will be removed before the build starts!
 #
-# ./tools/build_openbt_clt.sh ~/local/OpenBT
+# ./tools/build_openbt_clt.sh ~/local/OpenBT [--debug]
 #
 # This script returns exit codes that should make it compatible with use in CI
 # build processes.
@@ -97,8 +98,6 @@ echo "---------------------------------------------"
 rm -rf $prefix
 rm -rf $build_dir
 
-popd &> /dev/null
-
 # ----- SETUP BUILD SYSTEM, CONFIGURE, & BUILD
 pushd $clone_root &> /dev/null || exit 1
 
@@ -111,7 +110,7 @@ meson setup --wipe --buildtype=$build_type $build_dir -Dprefix=$prefix -Duse_mpi
 echo
 echo "Make & Install OpenBT"
 echo "---------------------------------------------"
-meson compile -v -C $build_dir          || exit 1
-meson install --quiet -C $build_dir     || exit 1
+meson compile -v -C $build_dir      || exit 1
+meson install --quiet -C $build_dir || exit 1
 
 popd &> /dev/null

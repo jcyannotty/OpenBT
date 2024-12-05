@@ -141,13 +141,11 @@ def run_model(fpath, tc, cmd="openbtcli",
     .. todo::
         * What error checking should be done for fpath?
     """
-    KNOWN_COMMANDS = {
-        "openbtcli",
-        "openbtmixing", "openbtmixingpred", "openbtmixingwts",
-        "openbtmopareto", "openbtpred", "openbtsobol", "openbtvartivity"
-    }
     PKG_ROOT = Path(__file__).parent.resolve()
     BIN_PATH = PKG_ROOT.joinpath("bin")
+    # This should be matched to the CLTs installed in the package as specified
+    # in setup.py.
+    KNOWN_COMMANDS = {"openbtcli", "openbtpred", "openbtmixingwts"}
 
     # ----- ERROR CHECK ARGUMENTS
     cmd_with_path = BIN_PATH.joinpath(cmd)

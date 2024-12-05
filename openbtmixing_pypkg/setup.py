@@ -18,12 +18,9 @@ CLT_SRC_PATH = PKG_ROOT.joinpath("cpp")
 
 # Names of C++ products to include
 #
-# Only a subset of OpenBT command line tools are used in package
-CLT_NAMES = [
-    "openbtcli",
-    "openbtpred",
-    "openbtmixingwts"
-]
+# Only a subset of OpenBT command line tools are used in package.  Any changes
+# made here should also be made in interface_helpers.py:run_model.
+CLT_NAMES = ["openbtcli", "openbtpred", "openbtmixingwts"]
 
 # Package metadata
 PYTHON_REQUIRES = ">=3.9"
