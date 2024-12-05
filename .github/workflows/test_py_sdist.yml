@@ -48,11 +48,11 @@ jobs:
            which mpirun
            which mpiexec
            which mpicxx
-           mpirun --help
-           mpiexec --help
-           mpicxx -show
-           ldd $(which mpirun)
-           ldd $(which mpiexec)
+           #mpirun --help
+           #mpiexec --help
+           #mpicxx -show
+           #ldd $(which mpirun)
+           #ldd $(which mpiexec)
         elif [ "${{ runner.os }}" = "macOS" ]; then
            if   [ "${{ matrix.mpi_impl }}" = "openmpi" ]; then
               brew install open-mpi
