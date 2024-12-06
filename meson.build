@@ -1,7 +1,7 @@
 # ----- SPECIFY PROJECT
-# eigen dependency requires C++14
+# eigen dependency requires at least C++11
 project('openbtmixing', 'cpp',
-        default_options: ['cpp_std=c++14'],
+        default_options: ['cpp_std=c++11'],
         meson_version: '>=1.6.0')
 
 # ----- DEPENDENCIES

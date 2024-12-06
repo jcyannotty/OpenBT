@@ -21,10 +21,11 @@ matching MPI implementation provided by the user.
 ## Requirements
 Before building and installing the bare C++ tools or the Python package, users
 must provide
-* a compiler suite that includes a C++ compiler,
+* a compiler suite that includes a C++ compiler that supports the C++11
+  standard,
 * an MPI installation that is compatible with the compiler suite,
 * the [Meson build system](https://mesonbuild.com) and its prerequistes such as
-  [ninja](https://ninja-build.org), and
+  Python 3 and [ninja](https://ninja-build.org), and
 * optionally the [Eigen software package](https://gitlab.com/libeigen/eigen).
 
 The Meson build system is setup to automatically detect the compiler suite and
@@ -33,13 +34,37 @@ find it, then it will use it for the build.  Otherwise, it will automatically
 obtain a copy of Eigen for internal use.
 
 We presently test OpenBTMixing with both [Open MPI](https://www.open-mpi.org)
-and [MPICH](https://www.mpich.org) implementations and have successfully used
-the Python package using MPI implementations installed
+and [MPICH](https://www.mpich.org) MPI implementations.  In addition, we have
+successfully tested with the Intel MPI implementation and have used the Python
+package with MPI implementations installed
 * via package managers such as Ubuntu's Advanced Packaging Tool (`apt`) and
   `homebrew` on macOS;
-* by experts on, for example, clusters and available as modules; and
+* by experts on clusters and that are available as modules; and
 * with `conda` from the prebuilt conda forge
   [openmpi](https://anaconda.org/conda-forge/openmpi) package.
+
+## Meson installation
+The Meson build system documentation suggests installing Meson via package
+manager when possible.  Please refer to that documentation for detailed and
+up-to-date installation information.
+
+If Meson cannot be installed by package manager or the manager's version is too
+old, the following is contrary to Meson suggestions but has been used
+successfully to install Meson with Python into a dedicated virtual environment
+and install `meson` in the `PATH` for use without needing to activate the
+virtual environment.
+```
+$ /path/to/target/python -m venv ~/local/venv/meson
+$ . ~/local/venv/meson/bin/activate
+$ which python
+$ python -m pip install --upgrade pip
+$ python -m pip install meson
+$ python -m pip list
+$ ln -s ~/local/venv/meson/bin/meson ~/local/bin
+<add ~/local/bin to PATH if desired and appropriate>
+$ which meson
+$ meson --version
+```
 
 ## Python package
 The OpenBTMixing Python package is distributed on PyPI as a source distribution
@@ -76,25 +101,6 @@ Note that these do **not** need to be built in order to use the Python package.
 
 ## R package
 **TODO**: Needs to be written based on original content of README.
-
-## Meson issues
-The Meson build system installation documents suggest installing Meson via
-package manager where possible.  If it is not available or the latest available
-version is too old, the following has been used to install Meson with python
-into a dedicated virtual environment.
-
-```
-$ /path/to/target/python -m venv ~/local/venv/meson
-$ . ~/local/venv/meson/bin/activate
-$ which python
-$ python -m pip install --upgrade pip
-$ python -m pip install meson
-$ python -m pip list
-$ ln -s ~/local/venv/meson/bin/meson ~/local/bin
-<append ~/local/bin to PATH if desired and appropriate>
-$ which meson
-$ meson --version
-```
 
 # Examples
 
