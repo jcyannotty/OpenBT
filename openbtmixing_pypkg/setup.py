@@ -68,11 +68,8 @@ class build_clt(Command):
             print()
             sys.exit(1)
 
-        # TODO: Debug code so that we can build with C++ assertions in place
-        # without failures (i.e., -Db_ndebug=false or not specified at all).
         SETUP_CMD = ["meson", "setup", "--wipe", "--clearcache",
                      "--buildtype=release", "builddir", f"-Dprefix={PY_SRC_PATH}",
-                     "-Db_ndebug=true",
                      "-Duse_mpi=true", "-Dverbose=false", "-Dpypkg=true"]
         COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
         INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]

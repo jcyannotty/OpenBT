@@ -16,7 +16,7 @@ jobs:
   # they perform any automatic test of results to confirm correctness.  Rather,
   # an expert has to review the output to manually confirm success.
   #
-  # We presently call only those tests that run through.
+  # This also confirms that the build script works.
   test_CLTs:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -61,11 +61,10 @@ jobs:
     - name: Install Meson build system
       run: $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
-    ##-- Build CLTs from Scratch & Install
-    # This also confirms that the build script works
+    ##-- Build CLTs from Scratch, Install, & Test
     - name: Build OpenBTMixing C++ CLTs & Library
       run: |
-        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH
+        $CLONE_PATH/tools/build_openbt_clt.sh $INSTALL_PATH --debug
         echo " "
         if   [ "${{ runner.os }}" = "macOS" ]; then
             otool -L $INSTALL_PATH/bin/openbtcli
@@ -77,14 +76,3 @@ jobs:
         echo " "
         objdump -p $INSTALL_PATH/bin/openbtcli
         echo " "
-
-    ##-- Run All Tests
-    - name: Test OpenBTMixing C++ Library
-      run: |
-        if [ "${{ runner.os }}" = "Linux" ]; then
-            export LD_LIBRARY_PATH=$INSTALL_PATH/lib/x86_64-linux-gnu
-        fi
-        pushd $INSTALL_PATH/bin
-        ./test_crn
-        ./test_tree
-        popd

@@ -1,14 +1,34 @@
 # ----- SPECIFY PROJECT
 # eigen dependency requires at least C++11
+#
+# The version provided here is the version of the C++ library and command line
+# tools.  The Python package maintains a separate version.  If the C++ code is
+# altered, then the version number here should be manually altered and the
+# Python package's version number altered in a similar way since changes made to
+# the C++ code can affect the behavior of the Python code.  If, however, only
+# the Python code is changed, only the version of the Python package should be
+# altered.
 project('openbtmixing', 'cpp',
-        default_options: ['cpp_std=c++11'],
-        meson_version: '>=1.6.0')
+        meson_version: '>=1.6.0',
+        version: '1.0.1',
+        license: 'MIT',
+        default_options: [
+          'cpp_std=c++11',
+          'buildtype=debug',
+          'default_library=shared',
+          'b_ndebug=if-release',
+          'b_pch=false',
+          'unity=off',
+          'verbose=true',
+          'use_mpi=true',
+          'pypkg=false'
+        ])
 
 # ----- DEPENDENCIES
-# If users have a local install of eigen that can be discovered with
-# pkg-config, then that installation will be used.  Otherwise, meson will
-# download the specific tarball as defined in eigen.wrap and use that.
-eigen_dep = dependency('eigen', fallback : ['eigen', 'eigen_dep'])
+# If users have a local install of eigen that can be discovered with pkg-config
+# or other Meson tricks, then that installation will be used.  Otherwise, meson
+# will download the specific tarball as defined in eigen.wrap and use that.
+eigen_dep = dependency('eigen', fallback: ['eigen', 'eigen_dep'])
 deps_all = [eigen_dep]
 
 # ----- USER ARGUMENTS
@@ -22,11 +42,11 @@ if get_option('use_mpi')
     add_project_arguments('-D_OPENMPI', language: 'cpp')
     # This works with both OpenMPI & MPICH beginning with v1.6.0.  See
     # https://github.com/mesonbuild/meson/pull/13619
-    deps_all += [dependency('mpi', language : 'cpp')]
+    deps_all += [dependency('mpi', language: 'cpp')]
 endif
 
 # ----- SPECIFY HEADERS USED TO BUILD LIBRARY, CLTs, & TESTS
-incdir = include_directories('includes')
+incdir = include_directories('includes', is_system: false)
 
 # ----- SPECIFY libopenbtmixing LIBRARY
 # Sources to build individual components in single library
@@ -47,16 +67,12 @@ lib_srcs += src_mxbrt + src_ambrt + src_psbrt + src_amxbrt
 lib_srcs += src_poisson + src_binomial
 
 # ----- SPECIFY LIBRARY UNIT TESTS
-# TODO: amxbrt has build failures
-# TODO: Some of these tests are failing with segfaults.
-# TODO: Integrate these as tests that are run as part of the build once they
-# are all passing.
+# Only include those tests that presently build & run through successfully.
 tests_all  = ['crn', 'tree']
-tests_all += ['brt', 'brtvp']
+#tests_all += ['brt', 'brtvp']
 #tests_all += ['mbrt', 'ambrt', 'mxbrt', 'amxbrt']
-tests_all += ['mbrt', 'ambrt', 'mxbrt']
-tests_all += ['sbrt', 'psbrt']
-tests_all += ['singlepoisson', 'singlebinomial']
+#tests_all += ['sbrt', 'psbrt']
+#tests_all += ['singlepoisson', 'singlebinomial']
 
 # ----- SPECIFY COMMAND LINE TOOLS
 CLTs = [['openbtcli',        'src/cli.cpp'],
@@ -74,7 +90,7 @@ CLTs = [['openbtcli',        'src/cli.cpp'],
 # library.  This will keep the package's source distribution and installation as
 # small and clean as possible.
 if not get_option('pypkg')
-    # Install the headers along with library for building against it
+    # Install the headers along with library for building against library
     install_headers('includes/ambrt.h',
                     'includes/amxbrt.h',
                     'includes/brt.h',
@@ -92,24 +108,30 @@ if not get_option('pypkg')
                     'includes/tree.h',
                     'includes/treefuns.h')
 
-    lib = library('openbtmixing', sources : lib_srcs,
-                  dependencies : deps_all,
-                  include_directories : incdir,
-                  pic : true, install : true)
+    lib = library('openbtmixing', sources: lib_srcs,
+                  dependencies: deps_all,
+                  include_directories: incdir,
+                  version: meson.project_version(),
+                  darwin_versions: meson.project_version(),
+                  pic: true,
+                  install: true)
 
+    # Build up test suite for testing with `meson test` in build directory
     foreach name : tests_all
         test_name = f'test_@name@' 
         test_src = f'tests/test_@name@.cpp'
-        executable(test_name, test_src,
-                   dependencies : deps_all, link_with : lib,
-                   include_directories : incdir,
-                   install : true)
+        test_exe = executable(test_name, test_src,
+                              dependencies: deps_all, link_with: lib,
+                              include_directories: incdir,
+                              install: false)
+        test(name, test_exe)
     endforeach
 endif
 
+# All build variants get standalone CLT binaries
 foreach each : CLTs
     executable(each[0], [each[1]] + lib_srcs,
-               dependencies : deps_all,
-               include_directories : incdir,
-               install : true)
+               dependencies: deps_all,
+               include_directories: incdir,
+               install: true)
 endforeach

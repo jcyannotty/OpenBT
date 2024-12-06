@@ -114,4 +114,9 @@ echo "---------------------------------------------"
 meson compile -v -C $build_dir      || exit 1
 meson install --quiet -C $build_dir || exit 1
 
+echo
+echo "Test OpenBT Library"
+echo "---------------------------------------------"
+meson test -C $build_dir || exit 1
+
 popd &> /dev/null
