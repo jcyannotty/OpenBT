@@ -78,6 +78,10 @@ and installed automatically by Meson as part of executing
 ```
 python -m pip install openbtmixing
 ```
+By default, `pip install` does not show any of Meson's progress.  Users and
+developers interested in seeing how Meson satisifies dependencies and reviewing
+compiler output should pass `-v` to `pip install`.
+
 The package can also be built and installed from a clone of this repository with
 ```
 $ cd /path/to/OpenBT/openbtmixing_pypkg

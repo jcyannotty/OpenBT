@@ -28,7 +28,7 @@ project('openbtmixing', 'cpp',
 # If users have a local install of eigen that can be discovered with pkg-config
 # or other Meson tricks, then that installation will be used.  Otherwise, meson
 # will download the specific tarball as defined in eigen.wrap and use that.
-eigen_dep = dependency('eigen', fallback: ['eigen', 'eigen_dep'])
+eigen_dep = dependency('eigen3', fallback: ['eigen', 'eigen_dep'])
 deps_all = [eigen_dep]
 
 # ----- USER ARGUMENTS

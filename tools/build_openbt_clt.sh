@@ -6,14 +6,23 @@
 # OpenBTMixing Python package.
 #
 # Users must pass the path to the folder in which OpenBT should be installed.
-# IMPORTANT: THE GIVEN FOLDER WILL BE REMOVED BEFORE THE BUILD STARTS AND
-#            WITHOUT WARNING!
 #
 # ./tools/build_openbt_clt.sh ~/local/OpenBT [--debug]
 #
 # This script returns exit codes that should make it compatible with use in CI
 # build processes.
 #
+
+#####----- HARDCODED VALUES
+use_mpi=true
+
+# Empty means use meson project's default value
+warn_level=
+#warn_level="--warnlevel 2"
+
+# Empty means use meson project's default value
+warnings_as_errors=
+#warnings_as_errors="--werror"
 
 #####----- EXTRACT BUILD INFO FROM COMMAND LINE ARGUMENT
 if   [[ "$#" -eq 1 ]]; then
@@ -36,8 +45,16 @@ else
 fi
 prefix=$1
 
+# This should also fail if its a symlink.
+if [[ -d $prefix || -f $prefix ]]; then
+    echo
+    echo "$prefix already exists"
+    echo
+    exit 1
+fi
+
 # ----- SETUP & CHECK ENVIRONMENT
-script_path=$(dirname -- "${BASH_SOURCE[0]}")
+script_path=$(realpath $(dirname -- "${BASH_SOURCE[0]}"))
 clone_root=$script_path/..
 build_dir=$clone_root/builddir
 
@@ -106,7 +123,8 @@ echo "---------------------------------------------"
 mkdir -p $build_dir                                     || exit 1
 meson setup --wipe --clearcache \
     --buildtype=$build_type $build_dir -Dprefix=$prefix \
-    -Duse_mpi=true -Dverbose=$use_verbose -Dpypkg=false || exit 1
+    $warn_level $warnings_as_errors \
+    -Duse_mpi=$use_mpi -Dverbose=$use_verbose -Dpypkg=false || exit 1
 
 echo
 echo "Make & Install OpenBT"
