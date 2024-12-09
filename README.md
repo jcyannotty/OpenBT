@@ -65,6 +65,7 @@ $ python -m pip install meson
 $ python -m pip list
 $ ln -s ~/local/venv/meson/bin/meson ~/local/bin
 <add ~/local/bin to PATH if desired and appropriate>
+$ deactivate
 $ which meson
 $ meson --version
 ```
@@ -82,12 +83,23 @@ By default, `pip install` does not show any of Meson's progress.  Users and
 developers interested in seeing how Meson satisifies dependencies and reviewing
 compiler output should pass `-v` to `pip install`.
 
+Openbtmixing package installations can be minimally tested with
+```
+$ python
+>>> import openbtmixing
+>>> openbtmixing.__version__
+'<version>'
+>>> openbtmixing.test()
+```
+
 The package can also be built and installed from a clone of this repository with
 ```
 $ cd /path/to/OpenBT/openbtmixing_pypkg
 $ python -m build --sdist
 $ python -m pip install -v dist/openbtmixing-<version>.tar.gz
 ```
+where we assume that the [build](https://build.pypa.io/en/stable/index.html)
+package has already been installed.
 
 Developers can setup a virtual environment with a developer/editable mode
 installation of the package with
