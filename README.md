@@ -1,22 +1,26 @@
 # Open Bayesian Trees Project
 This repository includes new developments with Bayesian Additive Regression Trees and extends the original OpenBT repository created by Matt Pratola (https://bitbucket.org/mpratola/openbt/src/master/).
 Such extensions include Bayesian Model Mixing and Bayesian Calibration. 
-All of the Bayesian Tree code is written in C++. User interfaces constructed in R and Python allow one to easily run the software. The OpenBT project is also included in the Bayesian Model Mixing python package, *Taweret*, which is included in the Bayesian Analysis of Nuclear Dynamics software (see https://bandframework.github.io/). 
+All of the Bayesian Tree code is written in C++. User interfaces constructed in R and Python allow one to easily run the software.
+The BART Model Mixing software has been implemented in the [Taweret](https://github.com/TaweretOrg/Taweret/tree/main) Python package in conjunction with the [BAND](https://bandframework.github.io/) collaboration.
 
 
 # Installation
-The heart of OpenBTMixing is a set of C++ command line tools, which are wrapped
-by the Python and R packages.  Typically these tools are built with MPI to
-enable distributed parallelization of computations.  In particular, the Python
-wrapper package is always built with MPI support.
+The heart of OpenBTMixing is a set of C++ tools that can be used directly via
+the command line or indirectly through the Python and R packages, which wrap
+them.  Typically these tools are built with an implementation of the Message
+Passing Interface (MPI) such as [Open MPI](https://www.open-mpi.org) or
+[MPICH](https://www.mpich.org) to enable distributed parallelization of
+computations.  In particular, the Python wrapper package is always built with
+MPI support.
 
 The software and its distribution scheme have been developed to allow users to
-use OpenBTMixing with the MPI installation of their choosing.  For instance, it
-can be built with MPI installations on leadership class platforms and
-clusters that were installed by experts and optimized for the platform.  As a
-result, however, the software cannot be distributed as prebuilt binaries or
-wheels, but rather must be built for each case with the compiler suite and
-matching MPI implementation provided by the user.
+use OpenBTMixing with the MPI installation of their choice.  For instance, it
+can be built with MPI installations on leadership class platforms and clusters
+that were installed by experts and optimized for their specific platform.  As a
+result, however, the software is not distributed as prebuilt binaries or wheels,
+but rather must be built for each case with the compiler suite and matching MPI
+implementation provided by the user.
 
 ## Requirements
 Before building and installing the bare C++ tools or the Python package, users
@@ -33,10 +37,9 @@ MPI installation to use.  If Eigen already exists in the system and Meson can
 find it, then it will use it for the build.  Otherwise, it will automatically
 obtain a copy of Eigen for internal use.
 
-We presently test OpenBTMixing with both [Open MPI](https://www.open-mpi.org)
-and [MPICH](https://www.mpich.org) MPI implementations.  In addition, we have
-successfully tested with the Intel MPI implementation and have used the Python
-package with MPI implementations installed
+We presently test OpenBTMixing with both Open MPI and MPICH.  In addition, we
+have successfully tested with the Intel MPI implementation and have used the
+Python package with MPI implementations installed
 * via package managers such as Ubuntu's Advanced Packaging Tool (`apt`) and
   `homebrew` on macOS;
 * by experts on clusters and that are available as modules; and
@@ -51,8 +54,8 @@ up-to-date installation information.
 If Meson cannot be installed by package manager or the manager's version is too
 old, the following is contrary to Meson suggestions but has been used
 successfully to install Meson with Python into a dedicated virtual environment
-and install `meson` in the `PATH` for use without needing to activate the
-virtual environment.
+as well as to install `meson` in the `PATH` for use without needing to activate
+that virtual environment.
 ```
 $ /path/to/target/python -m venv ~/local/venv/meson
 $ . ~/local/venv/meson/bin/activate
@@ -100,13 +103,8 @@ an OpenBTMixing library, and library tests with `tools/build_openbt_clt.sh`.
 Note that these do **not** need to be built in order to use the Python package.
 
 ## R package
-**TODO**: Needs to be written based on original content of README.
+**TODO**: Needs to be written based on current state of affairs.
 
 # Examples
 
 The examples from the article "Model Mixing Using Bayesian Additive Regression Tress" are reproduced in the jupyter noteboook BART_BMM_Technometrics.ipynb. This notebook can be run locally or in a virtual environment such as google colab.
-
-
-# Related Software
-
-The BART Model Mixing software has been implemented in the [Taweret](https://github.com/TaweretOrg/Taweret/tree/main) Python package in conjunction with the [BAND](https://bandframework.github.io/) collaboration.

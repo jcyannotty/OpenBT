@@ -47,13 +47,11 @@ PROJECT_URLS = {
 #
 # https://github.com/edgedb/edgedb/blob/master/setup.py
 class build(_build):
-    user_options = _build.user_options
     sub_commands = ([("build_clt", None)])
 
 
 class build_clt(Command):
-    description = "Build the OpenBTMixing CLTs"
-    user_options: list[str] = []
+    description = "Build the OpenBTMixing command line tools"
 
     def initialize_options(self):
         pass
@@ -68,6 +66,14 @@ class build_clt(Command):
             print()
             sys.exit(1)
 
+        # To build debug versions with more output,
+        # * use --buildtype=debug
+        # * consider using -Dverbose=true
+        # * consider adding arguments such as --warnlevel and --werror to
+        #   SETUP_CMD
+        # * Add "-v" to COMPILE_CMD
+        # * Remove "--quiet" from INSTALL_CMD
+        # * Use python -m pip install -v ...
         SETUP_CMD = ["meson", "setup", "--wipe", "--clearcache",
                      "--buildtype=release", "builddir", f"-Dprefix={PY_SRC_PATH}",
                      "-Duse_mpi=true", "-Dverbose=false", "-Dpypkg=true"]
@@ -80,22 +86,12 @@ class build_clt(Command):
         os.chdir(CLT_SRC_PATH)
         for cmd in [SETUP_CMD, COMPILE_CMD, INSTALL_CMD]:
             try:
-                sbp.run(cmd, stdin=sbp.DEVNULL, capture_output=True, check=True)
+                sbp.run(cmd, stdin=sbp.DEVNULL, capture_output=False, check=True)
             except sbp.CalledProcessError as err:
-                stdout = err.stdout.decode()
-                stderr = err.stderr.decode()
                 print()
                 msg = "[meson build] Unable to run command (Return code {})"
                 print(msg.format(err.returncode))
                 print("[meson build] " + " ".join(err.cmd))
-                if stdout != "":
-                    print("[meson build] stdout")
-                    for line in stdout.split("\n"):
-                        print(f"\t{line}")
-                if stderr != "":
-                    print("[meson build] stderr")
-                    for line in stderr.split("\n"):
-                        print(f"\t{line}")
                 sys.exit(2)
         os.chdir(cwd)
 
