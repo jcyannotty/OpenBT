@@ -34,14 +34,14 @@ must provide
 
 The Meson build system is setup to automatically detect the compiler suite and
 MPI installation to use.  If Eigen already exists in the system and Meson can
-find it, then it will use it for the build.  Otherwise, it will automatically
-obtain a copy of Eigen for internal use.
+find it, then Meson will use it for the build.  Otherwise, Meson will
+automatically obtain a copy of Eigen for internal use.
 
 We presently test OpenBTMixing with both Open MPI and MPICH.  In addition, we
 have successfully tested with the Intel MPI implementation and have used the
 Python package with MPI implementations installed
 * via package managers such as Ubuntu's Advanced Packaging Tool (`apt`) and
-  `homebrew` on macOS;
+  [homebrew](https://brew.sh) on macOS;
 * by experts on clusters and that are available as modules; and
 * with `conda` from the prebuilt conda forge
   [openmpi](https://anaconda.org/conda-forge/openmpi) package.
@@ -70,8 +70,9 @@ $ meson --version
 ```
 
 ## Python package
-The OpenBTMixing Python package is distributed on PyPI as a source distribution
-that contains the C++ code and files needed by Meson to build the dedicated,
+The OpenBTMixing Python package is distributed on
+[PyPI](https://pypi.org/project/openbtmixing/) as a source distribution that
+contains the C++ code and files needed by Meson to build the dedicated,
 standalone command line tools that the package will use.  The tools are built
 and installed automatically by Meson as part of executing
 ```
@@ -95,7 +96,7 @@ $ python -m pip install -v -e .
 In this latter case, the command line tools are built automatically and
 installed at `/path/to/OpenBT/openbtmixing_pypkg/src/openbtmixing/bin`.  The
 Python package is hardcoded to use those tools so that the existence of another
-set of tools in the system and in the PATH should not cause issues.
+set of tools in the system and in `PATH` should not cause issues.
 
 ## C++ library & command line tool interface
 Developers and C++ users can directly build and install the command line tools,
