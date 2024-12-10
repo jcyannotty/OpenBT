@@ -69,6 +69,9 @@ $ deactivate
 $ which meson
 $ meson --version
 ```
+Note that this `meson` virtual environment is for installing **just** the Meson
+build system.  Attempts to install `openbtmixing` into this virtual environment
+will likely fail with an error that the `mesonbuild` module cannot be found.
 
 ## Python package
 The OpenBTMixing Python package is distributed on
