@@ -71,13 +71,12 @@ class build_clt(Command):
         # * consider using -Dverbose=true
         # * consider adding arguments such as --warnlevel and --werror to
         #   SETUP_CMD
-        # * Add "-v" to COMPILE_CMD
         # * Remove "--quiet" from INSTALL_CMD
         # * Use python -m pip install -v ...
         SETUP_CMD = ["meson", "setup", "--wipe", "--clearcache",
                      "--buildtype=release", "builddir", f"-Dprefix={PY_SRC_PATH}",
                      "-Duse_mpi=true", "-Dverbose=false", "-Dpypkg=true"]
-        COMPILE_CMD = ["meson", "compile", "-C", "builddir"]
+        COMPILE_CMD = ["meson", "compile", "-v", "-C", "builddir"]
         INSTALL_CMD = ["meson", "install", "--quiet", "-C", "builddir"]
 
         # Install the CLTs within the Python source files and so that they are
