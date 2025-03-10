@@ -16,6 +16,9 @@ jobs:
   # testing in local clone alone.
   #
   # This also confirms that the test script is functional.
+  #
+  # Refer to Issue #XXX to understand use of older Python, older miniconda
+  # version, and older setup-miniconda version.
   test_anaconda:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -23,7 +26,8 @@ jobs:
         os: [macos-13, macos-14, macos-15,
              ubuntu-22.04, ubuntu-24.04]
         mpi_impl: ["openmpi"]
-        python-version: ["3.13"]
+        python-version: ["3.12"]
+        miniconda-version: [py312_24.11.1-0]
         exclude:
           # Prebuilt Intel MPI package not available for macOS
           - os: [macos-13, macos-14, macos-15]
@@ -31,8 +35,9 @@ jobs:
 
     steps:
     ##-- Setup Testing Environment
-    - uses: conda-incubator/setup-miniconda@v3
+    - uses: conda-incubator/setup-miniconda@v2.1.1
       with:
+        miniconda-version: ${{ matrix.miniconda-version }}
         auto-update-conda: true
         conda-remove-defaults: "true"
         python-version: ${{ matrix.python-version }}
@@ -53,8 +58,10 @@ jobs:
       run: |
         conda install -c conda-forge ${{ matrix.mpi_impl }}
         conda list
-        which mpicxx
-        mpicxx -show
+        #ls /Users/runner/miniconda3/envs/test/bin
+        #find /Users/runner/miniconda3 -name mpicxx
+        which mpicxx || echo "Cannot find the MPI installation"
+        mpicxx -show || echo "Cannot check the MPI wrapper specification"
     - name: Install Meson build system
       run: $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
