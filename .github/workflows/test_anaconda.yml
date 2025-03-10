@@ -17,7 +17,7 @@ jobs:
   #
   # This also confirms that the test script is functional.
   #
-  # Refer to Issue #XXX to understand use of older Python, older miniconda
+  # Refer to Issue #13 to understand use of older Python, older miniconda
   # version, and older setup-miniconda version.
   test_anaconda:
     runs-on: ${{ matrix.os }}
@@ -39,7 +39,6 @@ jobs:
       with:
         miniconda-version: ${{ matrix.miniconda-version }}
         auto-update-conda: true
-        conda-remove-defaults: "true"
         python-version: ${{ matrix.python-version }}
     - name: Checkout OpenBTMixing
       uses: actions/checkout@v4
