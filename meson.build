@@ -10,7 +10,7 @@
 # altered.
 project('openbtmixing', 'cpp',
         meson_version: '>=1.6.0',
-        version: '1.0.1',
+        version: '1.1.0',
         license: 'MIT',
         default_options: [
           'cpp_std=c++11',
