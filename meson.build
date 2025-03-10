@@ -12,6 +12,7 @@ project('openbtmixing', 'cpp',
         meson_version: '>=1.6.0',
         version: '1.1.0',
         license: 'MIT',
+        license_files: 'LICENSE',
         default_options: [
           'cpp_std=c++11',
           'buildtype=debug',
