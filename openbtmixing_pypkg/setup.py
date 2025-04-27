@@ -133,7 +133,6 @@ setup(
     python_requires=PYTHON_REQUIRES,
     install_requires=INSTALL_REQUIRES,
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License"
+        "Programming Language :: Python :: 3"
     ]
 )
