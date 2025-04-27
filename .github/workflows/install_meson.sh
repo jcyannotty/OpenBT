@@ -13,6 +13,7 @@ runner_os=$2
 if   [ "$runner_os" = "macOS" ]; then
     # Homebrew already has v1.6.0 available.
     brew install meson
+    python -m pip install meson>=1.6.0
 elif [ "$runner_os" = "Linux" ]; then
     # Meson versions available through Ubuntu package installation can be quite
     # out-of-date.
