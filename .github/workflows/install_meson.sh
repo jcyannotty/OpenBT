@@ -12,8 +12,10 @@ runner_os=$2
 # Beginning with v1.6.0 meson can automatically find OpenMPI and MPICH
 if   [ "$runner_os" = "macOS" ]; then
     # Homebrew already has v1.6.0 available.
-    python -m pip install --upgrade pip setuptools
-    python -m pip install meson>=1.6.0
+    # Upgrade pip and install pipx for isolated installs
+    python -m pip install --upgrade pip pipx
+    pipx install meson>=1.6.0
+    pipx ensurepath
     
     echo "Python location: $(which python)"
     echo "Meson location: $(which meson)"
