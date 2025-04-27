@@ -12,13 +12,12 @@ runner_os=$2
 # Beginning with v1.6.0 meson can automatically find OpenMPI and MPICH
 if   [ "$runner_os" = "macOS" ]; then
     # Homebrew already has v1.6.0 available.
-    which python
-    python --version
     python -m pip install --upgrade pip setuptools
     python -m pip install meson>=1.6.0
-    python -m pip show meson
-    which meson
-    head -n 5 $(which meson)
+    
+    echo "Python location: $(which python)"
+    echo "Meson location: $(which meson)"
+    echo "Meson version: $(meson --version)"
 elif [ "$runner_os" = "Linux" ]; then
     # Meson versions available through Ubuntu package installation can be quite
     # out-of-date.
