@@ -53,7 +53,7 @@ class Openbtmix():
         self.xicuts = None
 
         # Set the prior defaults
-        self.nummodels = 2
+        self.nummodels = 1
         self.sighat = 1
         self.nu = 10
         self.k = 2
@@ -222,13 +222,16 @@ class Openbtmix():
             self._prior.update({key: value})
 
 
-        # Run _define_parameters
+        # Set prior for terminal node parameters
+        # Default non-informative mean is 1/(2*m)
+        # for 2 models. This gets updated in train()
+        # if more than 2 models
         if self.inform_prior:
             self.tau = 1 / (2*self.ntree*self.k)
             self.beta = 1 / self.ntree
         else:
             self.tau = 1 / (2*np.sqrt(self.ntree)*self.k)
-            self.beta = 1 / (self.nummodels*self.ntree)
+            self.beta = 1 / (2*self.ntree) 
 
         # Set lambda and nu
         self.nu = nu
@@ -306,6 +309,11 @@ class Openbtmix():
         # Create path
         f = tempfile.mkdtemp(prefix="openbtmixing_")
         self.fpath = Path(f)
+
+        # Update beta if number of models changes and using informative prior
+        self.nummodels = f_train.shape[1]
+        if not self.inform_prior and (self.nummodels > 2):
+            self.beta = 1 / (self.nummodels*self.ntree)
 
         # Get config parameters
         run_params = [self.modeltype,self.xroot,self.yroot,self.fmean_out,self.ntree,self.ntreeh,
