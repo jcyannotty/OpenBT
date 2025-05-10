@@ -72,6 +72,7 @@ def test_mixing():
     assert mix.adaptevery == 500, "class object adaptevery is not set."
     assert mix.nskip == 2000, "class object nskip is not set."
     assert mix.minnumbot == 4, "class object minnumbot is not set."
+    assert mix.nummodels == 2, "class object nummodels is not set."
 
 
 # Test the mean predictions
