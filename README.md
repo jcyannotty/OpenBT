@@ -23,14 +23,20 @@ but rather must be built for each case with the compiler suite and matching MPI
 implementation provided by the user.
 
 ## Requirements
-Before building and installing the bare C++ tools or the Python package, users
+Before building and installing the Python package, users
 must provide
 * a compiler suite that includes a C++ compiler that supports the C++11
   standard,
-* an MPI installation that is compatible with the compiler suite,
-* the [Meson build system](https://mesonbuild.com) and its prerequistes such as
-  Python 3 and [ninja](https://ninja-build.org), and
+* an MPI installation that is compatible with the compiler suite, and
 * optionally the [Eigen software package](https://gitlab.com/libeigen/eigen).
+
+To build and install just the bare C++ tools, users must provide in addition to
+the above
+* the [Meson build system](https://mesonbuild.com) and its prerequistes such as
+  Python 3 and [ninja](https://ninja-build.org).
+
+While Meson is used internally to build the Python package, it is installed
+automatically just for building the package.
 
 The Meson build system is setup to automatically detect the compiler suite and
 MPI installation to use.  If Eigen already exists in the system and Meson can

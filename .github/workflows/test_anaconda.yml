@@ -61,15 +61,12 @@ jobs:
         #find /Users/runner/miniconda3 -name mpicxx
         which mpicxx || echo "Cannot find the MPI installation"
         mpicxx -show || echo "Cannot check the MPI wrapper specification"
-    - name: Install Meson build system
-      run: $CLONE_PATH/.github/workflows/install_meson.sh ${{ github.workspace }} ${{ runner.os }}
 
     ##-- Run full test suite
     - name: Run full OpenBtMixing test suite
       shell: bash -el {0}
       run: |
         which python
-        which meson
         pushd $PKG_ROOT
         python -m build --sdist
         python -m pip install -v dist/openbtmixing-*.tar.gz
