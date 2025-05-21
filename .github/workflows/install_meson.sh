@@ -16,9 +16,10 @@ if   [ "$runner_os" = "macOS" ]; then
     meson_venv=$venv_path/meson
     local_bin=$install_path/local/bin
     
-    # Ensure Homebrew is up-to-date and install necessary dependencies (ninja-build)
+    # Ensure Homebrew is up-to-date
+    # ninja is already installed in macOS runners.
     brew update
-    brew install ninja
+    #brew install ninja
     
     # Create virtual environment
     echo "Creating Python virtual environment at $meson_venv"
