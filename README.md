@@ -1,4 +1,7 @@
 # Open Bayesian Trees Project
+
+**NOTE: This repository has been merged with the original OpenBT repository, which this repository was based on.  The contents of this repository will not be developed further nor will they be maintained.  Please see the new [OpenBT repository](https://github.com/bandframework/OpenBT) to use the latest and greatest OpenBT implementation.**
+
 This repository includes new developments with Bayesian Additive Regression Trees and extends the original OpenBT repository created by Matt Pratola (https://bitbucket.org/mpratola/openbt/src/master/).
 Such extensions include Bayesian Model Mixing and Bayesian Calibration. 
 All of the Bayesian Tree code is written in C++. User interfaces constructed in R and Python allow one to easily run the software.
